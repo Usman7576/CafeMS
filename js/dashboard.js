@@ -8,7 +8,9 @@
   document.addEventListener("DOMContentLoaded", function () {
     const hour = new Date().getHours();
     const part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-    document.getElementById("greeting").textContent = part + ", " + App.session.name.split(" ")[0];
+    const first = App.session.name.split(" ")[0];
+    // Use the full name when the first part is only an initial ("M. Usman")
+    document.getElementById("greeting").textContent = part + ", " + (first.replace(".", "").length > 1 ? first : App.session.name);
 
     // ----- Interaction: filter tabs -----
     document.querySelectorAll("#orderTabs .tab").forEach(function (tab) {

@@ -125,7 +125,11 @@
   if (lockedUntil() > Date.now()) startLock(lockedUntil());
 
   function displayName(user) {
-    return user.split(/[._]/).filter(Boolean).map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase(); }).join(" ");
+    // "m.usman" -> "M. Usman", "ali_raza" -> "Ali Raza"
+    return user.split(/[._]/).filter(Boolean).map(function (p) {
+      const word = p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+      return word.length === 1 ? word + "." : word;
+    }).join(" ");
   }
 
   form.addEventListener("submit", function (e) {
