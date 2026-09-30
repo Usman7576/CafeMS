@@ -3,118 +3,236 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cafe Management System (CMS)</title>
-  <meta name="description" content="A secure web-based Cafe Management System for orders, billing, inventory and reporting.">
+  <title>Cafe Management System (CMS) — Secure cafe operations platform</title>
+  <meta name="description" content="A secure, web-based Cafe Management System for orders, table status, billing, inventory and sales reporting — with role-based access for every staff member.">
+  <meta name="theme-color" content="#3d2518">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="container">
-      <a href="index.html" class="logo">☕ Cafe<span>MS</span></a>
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
-      <ul class="nav-links">
-        <li><a href="index.html" class="active">Home</a></li>
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <header class="site-nav">
+    <nav class="container" aria-label="Main">
+      <a href="index.html" class="brand" aria-label="Cafe Management System home">
+        <span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span>
+        <span>CafeMS<small>Cafe Management System</small></span>
+      </a>
+      <button class="btn btn-secondary btn-icon nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><i data-icon="menu"></i></button>
+      <ul class="links" id="navLinks">
         <li><a href="#features">Features</a></li>
-        <li><a href="#roles">Who uses it</a></li>
+        <li><a href="#roles">Roles</a></li>
+        <li><a href="#how">How it works</a></li>
         <li><a href="#security">Security</a></li>
-        <li><a href="login.html" class="btn btn-primary btn-sm">Staff Login</a></li>
+        <li><a href="login.html" class="btn btn-dark btn-sm"><i data-icon="lock" data-size="15"></i>Staff sign in</a></li>
       </ul>
-    </div>
+    </nav>
   </header>
 
-  <main>
+  <main id="main">
+    <!-- ================= HERO ================= -->
     <section class="hero">
-      <div class="container">
-        <div class="eyebrow">Cafe Management System</div>
-        <h1>Run your cafe from one secure place.</h1>
-        <p>The Cafe Management System (CMS) replaces paper order slips and scattered spreadsheets with a single platform for taking orders, billing, tracking stock and seeing daily sales — with access limited to the right staff.</p>
-        <div class="actions">
-          <a href="login.html" class="btn btn-primary">Staff Login</a>
-          <a href="#features" class="btn btn-outline">See features</a>
+      <div class="container hero-grid">
+        <div>
+          <span class="kicker"><b>SSD Project</b> Secure Software Development · Semester Project</span>
+          <h1>Run your cafe from <em>one secure</em> platform.</h1>
+          <p class="lede">The Cafe Management System (CMS) replaces paper order slips and disconnected spreadsheets. Orders, table status, billing, stock and sales all live in one place, and each staff member can reach only the tools their role needs.</p>
+          <div class="actions">
+            <a href="login.html" class="btn btn-primary btn-lg">Staff sign in <i data-icon="arrow-right" data-size="18"></i></a>
+            <a href="#features" class="btn btn-secondary btn-lg">Explore features</a>
+          </div>
+          <div class="trust">
+            <span><i data-icon="check-circle" data-size="16"></i>Role-based access</span>
+            <span><i data-icon="check-circle" data-size="16"></i>Audit-logged actions</span>
+            <span><i data-icon="check-circle" data-size="16"></i>No card data stored</span>
+          </div>
+        </div>
+
+        <!-- Product preview (illustrative) -->
+        <div class="preview" aria-hidden="true">
+          <div class="preview-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">cafems / waiter / dashboard</span></div>
+          <div class="preview-body">
+            <div class="preview-kpis">
+              <div class="preview-kpi"><small>In kitchen</small><strong>3</strong></div>
+              <div class="preview-kpi"><small>Ready to serve</small><strong style="color:var(--ok)">2</strong></div>
+              <div class="preview-kpi"><small>Tables busy</small><strong>6/10</strong></div>
+            </div>
+            <div class="preview-tables">
+              <span class="on">T1</span><span>T2</span><span class="on">T3</span><span class="on">T4</span><span>T5</span><span class="rd">T6</span>
+            </div>
+            <div class="preview-list">
+              <div class="preview-row"><span>Order</span><span>Status</span></div>
+              <div class="preview-row"><span><b>ORD-1045</b> · Table 6</span><span class="pill pill-ready">Ready</span></div>
+              <div class="preview-row"><span><b>ORD-1044</b> · Table 3</span><span class="pill pill-preparing">Preparing</span></div>
+              <div class="preview-row"><span><b>ORD-1046</b> · Table 1</span><span class="pill pill-placed">Placed</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="section" id="purpose">
+    <!-- ================= PROBLEM / SOLUTION ================= -->
+    <section class="section alt" id="about">
       <div class="container">
-        <h2>Why a Cafe Management System?</h2>
-        <p class="lead">Many small and medium cafes still handle orders, billing and stock on paper. That leads to wrong orders, billing mistakes, wasted stock and records that are easy to tamper with. CMS gives every staff member exactly the tools they need — and nothing more.</p>
-        <div class="grid">
-          <div class="card"><div class="icon">📝</div><h3>Fewer order mistakes</h3><p>Waiters send orders straight to the kitchen queue — no handwriting to misread.</p></div>
-          <div class="card"><div class="icon">🧾</div><h3>Accurate bills</h3><p>Taxes and totals are calculated automatically, with receipts for every sale.</p></div>
-          <div class="card"><div class="icon">📦</div><h3>Less stock waste</h3><p>Inventory updates as items sell, with alerts before you run out.</p></div>
-          <div class="card"><div class="icon">📊</div><h3>Reliable sales data</h3><p>Daily reports show what sold, when, and how much you earned.</p></div>
+        <div class="section-head">
+          <span class="eyebrow">Why CMS</span>
+          <h2>Paper and spreadsheets cost cafes time, money and trust.</h2>
+          <p>Many small and medium cafes still run orders, billing and stock by hand. The Cafe Management System replaces that with one accurate, centralised platform.</p>
+        </div>
+        <div class="split">
+          <div class="split-card problem">
+            <h3><i data-icon="alert" data-size="20"></i>Today, without a system</h3>
+            <ul>
+              <li><i data-icon="x" data-size="18"></i>Misread order slips and wrong items reaching tables</li>
+              <li><i data-icon="x" data-size="18"></i>Billing errors and no reliable daily sales figures</li>
+              <li><i data-icon="x" data-size="18"></i>Stock wastage and surprise shortages mid-shift</li>
+              <li><i data-icon="x" data-size="18"></i>Records that are easy to tamper with</li>
+              <li><i data-icon="x" data-size="18"></i>Customer and payment data stored without protection</li>
+            </ul>
+          </div>
+          <div class="split-card solution">
+            <h3><i data-icon="check-circle" data-size="20"></i>With the Cafe Management System</h3>
+            <ul>
+              <li><i data-icon="check" data-size="18"></i>Orders go digitally from table to kitchen, and staff can track them until served</li>
+              <li><i data-icon="check" data-size="18"></i>Bills with taxes and discounts calculated automatically</li>
+              <li><i data-icon="check" data-size="18"></i>Live inventory with low-stock alerts</li>
+              <li><i data-icon="check" data-size="18"></i>Every critical action recorded in an audit log</li>
+              <li><i data-icon="check" data-size="18"></i>Access limited to authorised staff and sensitive data encrypted</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="section" id="features" style="background:#fff;">
+    <!-- ================= FEATURES ================= -->
+    <section class="section" id="features">
       <div class="container">
-        <h2>Core modules</h2>
-        <p class="lead">Everything a cafe needs day to day.</p>
-        <div class="grid">
-          <div class="card"><div class="icon">🍰</div><h3>Menu Management</h3><p>Items, categories, prices and availability.</p></div>
-          <div class="card"><div class="icon">🛎️</div><h3>Order Management</h3><p>Create and track orders from placed to served.</p></div>
-          <div class="card"><div class="icon">🪑</div><h3>Table Reservations</h3><p>Book, view and cancel table bookings.</p></div>
-          <div class="card"><div class="icon">💳</div><h3>Billing &amp; Payments</h3><p>Bills, discounts, receipts and payment records.</p></div>
-          <div class="card"><div class="icon">📦</div><h3>Inventory</h3><p>Stock levels, low-stock alerts, suppliers.</p></div>
-          <div class="card"><div class="icon">📈</div><h3>Reports &amp; Analytics</h3><p>Daily and monthly sales, popular items, stock usage.</p></div>
-          <div class="card"><div class="icon">🔑</div><h3>Authentication &amp; Roles</h3><p>Login, password reset and role-based access for every staff member.</p></div>
-          <div class="card"><div class="icon">🧑‍🍳</div><h3>Staff Management</h3><p>Staff profiles, shifts and activity.</p></div>
-          <div class="card"><div class="icon">📜</div><h3>Audit Logging</h3><p>Records of critical actions — logins, refunds, price changes.</p></div>
+        <div class="section-head center">
+          <span class="eyebrow">Core modules</span>
+          <h2>Everything a cafe needs, day to day.</h2>
+          <p>Nine modules that cover the whole service, from sign-in to end-of-day reports.</p>
+        </div>
+        <div class="features">
+          <article class="feature"><div class="icon-tile"><i data-icon="key"></i></div><h3>Authentication &amp; Roles</h3><p>Secure login, password reset and role-based access for every staff account.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="utensils"></i></div><h3>Menu Management</h3><p>Add, edit and remove items, categories, prices and availability.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="clipboard"></i></div><h3>Order Management</h3><p>Create and update orders, then track them from placed to served.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="receipt"></i></div><h3>Billing &amp; Payments</h3><p>Bills with taxes and discounts, receipts and payment records.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="package"></i></div><h3>Inventory Management</h3><p>Stock levels, low-stock alerts and supplier records.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="chart"></i></div><h3>Reports &amp; Analytics</h3><p>Daily and monthly sales, popular items and stock usage.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="file"></i></div><h3>Audit Logging</h3><p>Tamper-evident records of logins, refunds and price changes.</p><span class="tag">Must-have</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="calendar"></i></div><h3>Table Reservations</h3><p>Book, view and cancel table reservations.</p><span class="tag">Optional</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="users"></i></div><h3>Staff Management</h3><p>Staff profiles, shifts and activity.</p><span class="tag">Planned</span></article>
         </div>
       </div>
     </section>
 
-    <section class="section" id="roles">
+    <!-- ================= ROLES ================= -->
+    <section class="section alt" id="roles">
       <div class="container">
-        <h2>Who uses it</h2>
-        <p class="lead">Each role sees only the screens it needs (role-based access, least privilege).</p>
+        <div class="section-head">
+          <span class="eyebrow">Users &amp; roles</span>
+          <h2>Each role sees only what it needs.</h2>
+          <p>Access follows the principle of least privilege. This prototype is built around the <strong>Waiter</strong>, the staff member who takes orders at tables.</p>
+        </div>
         <div class="table-wrap">
-          <table class="roles-table">
-            <thead><tr><th>Role</th><th>What they do in CMS</th></tr></thead>
+          <table class="data-table">
+            <thead><tr><th scope="col">Role</th><th scope="col">Responsibility</th><th scope="col">Main permissions</th></tr></thead>
             <tbody>
-              <tr><td><strong>Waiter</strong></td><td>Take orders at tables, view table status</td></tr>
-              <tr><td><strong>Kitchen Staff</strong></td><td>View order queue, update order status</td></tr>
-              <tr><td><strong>Cashier</strong></td><td>Create bills, accept payments, print receipts</td></tr>
-              <tr><td><strong>Manager</strong></td><td>Manage inventory, approve discounts/refunds, view sales</td></tr>
-              <tr><td><strong>Admin / Owner</strong></td><td>Manage users, roles, menu, prices, audit logs</td></tr>
-              <tr><td><strong>Customer</strong> <span style="color:var(--muted);">(optional)</span></td><td>Browse menu, place orders, reserve tables, view own history</td></tr>
+              <tr class="highlight"><td><div class="role-cell"><span class="icon-tile"><i data-icon="clipboard" data-size="17"></i></span>Waiter</div></td><td>Takes orders at tables</td><td>Create / update orders, view table status <span class="pill pill-role no-dot" style="margin-left:6px;">This prototype</span></td></tr>
+              <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="chef" data-size="17"></i></span>Kitchen Staff</div></td><td>Prepares orders</td><td>View order queue, update order status</td></tr>
+              <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="receipt" data-size="17"></i></span>Cashier</div></td><td>Handles billing at the counter</td><td>Create bills, accept payments, print receipts</td></tr>
+              <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="chart" data-size="17"></i></span>Manager</div></td><td>Supervises daily operations</td><td>Manage inventory, approve discounts / refunds, view sales reports</td></tr>
+              <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="shield" data-size="17"></i></span>Admin / Owner</div></td><td>Manages the whole system</td><td>Manage users and roles, menu, prices, all reports, audit logs</td></tr>
+              <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="user" data-size="17"></i></span>Customer <span class="muted" style="font-weight:400;">(optional)</span></div></td><td>Uses the cafe online</td><td>Browse menu, place orders, reserve tables, view own history</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <section class="section" id="security" style="background:#fff;">
+    <!-- ================= HOW IT WORKS ================= -->
+    <section class="section" id="how">
       <div class="container">
-        <h2>Built with security in mind</h2>
-        <p class="lead">The CMS is being developed as a Secure Software Development project.</p>
-        <div class="grid">
-          <div class="card"><div class="icon">🔐</div><h3>Strong authentication</h3><p>Unique accounts, strong passwords, lockout after repeated failed logins.</p></div>
-          <div class="card"><div class="icon">👥</div><h3>Role-based access</h3><p>Every request checked on the server against the user's role.</p></div>
-          <div class="card"><div class="icon">🛡️</div><h3>Protected data</h3><p>HTTPS everywhere, hashed passwords, no card details stored.</p></div>
-          <div class="card"><div class="icon">📜</div><h3>Audit logs</h3><p>Refunds, price and role changes are logged with who and when.</p></div>
+        <div class="section-head center">
+          <span class="eyebrow">How it works for waiters</span>
+          <h2>From table to kitchen in three steps.</h2>
+        </div>
+        <div class="steps">
+          <div class="step"><h3>Sign in to your shift</h3><p>Use your staff account. The server decides your role, so a waiter never sees admin or billing tools.</p></div>
+          <div class="step"><h3>Take the order</h3><p>Pick the table, search the menu, add items and kitchen notes. Totals and tax are calculated for you.</p></div>
+          <div class="step"><h3>Track &amp; serve</h3><p>Follow each order as it moves from placed to preparing to ready. You're alerted when it's ready, then you mark it served.</p></div>
         </div>
       </div>
     </section>
 
-    <section class="section cta-band">
+    <!-- ================= SECURITY ================= -->
+    <section class="section alt" id="security">
       <div class="container">
-        <h2>On shift today?</h2>
-        <p class="lead" style="margin-left:auto;margin-right:auto;">Sign in with your staff account to start taking orders.</p>
-        <a href="login.html" class="btn btn-dark">Go to Staff Login</a>
+        <div class="section-head">
+          <span class="eyebrow">Security by design</span>
+          <h2>Built as a Secure Software Development project.</h2>
+          <p>Security requirements were defined before development started, and they shape every screen.</p>
+        </div>
+        <div class="sec-grid">
+          <div class="sec-item"><div class="icon-tile"><i data-icon="key"></i></div><div><h3>Strong authentication <span class="sr-tag">SR-1</span></h3><p>Every user has a unique account and a password that must meet length and complexity rules.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="lock"></i></div><div><h3>Hashed passwords <span class="sr-tag">SR-2</span></h3><p>Passwords are stored only as salted bcrypt / Argon2 hashes, never in plain text.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="users"></i></div><div><h3>Role-based access <span class="sr-tag">SR-3</span></h3><p>The server checks permissions on every request, so each role can use only the functions it needs.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="shield"></i></div><div><h3>Input validation <span class="sr-tag">SR-4</span></h3><p>Server-side validation, parameterised queries and output encoding stop SQL injection and XSS.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="server"></i></div><div><h3>Encryption <span class="sr-tag">SR-5</span></h3><p>HTTPS/TLS for all traffic, and sensitive data is encrypted at rest.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="clock"></i></div><div><h3>Session protection <span class="sr-tag">SR-6</span></h3><p>Sessions expire after inactivity, and accounts lock after repeated failed sign-ins.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="file"></i></div><div><h3>Audit trail <span class="sr-tag">SR-7</span></h3><p>Refunds, price changes, role changes and deletions are logged with user, time and action.</p></div></div>
+          <div class="sec-item"><div class="icon-tile"><i data-icon="receipt"></i></div><div><h3>Payment security <span class="sr-tag">SR-8</span></h3><p>Card details are never stored; payments go through a trusted payment gateway.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CTA ================= -->
+    <section class="cta">
+      <div class="container">
+        <div class="cta-box">
+          <div>
+            <h2>On shift today?</h2>
+            <p>Sign in with your staff account to see your tables and start taking orders.</p>
+          </div>
+          <div class="actions">
+            <a href="login.html" class="btn btn-primary btn-lg">Staff sign in <i data-icon="arrow-right" data-size="18"></i></a>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="container">
-      <div>© <span id="year"></span> Cafe Management System (CMS) · SSD Semester Project</div>
-      <div><a href="index.html">Home</a> · <a href="login.html">Staff Login</a></div>
+      <div class="footer-grid">
+        <div>
+          <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Cafe Management System</small></span></a>
+          <p class="about">A secure, centralised platform for cafe orders, billing, inventory and staff activity.</p>
+        </div>
+        <div>
+          <h4>Product</h4>
+          <ul><li><a href="#features">Features</a></li><li><a href="#roles">Roles</a></li><li><a href="#how">How it works</a></li></ul>
+        </div>
+        <div>
+          <h4>Security</h4>
+          <ul><li><a href="#security">Security requirements</a></li><li><a href="#roles">Access control</a></li></ul>
+        </div>
+        <div>
+          <h4>Staff</h4>
+          <ul><li><a href="login.html">Staff sign in</a></li><li><a href="dashboard.html">Waiter dashboard</a></li></ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year></span> Cafe Management System (CMS). Semester project, Secure Software Development.</span>
+        <span>Prototype v1.0 · frontend only</span>
+      </div>
     </div>
   </footer>
 
+  <script src="js/icons.js"></script>
   <script src="js/common.js"></script>
 </body>
 </html>

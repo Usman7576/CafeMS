@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <div class="app">
+    <!-- ============ Sidebar ============ -->
+    <aside class="sidebar" id="sidebar" aria-label="Staff navigation">
+      <a href="dashboard.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Staff workspace</small></span></a>
+      <div class="nav-section">Waiter</div>
+      <ul class="side-nav">
+        <li><a href="dashboard.html" aria-current="page"><i data-icon="dashboard" data-size="18"></i>Dashboard</a></li>
+        <li><a href="order.html"><i data-icon="clipboard" data-size="18"></i>Take order</a></li>
+        <li><a href="#ready"><i data-icon="bell" data-size="18"></i>Ready to serve<span class="count" data-ready-count></span></a></li>
+        <li><a href="#floor"><i data-icon="grid" data-size="18"></i>Tables</a></li>
+      </ul>
+      <div class="nav-section">Account</div>
+      <ul class="side-nav">
+        <li><a href="index.html"><i data-icon="home" data-size="18"></i>Public site</a></li>
+        <li><button type="button" data-signout><i data-icon="logout" data-size="18"></i>Sign out</button></li>
+      </ul>
+      <div class="sidebar-foot">
+        <b><i data-icon="shield" data-size="16"></i>Waiter access</b>
+        You only see waiter tools. Billing, inventory, reports and admin functions belong to other roles.
+      </div>
+    </aside>
+    <div class="scrim"></div>
+
+    <div class="main">
+      <!-- ============ Top bar ============ -->
+      <header class="topbar">
+        <button class="icon-btn menu-btn" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><i data-icon="menu" data-size="18"></i></button>
+        <div class="title"><div class="crumb">Waiter workspace</div><h1>Dashboard</h1></div>
+        <div class="spacer"></div>
+        <div class="shift-clock"><i data-icon="clock" data-size="15"></i><span id="shiftClock"></span></div>
+        <div class="user-menu">
+          <button class="icon-btn" id="notifBtn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false"><i data-icon="bell" data-size="18"></i><span class="dot" data-ready-count></span></button>
+          <div class="dropdown notif-panel" id="notifMenu"><div class="head"><b>Ready to serve</b><span class="muted">Orders the kitchen has finished</span></div><div id="notifList"></div></div>
+        </div>
+        <div class="user-menu">
+          <button class="user-btn" id="userBtn" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+            <span class="avatar" data-user-initials></span>
+            <span class="who"><b data-user-name></b><small data-user-role></small></span>
+          </button>
+          <div class="dropdown" id="userMenu">
+            <div class="head"><b data-user-name></b><span class="muted" data-user-handle></span></div>
+            <a href="dashboard.html"><i data-icon="dashboard" data-size="16"></i>Dashboard</a>
+            <a href="order.html"><i data-icon="clipboard" data-size="16"></i>Take order</a>
+            <button type="button" class="danger" data-signout><i data-icon="logout" data-size="16"></i>Sign out</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ Content ============ -->
+      <main class="content" id="main">
+        <div class="page-head">
+          <div>
+            <h2 id="greeting">Welcome back</h2>
+            <p>Here's your shift at a glance. Orders update automatically as the kitchen works.</p>
+          </div>
+          <a href="order.html" class="btn btn-primary"><i data-icon="plus" data-size="18"></i>New order</a>
+        </div>
+
+        <section class="kpis" aria-label="Shift summary">
+          <div class="kpi"><div class="icon-tile info"><i data-icon="chef"></i></div><div><small>In the kitchen</small><strong id="kpiActive">0</strong><div class="sub">Placed or preparing</div></div></div>
+          <div class="kpi"><div class="icon-tile ok"><i data-icon="bell"></i></div><div><small>Ready to serve</small><strong id="kpiReady">0</strong><div class="sub">Waiting at the pass</div></div></div>
+          <div class="kpi"><div class="icon-tile"><i data-icon="check-circle"></i></div><div><small>Served this shift</small><strong id="kpiServed">0</strong><div class="sub">Orders delivered</div></div></div>
+          <div class="kpi"><div class="icon-tile warn"><i data-icon="grid"></i></div><div><small>Tables busy</small><strong id="kpiTables">0/10</strong><div class="sub">Across the floor</div></div></div>
+        </section>
+
+        <div class="dash-grid">
+          <div class="stack">
+            <!-- My orders -->
+            <section class="panel" aria-labelledby="ordersTitle">
+              <div class="panel-head">
+                <div><h3 id="ordersTitle">My orders</h3><p>Orders you've taken this shift</p></div>
+                <div class="tabs" role="tablist" aria-label="Filter orders" id="orderTabs">
+                  <button class="tab" role="tab" data-filter="active" aria-selected="true">Active <span class="n" data-n="active"></span></button>
+                  <button class="tab" role="tab" data-filter="Ready" aria-selected="false">Ready <span class="n" data-n="Ready"></span></button>
+                  <button class="tab" role="tab" data-filter="Served" aria-selected="false">Served <span class="n" data-n="Served"></span></button>
+                  <button class="tab" role="tab" data-filter="all" aria-selected="false">All <span class="n" data-n="all"></span></button>
+                </div>
+              </div>
+              <div class="panel-body flush">
+                <div class="table-wrap" style="border:0;border-radius:0 0 12px 12px;">
+                  <table class="data-table">
+                    <thead><tr><th scope="col">Order</th><th scope="col">Table</th><th scope="col" class="hide-sm">Items</th><th scope="col">Total</th><th scope="col" class="hide-sm">Placed</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                    <tbody id="ordersBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <!-- Floor -->
+            <section class="panel" id="floor" aria-labelledby="floorTitle">
+              <div class="panel-head">
+                <div><h3 id="floorTitle">Table status</h3><p>Pick a free table to start an order, or one of yours to add items.</p></div>
+              </div>
+              <div class="panel-body">
+                <div class="floor" id="floorMap"></div>
+                <div class="legend">
+                  <span><i class="l-free"></i>Free</span>
+                  <span><i class="l-mine"></i>Your table</span>
+                  <span><i class="l-ready"></i>Order ready</span>
+                  <span><i class="l-other"></i>Other staff</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="stack">
+            <!-- Ready to serve -->
+            <section class="panel" id="ready" aria-labelledby="readyTitle">
+              <div class="panel-head"><h3 id="readyTitle">Ready to serve <span class="pill pill-ready" id="readyPill">0</span></h3></div>
+              <div class="panel-body flush"><ul class="ready-list" id="readyList"></ul></div>
+            </section>
+
+            <!-- Unavailable items -->
+            <section class="panel" aria-labelledby="soldTitle">
+              <div class="panel-head"><div><h3 id="soldTitle">Unavailable today</h3><p>Let guests know before they order</p></div></div>
+              <div class="panel-body flush"><ul class="ready-list" id="soldList"></ul></div>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <span>© <span data-year></span> Cafe Management System</span>
+        <span>Prototype · demo data resets when you sign out</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Order details modal -->
+  <div class="modal-backdrop" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="icon-tile"><i data-icon="clipboard" data-size="20"></i></div>
+        <div><h3 id="detailTitle">Order</h3><p id="detailSub"></p></div>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+      <div class="modal-actions"><button class="btn btn-secondary" data-close="detailModal" data-autofocus>Close</button></div>
+    </div>
+  </div>
+
+  <!-- Inactivity warning -->
+  <div class="modal-backdrop" id="idleModal" role="alertdialog" aria-modal="true" aria-labelledby="idleTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="icon-tile warn"><i data-icon="clock" data-size="20"></i></div>
+        <div><h3 id="idleTitle">Are you still there?</h3><p>For security, you'll be signed out in <b id="idleCount">30</b> seconds because of inactivity.</p></div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="staySignedIn" data-autofocus>Stay signed in</button></div>
+    </div>
+  </div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

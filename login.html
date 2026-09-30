@@ -3,66 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staff Login – Cafe Management System</title>
+  <title>Staff sign in — Cafe Management System</title>
+  <meta name="description" content="Staff sign in for the Cafe Management System.">
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="container">
-      <a href="index.html" class="logo">☕ Cafe<span>MS</span></a>
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="login.html" class="active">Staff Login</a></li>
-      </ul>
-    </div>
-  </header>
-
-  <main class="auth-wrap">
-    <div class="card auth-card">
-      <h1>Staff Login</h1>
-      <p class="sub">Sign in to start your shift.</p>
-
-      <div id="formAlert" class="alert alert-error" role="alert"></div>
-
-      <form id="loginForm" novalidate autocomplete="on">
-        <div class="field">
-          <label for="username">Username</label>
-          <input type="text" id="username" name="username" autocomplete="username" maxlength="30" required>
-          <div class="error" id="usernameError"></div>
-        </div>
-
-        <div class="field">
-          <label for="password">Password</label>
-          <div class="password-row">
-            <input type="password" id="password" name="password" autocomplete="current-password" maxlength="64" required>
-            <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" aria-controls="password">Show</button>
-          </div>
-          <div class="error" id="passwordError"></div>
-          <div class="hint">At least 8 characters, with upper &amp; lower case letters and a number.</div>
-        </div>
-
-        <button type="submit" class="btn btn-dark" style="width:100%;" id="loginBtn">Sign in</button>
-      </form>
-
-      <p style="text-align:center;margin:16px 0 0;font-size:0.9rem;">
-        <a href="#" id="forgotLink">Forgot password?</a>
-      </p>
-
-      <div class="notice">
-        🔒 Your role (Waiter, Cashier, Kitchen, Manager…) is assigned by the admin and decided by the server after you sign in — you can't pick it here.<br><br>
-        <strong>Prototype note:</strong> the backend isn't built yet, so any username and a password that meets the rules will sign you in as a <strong>Waiter</strong>. Don't use a real password.
+  <div class="auth">
+    <aside class="auth-aside">
+      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Cafe Management System</small></span></a>
+      <div>
+        <h2>Everything for your shift, in one place.</h2>
+        <p>Sign in to see your tables, take orders and follow them all the way to the table.</p>
+        <ul class="auth-points">
+          <li><span class="icon-tile"><i data-icon="users" data-size="18"></i></span><span><b>Role-based access</b>The screens you see depend on the role your admin gave you.</span></li>
+          <li><span class="icon-tile"><i data-icon="clock" data-size="18"></i></span><span><b>Automatic sign-out</b>Idle sessions end after 5 minutes to protect shared devices.</span></li>
+          <li><span class="icon-tile"><i data-icon="shield" data-size="18"></i></span><span><b>Protected accounts</b>Sign-in is paused after repeated failed attempts.</span></li>
+        </ul>
       </div>
-    </div>
-  </main>
+      <p class="foot">© <span data-year></span> Cafe Management System · SSD Semester Project</p>
+    </aside>
 
-  <footer class="site-footer">
-    <div class="container">
-      <div>© <span id="year"></span> Cafe Management System (CMS)</div>
-      <div><a href="index.html">Home</a></div>
-    </div>
-  </footer>
+    <main class="auth-main">
+      <div class="auth-top">
+        <a href="index.html" class="brand auth-mobile-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+        <a href="index.html"><i data-icon="arrow-left" data-size="16"></i>Back to home</a>
+      </div>
 
+      <div class="auth-form-wrap">
+        <div class="auth-form">
+          <h1>Staff sign in</h1>
+          <p class="sub">Welcome back. Enter your staff credentials to start your shift.</p>
+
+          <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
+
+          <form id="loginForm" method="post" action="login.html" novalidate>
+            <div class="field">
+              <label for="username">Username</label>
+              <div class="input-wrap">
+                <i data-icon="user" data-size="18"></i>
+                <input class="input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="30" required aria-describedby="usernameError">
+              </div>
+              <div class="field-error" id="usernameError"></div>
+            </div>
+
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input has-action" type="password" id="password" name="password" autocomplete="current-password" maxlength="64" required aria-describedby="passwordError pwRules capsWarn">
+                <button type="button" class="input-action" id="togglePw" aria-label="Show password" aria-controls="password" aria-pressed="false"><i data-icon="eye" data-size="18"></i></button>
+              </div>
+              <div class="field-warn" id="capsWarn"><i data-icon="alert" data-size="14"></i>Caps Lock is on</div>
+              <div class="field-error" id="passwordError"></div>
+              <ul class="pw-rules" id="pwRules" aria-label="Password requirements">
+                <li data-rule="len">At least 8 characters</li>
+                <li data-rule="upper">One uppercase letter</li>
+                <li data-rule="lower">One lowercase letter</li>
+                <li data-rule="num">One number</li>
+              </ul>
+            </div>
+
+            <div class="row">
+              <span class="muted" style="font-size:.84rem;">Shared device? Always sign out.</span>
+              <a href="#" id="forgotLink">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn btn-dark btn-lg btn-block" id="loginBtn" disabled>Sign in</button>
+            <noscript><p class="field-error" style="display:flex;margin-top:10px;">JavaScript is required to sign in.</p></noscript>
+          </form>
+
+          <div class="demo-note">
+            <i data-icon="info" data-size="18"></i>
+            <span><b>Prototype demo.</b> The backend isn't connected yet, so any valid username and a password that meets the rules will sign you in as a <b>Waiter</b>. Please don't use a real password. Your role is always assigned by the server, never chosen on this page.</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="auth-bottom"><i data-icon="lock" data-size="14"></i>Protected connection · Role-based access</p>
+    </main>
+  </div>
+
+  <!-- Forgot password modal -->
+  <div class="modal-backdrop" id="forgotModal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="icon-tile"><i data-icon="key" data-size="20"></i></div>
+        <div>
+          <h3 id="forgotTitle">Reset your password</h3>
+          <p>For security, staff passwords are reset by a Manager or Admin. They'll verify who you are before issuing a temporary password, which you must change at your next sign-in.</p>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-dark" data-close="forgotModal" data-autofocus>Got it</button></div>
+    </div>
+  </div>
+
+  <script src="js/icons.js"></script>
   <script src="js/common.js"></script>
   <script src="js/login.js"></script>
 </body>

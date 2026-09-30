@@ -3,104 +3,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Take Order – Cafe Management System</title>
+  <title>Take order — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="container">
-      <a href="index.html" class="logo">☕ Cafe<span>MS</span></a>
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="order.html" class="active">Take Order</a></li>
-        <li><button class="btn btn-outline btn-sm" id="logoutBtn">Log out</button></li>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <div class="app">
+    <!-- ============ Sidebar ============ -->
+    <aside class="sidebar" id="sidebar" aria-label="Staff navigation">
+      <a href="dashboard.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Staff workspace</small></span></a>
+      <div class="nav-section">Waiter</div>
+      <ul class="side-nav">
+        <li><a href="dashboard.html"><i data-icon="dashboard" data-size="18"></i>Dashboard</a></li>
+        <li><a href="order.html" aria-current="page"><i data-icon="clipboard" data-size="18"></i>Take order</a></li>
+        <li><a href="dashboard.html#ready"><i data-icon="bell" data-size="18"></i>Ready to serve<span class="count" data-ready-count></span></a></li>
+        <li><a href="dashboard.html#floor"><i data-icon="grid" data-size="18"></i>Tables</a></li>
       </ul>
-    </div>
-  </header>
+      <div class="nav-section">Account</div>
+      <ul class="side-nav">
+        <li><a href="index.html"><i data-icon="home" data-size="18"></i>Public site</a></li>
+        <li><button type="button" data-signout><i data-icon="logout" data-size="18"></i>Sign out</button></li>
+      </ul>
+      <div class="sidebar-foot">
+        <b><i data-icon="shield" data-size="16"></i>Waiter access</b>
+        You only see waiter tools. Billing, inventory, reports and admin functions belong to other roles.
+      </div>
+    </aside>
+    <div class="scrim"></div>
 
-  <div class="app-bar">
-    <div class="container">
-      <div>
-        <strong style="font-size:1.2rem;">Take Order</strong>
-        <div style="color:var(--muted);font-size:0.9rem;">Pick a table, add items, send to kitchen.</div>
-      </div>
-      <div class="user-chip">
-        <span>Signed in as <strong id="userName">—</strong></span>
-        <span class="role-badge" id="userRole">Waiter</span>
-      </div>
+    <div class="main">
+      <!-- ============ Top bar ============ -->
+      <header class="topbar">
+        <button class="icon-btn menu-btn" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><i data-icon="menu" data-size="18"></i></button>
+        <div class="title"><div class="crumb">Waiter workspace</div><h1>Take order</h1></div>
+        <div class="spacer"></div>
+        <div class="shift-clock"><i data-icon="clock" data-size="15"></i><span id="shiftClock"></span></div>
+        <div class="user-menu">
+          <button class="icon-btn" id="notifBtn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false"><i data-icon="bell" data-size="18"></i><span class="dot" data-ready-count></span></button>
+          <div class="dropdown notif-panel" id="notifMenu"><div class="head"><b>Ready to serve</b><span class="muted">Orders the kitchen has finished</span></div><div id="notifList"></div></div>
+        </div>
+        <div class="user-menu">
+          <button class="user-btn" id="userBtn" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+            <span class="avatar" data-user-initials></span>
+            <span class="who"><b data-user-name></b><small data-user-role></small></span>
+          </button>
+          <div class="dropdown" id="userMenu">
+            <div class="head"><b data-user-name></b><span class="muted" data-user-handle></span></div>
+            <a href="dashboard.html"><i data-icon="dashboard" data-size="16"></i>Dashboard</a>
+            <a href="order.html"><i data-icon="clipboard" data-size="16"></i>Take order</a>
+            <button type="button" class="danger" data-signout><i data-icon="logout" data-size="16"></i>Sign out</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============ Content ============ -->
+      <main class="content" id="main">
+        <div class="page-head">
+          <div>
+            <h2>New order</h2>
+            <p>Select the table, add items from the menu, then send the order to the kitchen.</p>
+          </div>
+          <a href="dashboard.html" class="btn btn-secondary"><i data-icon="arrow-left" data-size="16"></i>Back to dashboard</a>
+        </div>
+
+        <div class="order-layout">
+          <div class="stack">
+            <!-- Step 1: table -->
+            <section class="panel" aria-labelledby="tableTitle">
+              <div class="panel-head"><div><h3 id="tableTitle"><span class="pill no-dot">1</span>Select table</h3><p>Tables served by other staff can't be selected.</p></div></div>
+              <div class="panel-body"><div class="floor compact" id="tablePicker" role="radiogroup" aria-labelledby="tableTitle"></div></div>
+            </section>
+
+            <!-- Step 2: menu -->
+            <section class="panel" aria-labelledby="menuTitle">
+              <div class="panel-head"><div><h3 id="menuTitle"><span class="pill no-dot">2</span>Add items</h3><p>Search or browse by category.</p></div></div>
+              <div class="panel-body">
+                <div class="menu-toolbar">
+                  <div class="input-wrap">
+                    <i data-icon="search" data-size="18"></i>
+                    <label for="search" class="sr-only">Search menu</label>
+                    <input class="input" type="search" id="search" placeholder="Search the menu, e.g. latte" maxlength="40" autocomplete="off">
+                  </div>
+                </div>
+                <div class="tabs" role="tablist" aria-label="Menu categories" id="catTabs" style="margin-bottom:16px;"></div>
+                <div class="menu-grid" id="menuGrid" aria-live="polite"></div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Ticket -->
+          <aside class="panel ticket" aria-labelledby="ticketTitle">
+            <div class="panel-head">
+              <div><h3 id="ticketTitle">Order ticket</h3><p id="ticketTable">No table selected</p></div>
+              <span class="pill no-dot" id="itemCount">0 items</span>
+            </div>
+            <ul class="ticket-lines" id="ticketLines"></ul>
+            <div id="ticketEmpty" class="empty-state" style="padding:28px 20px;">
+              <i data-icon="utensils" data-size="30"></i>
+              <b>No items yet</b>
+              <span>Tap <strong>Add</strong> on a menu item to start.</span>
+            </div>
+            <div class="ticket-totals">
+              <div><span class="muted">Subtotal</span><span id="subtotal">Rs 0</span></div>
+              <div><span class="muted">Tax (16%)</span><span id="tax">Rs 0</span></div>
+              <div class="grand"><span>Total</span><span id="total">Rs 0</span></div>
+            </div>
+            <div class="ticket-foot">
+              <div class="field" style="margin-bottom:14px;">
+                <label for="notes" class="label">Kitchen notes <span class="opt">Optional</span></label>
+                <textarea class="textarea" id="notes" rows="2" maxlength="120" placeholder="e.g. less sugar, no onions" aria-describedby="notesCounter"></textarea>
+                <div class="counter" id="notesCounter">0 / 120</div>
+              </div>
+              <div class="ticket-actions">
+                <button class="btn btn-secondary" id="clearBtn" type="button"><i data-icon="trash" data-size="16"></i>Clear</button>
+                <button class="btn btn-primary" id="sendBtn" type="button" disabled><i data-icon="send" data-size="16"></i>Send to kitchen</button>
+              </div>
+              <p class="send-hint" id="sendHint"></p>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <span>© <span data-year></span> Cafe Management System</span>
+        <span>Prototype · demo data resets when you sign out</span>
+      </footer>
     </div>
   </div>
 
-  <main class="container">
-    <div class="order-layout">
-      <!-- Left: tables + menu -->
-      <section>
-        <h2 class="panel-title">1. Select table</h2>
-        <div class="tables" id="tables"></div>
-
-        <h2 class="panel-title">2. Add items</h2>
-        <div class="menu-tools">
-          <label for="search" class="sr-only">Search menu</label>
-          <input type="search" id="search" placeholder="Search menu… e.g. latte" maxlength="40">
-        </div>
-        <div class="chips" id="categoryChips" role="group" aria-label="Filter by category"></div>
-        <div class="menu-grid" id="menuGrid"></div>
-      </section>
-
-      <!-- Right: current order -->
-      <aside class="card order-panel">
-        <h2 class="panel-title">Current order — <span id="selectedTable">no table</span></h2>
-        <ul class="order-lines" id="orderLines"></ul>
-        <p class="empty" id="orderEmpty" style="padding:12px 0;">No items yet.</p>
-
-        <div class="totals">
-          <div><span>Subtotal</span><span id="subtotal">Rs 0</span></div>
-          <div><span>Tax (16%)</span><span id="tax">Rs 0</span></div>
-          <div class="grand"><span>Total</span><span id="total">Rs 0</span></div>
-        </div>
-
-        <div class="field">
-          <label for="notes">Kitchen notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
-          <textarea id="notes" rows="2" maxlength="120" placeholder="e.g. less sugar, no onions"></textarea>
-          <div class="counter" id="notesCounter">0 / 120</div>
-        </div>
-
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost" id="clearBtn" style="flex:1;">Clear</button>
-          <button class="btn btn-primary" id="sendBtn" style="flex:2;" disabled>Send to kitchen</button>
-        </div>
-        <p class="hint" id="sendHint" style="font-size:0.82rem;color:var(--muted);margin:8px 0 0;text-align:center;"></p>
-
-        <div class="recent">
-          <h3 class="panel-title" style="font-size:0.95rem;">My orders this shift</h3>
-          <ul class="order-lines" id="recentOrders"></ul>
-          <p class="empty" id="recentEmpty" style="padding:6px 0;font-size:0.88rem;">No orders sent yet.</p>
-        </div>
-      </aside>
-    </div>
-  </main>
-
-  <!-- Confirmation modal -->
-  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <!-- Confirm order modal -->
+  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="modal">
-      <h3 id="modalTitle">Send order to kitchen?</h3>
-      <div id="modalBody"></div>
-      <div class="actions">
-        <button class="btn btn-ghost" id="modalCancel">Go back</button>
-        <button class="btn btn-primary" id="modalConfirm">Confirm &amp; send</button>
+      <div class="modal-head">
+        <div class="icon-tile"><i data-icon="send" data-size="20"></i></div>
+        <div><h3 id="confirmTitle">Send order to kitchen?</h3><p id="confirmSub"></p></div>
+      </div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close="confirmModal">Go back</button>
+        <button class="btn btn-primary" id="confirmSend" data-autofocus>Confirm &amp; send</button>
       </div>
     </div>
   </div>
 
-  <footer class="site-footer">
-    <div class="container">
-      <div>© <span id="year"></span> Cafe Management System (CMS)</div>
-      <div>Idle sessions sign out automatically after 5 minutes.</div>
+  <!-- Inactivity warning -->
+  <div class="modal-backdrop" id="idleModal" role="alertdialog" aria-modal="true" aria-labelledby="idleTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="icon-tile warn"><i data-icon="clock" data-size="20"></i></div>
+        <div><h3 id="idleTitle">Are you still there?</h3><p>For security, you'll be signed out in <b id="idleCount">30</b> seconds because of inactivity.</p></div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="staySignedIn" data-autofocus>Stay signed in</button></div>
     </div>
-  </footer>
+  </div>
 
+  <script src="js/icons.js"></script>
   <script src="js/common.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
   <script src="js/order.js"></script>
 </body>
 </html>
