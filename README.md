@@ -88,10 +88,16 @@ python -m http.server 8000
 
 Then open http://localhost:8000.
 
-## Deploy
+## Deploy to Netlify
 
-- **GitHub Pages:** push to a public repo → *Settings → Pages → Deploy from branch → `main` / root*.
-- **Netlify:** drag the project folder onto https://app.netlify.com/drop.
+The repository root contains `index.html` and `netlify.toml`, so no build command or framework adapter is required.
+
+1. Push this repository to GitHub, GitLab or Bitbucket.
+2. In Netlify, choose **Add new site → Import an existing project** and select the repository.
+3. Leave the build command empty. Set the publish directory to `.` if Netlify does not detect it automatically.
+4. Deploy the site. Netlify will use the included `netlify.toml` and the custom `404.html` page.
+
+For a manual deploy, drag this repository root (the folder containing `index.html`) onto https://app.netlify.com/drop.
 
 After changing CSS or JS, bump the `?v=` number in the HTML files so browsers load the new files.
 
