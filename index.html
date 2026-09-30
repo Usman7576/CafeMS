@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BrewDesk – Cafe Management System</title>
-  <meta name="description" content="BrewDesk is a secure web-based Cafe Management System for orders, billing, inventory and reporting.">
+  <title>Cafe Management System (CMS)</title>
+  <meta name="description" content="A secure web-based Cafe Management System for orders, billing, inventory and reporting.">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container">
-      <a href="index.html" class="logo">☕ Brew<span>Desk</span></a>
+      <a href="index.html" class="logo">☕ Cafe<span>MS</span></a>
       <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
       <ul class="nav-links">
         <li><a href="index.html" class="active">Home</a></li>
@@ -27,7 +27,7 @@
       <div class="container">
         <div class="eyebrow">Cafe Management System</div>
         <h1>Run your cafe from one secure place.</h1>
-        <p>BrewDesk replaces paper order slips and scattered spreadsheets with a single platform for taking orders, billing, tracking stock and seeing daily sales — with access limited to the right staff.</p>
+        <p>The Cafe Management System (CMS) replaces paper order slips and scattered spreadsheets with a single platform for taking orders, billing, tracking stock and seeing daily sales — with access limited to the right staff.</p>
         <div class="actions">
           <a href="login.html" class="btn btn-primary">Staff Login</a>
           <a href="#features" class="btn btn-outline">See features</a>
@@ -37,8 +37,8 @@
 
     <section class="section" id="purpose">
       <div class="container">
-        <h2>Why BrewDesk?</h2>
-        <p class="lead">Many small and medium cafes still handle orders, billing and stock on paper. That leads to wrong orders, billing mistakes, wasted stock and records that are easy to tamper with. BrewDesk gives every staff member exactly the tools they need — and nothing more.</p>
+        <h2>Why a Cafe Management System?</h2>
+        <p class="lead">Many small and medium cafes still handle orders, billing and stock on paper. That leads to wrong orders, billing mistakes, wasted stock and records that are easy to tamper with. CMS gives every staff member exactly the tools they need — and nothing more.</p>
         <div class="grid">
           <div class="card"><div class="icon">📝</div><h3>Fewer order mistakes</h3><p>Waiters send orders straight to the kitchen queue — no handwriting to misread.</p></div>
           <div class="card"><div class="icon">🧾</div><h3>Accurate bills</h3><p>Taxes and totals are calculated automatically, with receipts for every sale.</p></div>
@@ -58,7 +58,10 @@
           <div class="card"><div class="icon">🪑</div><h3>Table Reservations</h3><p>Book, view and cancel table bookings.</p></div>
           <div class="card"><div class="icon">💳</div><h3>Billing &amp; Payments</h3><p>Bills, discounts, receipts and payment records.</p></div>
           <div class="card"><div class="icon">📦</div><h3>Inventory</h3><p>Stock levels, low-stock alerts, suppliers.</p></div>
-          <div class="card"><div class="icon">📈</div><h3>Reports</h3><p>Daily and monthly sales, popular items.</p></div>
+          <div class="card"><div class="icon">📈</div><h3>Reports &amp; Analytics</h3><p>Daily and monthly sales, popular items, stock usage.</p></div>
+          <div class="card"><div class="icon">🔑</div><h3>Authentication &amp; Roles</h3><p>Login, password reset and role-based access for every staff member.</p></div>
+          <div class="card"><div class="icon">🧑‍🍳</div><h3>Staff Management</h3><p>Staff profiles, shifts and activity.</p></div>
+          <div class="card"><div class="icon">📜</div><h3>Audit Logging</h3><p>Records of critical actions — logins, refunds, price changes.</p></div>
         </div>
       </div>
     </section>
@@ -69,13 +72,14 @@
         <p class="lead">Each role sees only the screens it needs (role-based access, least privilege).</p>
         <div class="table-wrap">
           <table class="roles-table">
-            <thead><tr><th>Role</th><th>What they do in BrewDesk</th></tr></thead>
+            <thead><tr><th>Role</th><th>What they do in CMS</th></tr></thead>
             <tbody>
               <tr><td><strong>Waiter</strong></td><td>Take orders at tables, view table status</td></tr>
               <tr><td><strong>Kitchen Staff</strong></td><td>View order queue, update order status</td></tr>
               <tr><td><strong>Cashier</strong></td><td>Create bills, accept payments, print receipts</td></tr>
               <tr><td><strong>Manager</strong></td><td>Manage inventory, approve discounts/refunds, view sales</td></tr>
               <tr><td><strong>Admin / Owner</strong></td><td>Manage users, roles, menu, prices, audit logs</td></tr>
+              <tr><td><strong>Customer</strong> <span style="color:var(--muted);">(optional)</span></td><td>Browse menu, place orders, reserve tables, view own history</td></tr>
             </tbody>
           </table>
         </div>
@@ -85,7 +89,7 @@
     <section class="section" id="security" style="background:#fff;">
       <div class="container">
         <h2>Built with security in mind</h2>
-        <p class="lead">BrewDesk is being developed as a Secure Software Development project.</p>
+        <p class="lead">The CMS is being developed as a Secure Software Development project.</p>
         <div class="grid">
           <div class="card"><div class="icon">🔐</div><h3>Strong authentication</h3><p>Unique accounts, strong passwords, lockout after repeated failed logins.</p></div>
           <div class="card"><div class="icon">👥</div><h3>Role-based access</h3><p>Every request checked on the server against the user's role.</p></div>
@@ -106,7 +110,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <div>© <span id="year"></span> BrewDesk – Cafe Management System · SSD Semester Project</div>
+      <div>© <span id="year"></span> Cafe Management System (CMS) · SSD Semester Project</div>
       <div><a href="index.html">Home</a> · <a href="login.html">Staff Login</a></div>
     </div>
   </footer>

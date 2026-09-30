@@ -222,7 +222,9 @@
   document.getElementById("modalConfirm").addEventListener("click", function () {
     const id = "ORD-" + String(1000 + sent.length + 1);
     const count = Array.from(order.values()).reduce(function (a, b) { return a + b; }, 0);
-    sent.unshift({ id: id, table: selectedTable, items: count, total: calcTotals().total });
+    const newOrder = { id: id, table: selectedTable, items: count, total: calcTotals().total, status: "Placed" };
+    sent.unshift(newOrder);
+    simulateKitchen(newOrder);
 
     const tbl = TABLES.find(function (t) { return t.no === selectedTable; });
     if (tbl) tbl.occupied = true;
@@ -237,13 +239,57 @@
     showToast("✓ " + id + " sent to kitchen", "ok");
   });
 
+  // ---- Interaction: order status tracking (Placed → Preparing → Ready → Served) ----
+  // Prototype: the kitchen is simulated with timers. Later, Kitchen Staff will
+  // update status from their own screen and the waiter will receive it from the API.
+  function simulateKitchen(o) {
+    setTimeout(function () {
+      if (o.status !== "Placed") return;
+      o.status = "Preparing";
+      renderRecent();
+    }, 5000);
+    setTimeout(function () {
+      if (o.status !== "Preparing") return;
+      o.status = "Ready";
+      renderRecent();
+      showToast("🔔 " + o.id + " for Table " + o.table + " is ready to serve", "ok");
+    }, 12000);
+  }
+
+  function updateStatus(o, status) {
+    o.status = status;
+    if (status === "Served" || status === "Cancelled") {
+      const stillOpen = sent.some(function (x) {
+        return x.table === o.table && x !== o && ["Placed", "Preparing", "Ready"].includes(x.status);
+      });
+      const tbl = TABLES.find(function (t) { return t.no === o.table; });
+      if (tbl && !stillOpen && status === "Cancelled") tbl.occupied = false;
+      renderTables();
+    }
+    renderRecent();
+    showToast(o.id + " marked " + status.toLowerCase(), status === "Cancelled" ? "err" : "ok");
+  }
+
   const recentEl = document.getElementById("recentOrders");
   function renderRecent() {
     recentEl.innerHTML = "";
-    sent.slice(0, 5).forEach(function (o) {
+    sent.slice(0, 6).forEach(function (o) {
       const li = el("li");
       li.appendChild(el("span", "line-name", o.id + " · T" + o.table + " · " + o.items + " items"));
-      li.appendChild(el("span", "status", "Placed"));
+      if (o.status === "Placed") {
+        const cancel = el("button", "btn btn-ghost btn-sm", "Cancel");
+        cancel.setAttribute("aria-label", "Cancel " + o.id);
+        cancel.addEventListener("click", function () {
+          if (confirm("Cancel " + o.id + "? The kitchen hasn't started it yet.")) updateStatus(o, "Cancelled");
+        });
+        li.appendChild(cancel);
+      } else if (o.status === "Ready") {
+        const served = el("button", "btn btn-primary btn-sm", "Mark served");
+        served.setAttribute("aria-label", "Mark " + o.id + " served");
+        served.addEventListener("click", function () { updateStatus(o, "Served"); });
+        li.appendChild(served);
+      }
+      li.appendChild(el("span", "status status-" + o.status.toLowerCase(), o.status));
       recentEl.appendChild(li);
     });
     document.getElementById("recentEmpty").style.display = sent.length ? "none" : "block";

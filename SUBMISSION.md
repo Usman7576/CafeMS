@@ -2,7 +2,7 @@
 
 ## 1. Project Information
 
-**Project Name:** BrewDesk – Cafe Management System (CMS)
+**Project Name:** Cafe Management System (CMS)
 
 **Group Members:**
 | No. | Name | Roll No. | Role |
@@ -20,9 +20,9 @@
 
 ## 3. Developed Pages
 
-1. **Home / Landing page** (`index.html`) — system name, purpose, problem it solves, core modules, user roles, security overview, navigation, CTA buttons, footer.
+1. **Home / Landing page** (`index.html`) — system name, purpose, problem it solves, all 9 core modules from the proposal, user roles, security overview, navigation, CTA buttons, footer.
 2. **Staff Login page** (`login.html`) — username + password only (no role selector: the role is assigned by the admin and decided by the server), show/hide password, validation, lockout after 5 failed attempts.
-3. **Take Order page** (`order.html`, core module for the Waiter) — select a table, search/filter the menu, add/remove items, live subtotal/tax/total, kitchen notes, confirm and send to kitchen, list of orders sent this shift, log out.
+3. **Take Order page** (`order.html`, core module for the Waiter) — select a table, search/filter the menu, add/remove items, live subtotal/tax/total, kitchen notes, confirm and send to kitchen, then track each order's status (Placed → Preparing → Ready → Served), cancel an order before the kitchen starts it, and log out. This matches the Waiter's permissions in our proposal: *create/update orders, view table status*.
 
 Flow: **Home → Staff Login → Take Order → Log out → Login**
 
@@ -32,8 +32,9 @@ Flow: **Home → Staff Login → Take Order → Log out → Login**
 2. **Menu search and category filter** — live search box plus category chips (Coffee, Cold Drinks, Tea, Food, Desserts); sold-out items are disabled.
 3. **Dynamic order list with add/remove items** — +/− quantity controls, live totals with 16% tax, send button enabled only when a table and at least one item are chosen.
 4. **Confirmation modal** — shows table, items, total and notes before sending to the kitchen; success toast afterwards.
-5. **Character counter** on kitchen notes (120 max).
-6. **Session handling** — order page redirects to login if not signed in; auto sign-out after 5 minutes idle; mobile hamburger navigation.
+5. **Order status tracking** — each sent order moves Placed → Preparing → Ready (kitchen simulated for now); waiter gets a "ready to serve" alert, can **Mark served**, or **Cancel** while still Placed.
+6. **Character counter** on kitchen notes (120 max).
+7. **Session handling** — order page redirects to login if not signed in; auto sign-out after 5 minutes idle; mobile hamburger navigation.
 
 ### Security-aware design choices
 - Login asks only for username + password; password field is masked, never stored, and the page tells users not to use a real password on the prototype.

@@ -232,7 +232,11 @@ a { color: var(--brand); }
 
 .recent { margin-top: 22px; }
 .recent li { font-size: 0.88rem; }
-.status { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: #e8f0fb; color: #1d4f91; font-weight: 600; }
+.status { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: #e8f0fb; color: #1d4f91; font-weight: 600; white-space: nowrap; }
+.status-preparing { background: #fff3dc; color: #8a5a12; }
+.status-ready { background: #e7f3ec; color: var(--ok); }
+.status-served { background: #eee; color: #555; }
+.status-cancelled { background: #fdecea; color: var(--danger); }
 
 /* ---------- Modal & toast ---------- */
 .modal-backdrop {
