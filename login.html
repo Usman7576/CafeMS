@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Login – BrewDesk</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">☕ Brew<span>Desk</span></a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="login.html" class="active">Staff Login</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main class="auth-wrap">
+    <div class="card auth-card">
+      <h1>Staff Login</h1>
+      <p class="sub">Sign in to start your shift.</p>
+
+      <div id="formAlert" class="alert alert-error" role="alert"></div>
+
+      <form id="loginForm" novalidate autocomplete="on">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username" maxlength="30" required>
+          <div class="error" id="usernameError"></div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="password-row">
+            <input type="password" id="password" name="password" autocomplete="current-password" maxlength="64" required>
+            <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" aria-controls="password">Show</button>
+          </div>
+          <div class="error" id="passwordError"></div>
+          <div class="hint">At least 8 characters, with upper &amp; lower case letters and a number.</div>
+        </div>
+
+        <button type="submit" class="btn btn-dark" style="width:100%;" id="loginBtn">Sign in</button>
+      </form>
+
+      <p style="text-align:center;margin:16px 0 0;font-size:0.9rem;">
+        <a href="#" id="forgotLink">Forgot password?</a>
+      </p>
+
+      <div class="notice">
+        🔒 Your role (Waiter, Cashier, Kitchen, Manager…) is assigned by the admin and decided by the server after you sign in — you can't pick it here.<br><br>
+        <strong>Prototype note:</strong> the backend isn't built yet, so any username and a password that meets the rules will sign you in as a <strong>Waiter</strong>. Don't use a real password.
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© <span id="year"></span> BrewDesk – Cafe Management System</div>
+      <div><a href="index.html">Home</a></div>
+    </div>
+  </footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

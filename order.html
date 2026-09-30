@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Take Order – BrewDesk</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">☕ Brew<span>Desk</span></a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="order.html" class="active">Take Order</a></li>
+        <li><button class="btn btn-outline btn-sm" id="logoutBtn">Log out</button></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="app-bar">
+    <div class="container">
+      <div>
+        <strong style="font-size:1.2rem;">Take Order</strong>
+        <div style="color:var(--muted);font-size:0.9rem;">Pick a table, add items, send to kitchen.</div>
+      </div>
+      <div class="user-chip">
+        <span>Signed in as <strong id="userName">—</strong></span>
+        <span class="role-badge" id="userRole">Waiter</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="order-layout">
+      <!-- Left: tables + menu -->
+      <section>
+        <h2 class="panel-title">1. Select table</h2>
+        <div class="tables" id="tables"></div>
+
+        <h2 class="panel-title">2. Add items</h2>
+        <div class="menu-tools">
+          <label for="search" class="sr-only">Search menu</label>
+          <input type="search" id="search" placeholder="Search menu… e.g. latte" maxlength="40">
+        </div>
+        <div class="chips" id="categoryChips" role="group" aria-label="Filter by category"></div>
+        <div class="menu-grid" id="menuGrid"></div>
+      </section>
+
+      <!-- Right: current order -->
+      <aside class="card order-panel">
+        <h2 class="panel-title">Current order — <span id="selectedTable">no table</span></h2>
+        <ul class="order-lines" id="orderLines"></ul>
+        <p class="empty" id="orderEmpty" style="padding:12px 0;">No items yet.</p>
+
+        <div class="totals">
+          <div><span>Subtotal</span><span id="subtotal">Rs 0</span></div>
+          <div><span>Tax (16%)</span><span id="tax">Rs 0</span></div>
+          <div class="grand"><span>Total</span><span id="total">Rs 0</span></div>
+        </div>
+
+        <div class="field">
+          <label for="notes">Kitchen notes <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+          <textarea id="notes" rows="2" maxlength="120" placeholder="e.g. less sugar, no onions"></textarea>
+          <div class="counter" id="notesCounter">0 / 120</div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" id="clearBtn" style="flex:1;">Clear</button>
+          <button class="btn btn-primary" id="sendBtn" style="flex:2;" disabled>Send to kitchen</button>
+        </div>
+        <p class="hint" id="sendHint" style="font-size:0.82rem;color:var(--muted);margin:8px 0 0;text-align:center;"></p>
+
+        <div class="recent">
+          <h3 class="panel-title" style="font-size:0.95rem;">Sent this shift</h3>
+          <ul class="order-lines" id="recentOrders"></ul>
+          <p class="empty" id="recentEmpty" style="padding:6px 0;font-size:0.88rem;">No orders sent yet.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Confirmation modal -->
+  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h3 id="modalTitle">Send order to kitchen?</h3>
+      <div id="modalBody"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="modalCancel">Go back</button>
+        <button class="btn btn-primary" id="modalConfirm">Confirm &amp; send</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>© <span id="year"></span> BrewDesk – Cafe Management System</div>
+      <div>Idle sessions sign out automatically after 5 minutes.</div>
+    </div>
+  </footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/order.js"></script>
+</body>
+</html>
