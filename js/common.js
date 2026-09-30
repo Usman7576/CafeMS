@@ -130,6 +130,20 @@
       });
     }
     document.querySelectorAll("[data-year]").forEach(function (el) { el.textContent = new Date().getFullYear(); });
+
+    // Landing page: if already signed in, "Staff sign in" buttons open the user's workspace instead
+    const s = Session.get();
+    const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
+    if (document.querySelector(".site-nav") && s && HOME[s.role]) {
+      document.querySelectorAll('a[href="login.html"]:not(.demo-card)').forEach(function (a) {
+        a.setAttribute("href", HOME[s.role]);
+        a.childNodes.forEach(function (n) {
+          if (n.nodeType === 3 && n.textContent.trim() === "Staff sign in") n.textContent = "Open my workspace";
+        });
+      });
+      const links = document.querySelector(".site-nav .links");
+      if (links) links.insertBefore(h("li", { class: "signed-in" }, [h("span", { class: "avatar sm", text: s.name.split(" ").map(function (p) { return p[0]; }).join("").replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase() }), h("span", { text: s.name })]), links.lastElementChild);
+    }
   });
 
   // ---------- Run an action and show validation errors from the data layer ----------

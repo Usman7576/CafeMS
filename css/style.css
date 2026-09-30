@@ -64,7 +64,7 @@ button { font: inherit; }
 .nowrap { white-space: nowrap; }
 
 /* ---------- Brand mark ---------- */
-.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.brand { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; color: var(--ink); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
 .brand:hover { text-decoration: none; }
 .brand-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--brand); color: var(--accent-300); display: grid; place-items: center; flex-shrink: 0; }
 .brand small { display: block; font-weight: 500; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; margin-top: 1px; }
@@ -119,13 +119,13 @@ button { font: inherit; }
 .site-nav { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,.88); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
 .site-nav .container { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
 .site-nav .links { display: flex; align-items: center; gap: 4px; list-style: none; margin: 0; padding: 0; }
-.site-nav .links a:not(.btn) { color: var(--ink-2); font-weight: 500; font-size: 0.93rem; padding: 8px 12px; border-radius: 8px; }
+.site-nav .links a:not(.btn) { white-space: nowrap; color: var(--ink-2); font-weight: 500; font-size: 0.93rem; padding: 8px 12px; border-radius: 8px; }
 .site-nav .links a:not(.btn):hover { background: var(--brand-50); text-decoration: none; }
 .site-nav .links a[aria-current="page"] { color: var(--ink); }
 .site-nav .links .btn { margin-left: 8px; }
 .nav-toggle { display: none; }
 
-@media (max-width: 860px) {
+@media (max-width: 1060px) {
   .nav-toggle { display: inline-flex; }
   .site-nav .links {
     display: none; position: absolute; top: 68px; left: 0; right: 0; flex-direction: column; align-items: stretch;
@@ -932,3 +932,7 @@ form.modal { margin: 0; }
 .demo-card small { color: var(--muted); font-size: .84rem; line-height: 1.45; }
 @media (max-width: 1020px) { .demo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .demo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Landing: signed-in indicator */
+.site-nav .signed-in { display: flex; align-items: center; gap: 8px; font-size: .88rem; font-weight: 600; color: var(--ink-2); padding: 0 6px 0 10px; }
+@media (max-width: 1060px) { .site-nav .signed-in { padding: 6px 12px; } }
