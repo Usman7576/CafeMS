@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales reports — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="reports">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Sales report</h2><p id="reportDate"></p></div>
+      <div class="head-actions"><button class="btn btn-secondary" id="exportCsv"><i data-icon="file" data-size="16"></i>Export CSV</button><button class="btn btn-secondary" id="printReport"><i data-icon="receipt" data-size="16"></i>Print</button></div>
+    </div>
+    <section class="kpis six" aria-label="Sales summary">
+      <div class="kpi"><div><small>Net revenue</small><strong id="rRevenue">Rs 0</strong><div class="sub">Incl. 16% tax</div></div></div>
+      <div class="kpi"><div><small>Bills paid</small><strong id="rBills">0</strong><div class="sub">Refunds excluded</div></div></div>
+      <div class="kpi"><div><small>Average bill</small><strong id="rAvg">Rs 0</strong><div class="sub">Per paid bill</div></div></div>
+      <div class="kpi"><div><small>Items sold</small><strong id="rItems">0</strong><div class="sub">Across all orders</div></div></div>
+      <div class="kpi"><div><small>Discounts</small><strong id="rDisc">Rs 0</strong><div class="sub">Given today</div></div></div>
+      <div class="kpi"><div><small>Refunds</small><strong id="rRefund">Rs 0</strong><div class="sub" id="rRefundSub"></div></div></div>
+    </section>
+    <div class="report-grid">
+      <section class="panel span-2"><div class="panel-head"><div><h3>Revenue by hour</h3><p>Hover a bar for details</p></div></div><div class="panel-body"><div class="chart" id="hourChart"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Payment methods</h3><p>Share of revenue</p></div></div><div class="panel-body"><div id="methodChart"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Best sellers</h3><p>By quantity sold</p></div></div><div class="panel-body"><div id="topItems"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Sales by category</h3><p>Before tax</p></div></div><div class="panel-body"><div id="catChart"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Tax summary</h3><p>For end-of-day reconciliation</p></div></div><div class="panel-body"><div class="summary" id="taxSummary"></div></div></section>
+    </div>
+    <section class="panel" style="margin-top:20px;">
+      <div class="panel-head"><div><h3>Bills today</h3><p>Refunds require a reason and are written to the audit log</p></div></div>
+      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Bill</th><th>Table</th><th class="hide-sm">Time</th><th class="hide-sm">Cashier</th><th class="hide-sm">Method</th><th>Total</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="billsBody"></tbody></table></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="refundModal" role="dialog" aria-modal="true" aria-labelledby="refundTitle">
+    <form class="modal" id="refundForm" novalidate>
+      <div class="modal-head"><div class="icon-tile danger"><i data-icon="refresh" data-size="20"></i></div><div><h3 id="refundTitle">Issue refund</h3><p id="refundSub"></p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="refundErr" role="alert"></div>
+        <div class="field" style="margin-bottom:0"><label for="refundReason">Reason for refund</label><input class="input" id="refundReason" type="text" maxlength="80" required placeholder="e.g. Wrong item served"><div class="field-hint">Recorded in the audit log with your name and the time.</div></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="refundModal">Cancel</button><button type="submit" class="btn btn-danger">Refund bill</button></div>
+    </form>
+  </div>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/reports.js?v=3.1"></script>
+</body>
+</html>

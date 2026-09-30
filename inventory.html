@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="inventory">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Inventory</h2><p>Stock is deducted automatically when orders are sent to the kitchen. Menu items sell out when an ingredient runs out.</p></div>
+    </div>
+    <section class="kpis" aria-label="Stock summary">
+      <div class="kpi"><div class="icon-tile"><i data-icon="package"></i></div><div><small>Items tracked</small><strong id="kItems">0</strong><div class="sub">Ingredients &amp; supplies</div></div></div>
+      <div class="kpi"><div class="icon-tile ok"><i data-icon="check-circle"></i></div><div><small>In stock</small><strong id="kOk">0</strong><div class="sub">Above reorder level</div></div></div>
+      <div class="kpi"><div class="icon-tile warn"><i data-icon="alert"></i></div><div><small>Running low</small><strong id="kLow">0</strong><div class="sub">Reorder soon</div></div></div>
+      <div class="kpi"><div class="icon-tile danger"><i data-icon="x"></i></div><div><small>Out of stock</small><strong id="kOut">0</strong><div class="sub" id="kOutSub">Menu items affected</div></div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <div class="tabs" role="tablist" aria-label="Filter stock" id="stockTabs">
+          <button class="tab" role="tab" data-f="all" aria-selected="true">All</button>
+          <button class="tab" role="tab" data-f="low" aria-selected="false">Running low</button>
+          <button class="tab" role="tab" data-f="out" aria-selected="false">Out of stock</button>
+        </div>
+        <div class="input-wrap" style="width:260px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="stockSearch">Search stock</label><input class="input input-sm" id="stockSearch" type="search" placeholder="Search item or supplier" maxlength="30"></div>
+      </div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>Item</th><th>In stock</th><th class="hide-sm">Level</th><th>Status</th><th class="hide-sm">Supplier</th><th class="hide-md">Used in</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="stockBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="stockModal" role="dialog" aria-modal="true" aria-labelledby="stockTitle">
+    <form class="modal" id="stockForm" novalidate>
+      <div class="modal-head"><div class="icon-tile" id="stockIcon"><i data-icon="package" data-size="20"></i></div><div><h3 id="stockTitle">Restock</h3><p id="stockSub"></p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="stockErr" role="alert"></div>
+        <div class="field"><label for="stockQty" id="stockQtyLabel">Quantity to add</label><div class="input-group"><input class="input" id="stockQty" type="number" min="0" step="0.1" inputmode="decimal" required><span class="addon" id="stockUnit">kg</span></div></div>
+        <div class="field" style="margin-bottom:0"><label for="stockReason">Reason</label><input class="input" id="stockReason" type="text" maxlength="60" required placeholder="e.g. Delivery from supplier"></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="stockModal">Cancel</button><button type="submit" class="btn btn-primary" id="stockSave">Save</button></div>
+    </form>
+  </div>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/inventory.js?v=3.1"></script>
+</body>
+</html>

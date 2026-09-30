@@ -14,39 +14,48 @@
 | 4 | _[Member name]_ | _[Roll no.]_ | Security / Testing |
 
 **Primary User Role:** Waiter. Takes orders at tables. Permissions: create/update orders, view table status.
+The other four roles (Kitchen, Cashier, Manager, Admin) also have working workspaces, so the whole flow can be demonstrated.
 
 ## 2. Live Website
 
 **Public URL:** _[paste hosted URL]_
 
+**Demo sign-in:** username `m.usman` (Waiter) with any password that has 8+ characters, upper and lower case letters and a number. The other demo accounts are listed on the sign-in page.
+
 ## 3. Developed Pages
 
-1. **Home / Landing** (`index.html`): system name, purpose, problem & solution, 9 core modules, user roles, security requirements, navigation, sign-in buttons, footer.
-2. **Staff Sign-in** (`login.html`): username + password, validation, show/hide password, lockout, password-reset guidance.
-3. **Waiter Dashboard** (`dashboard.html`, core): shift KPIs, my orders with status filters, ready-to-serve queue, table status map, unavailable items.
-4. **Take Order** (`order.html`, core): table picker, menu search & filter, order ticket with live totals, kitchen notes, confirmation.
+The three required pages:
 
-Flow: Home → Staff sign in → Dashboard ⇄ Take order → Sign out. Plus a custom `404.html`.
+1. **Home / Landing** (`index.html`): system name, purpose, problem & solution, 9 core modules, roles, security requirements, demo accounts, navigation, footer.
+2. **Staff Sign-in** (`login.html`): username + password, validation, show/hide password, Caps Lock warning, lockout, password-reset guidance.
+3. **Core functional pages for the Waiter:** **Dashboard** (`dashboard.html`) and **Take / Edit Order** (`order.html`).
+
+Additional role workspaces: Kitchen display, Billing, Overview, Inventory, Sales reports, Menu management, Staff & roles, Audit log, and a custom 404 page.
+
+Flow: Home → Sign in → role workspace (Waiter: Dashboard ⇄ Take order) → Sign out.
 
 ## 4. JavaScript Interactions
 
-1. **Form validation**: sign-in validation with inline errors and a live password-rules checklist.
+1. **Form validation**: sign-in validation, live password checklist; validated forms for menu items, staff, stock and refunds.
 2. **Show/hide password** with a Caps Lock warning.
-3. **Search & filtering**: live menu search and category tabs; dashboard order filters (Active / Ready / Served / All).
-4. **Add/remove items (dynamic list)**: order ticket with +/− steppers and live subtotal, 16% tax and total.
-5. **Modal / confirmation**: order summary before sending to the kitchen; confirm dialogs for cancel, clear and sign out.
-6. **Character counter** on kitchen notes (120 max).
-7. **Live order status tracking**: Placed → Preparing → Ready → Served, with "ready to serve" alerts, Serve and Cancel actions.
-8. **Navigation interaction**: table map opens the order page for a table; mobile sidebar, user menu, notifications.
-9. **Session handling**: sign-in required for staff pages, inactivity warning and automatic sign-out after 5 minutes, simulated lockout after 5 failed sign-ins.
+3. **Search & filtering**: menu search and category tabs; order, stock, bill, staff and audit filters.
+4. **Add/remove items (dynamic list)**: order ticket with +/− steppers and live totals; edit an order before the kitchen starts it.
+5. **Modals & confirmation messages**: order confirmation, receipts, refund, role change, confirm dialogs, toasts.
+6. **Character counter** on kitchen notes and item descriptions.
+7. **Live status tracking** across roles: Placed → Preparing → Ready → Served → Paid, with notifications.
+8. **Navigation interactions**: role-based sidebar, Ctrl+K command palette, notification panel, mobile menu.
+9. **Session handling**: role guard on every page, idle sign-out with warning, lockout after 5 failed sign-ins.
+10. **Charts and exports**: revenue by hour, payment donut, best sellers; CSV export and printable receipts.
 
 ## 5. Testing
 
 **Problem discovered:** _[record the problem your group member found while using the site without explanation]_
 
 Issues we found and fixed during our own testing:
-- If the sign-in form was submitted before its script finished loading, the browser sent it as a GET request, **putting the password in the URL**. Fixed: the form uses POST, and the Sign in button stays disabled until the script is ready.
-- On phones, the dashboard scrolled sideways because the orders table forced the layout wider. Fixed: the table scrolls inside its panel, and less important columns are hidden on small screens.
-- The "Send to kitchen" button was greyed out without saying why. Fixed: a visible hint now says "Select a table" or "Add at least one item".
+- A sign-in form submitted before its script loaded would have sent the password in the URL. Fixed: POST-only form, and the button stays disabled until the script is ready.
+- On phones the dashboard scrolled sideways. Fixed: layouts can shrink, tables scroll inside their panels, and less important columns are hidden.
+- The "Send to kitchen" button was disabled with no explanation. Fixed: a visible hint.
+- The kitchen simulation moved tickets on before the kitchen user could act. Fixed: it pauses while the kitchen display is open.
+- The receipt printed a stray "null" line and was taller than the screen. Fixed.
 
 **Improvement made:** _[how you fixed the group member's problem]_

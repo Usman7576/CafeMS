@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="billing">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Billing &amp; payments</h2><p>Select an open table, apply any discount, take payment and print the receipt.</p></div>
+      <div class="head-stats" id="billStats"></div>
+    </div>
+
+    <div class="bill-layout">
+      <section class="panel" aria-labelledby="openTitle">
+        <div class="panel-head"><div><h3 id="openTitle">Open tables</h3><p>Tables with orders that haven't been paid</p></div></div>
+        <div class="table-cards" id="openTables"></div>
+      </section>
+
+      <section class="panel bill-panel" aria-labelledby="billTitle" id="billPanel">
+        <div class="panel-head">
+          <div><h3 id="billTitle">Bill</h3><p id="billSub">Select a table to start</p></div>
+          <span class="pill no-dot" id="billState"></span>
+        </div>
+        <div id="billBody"></div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:20px;" aria-labelledby="recentTitle">
+      <div class="panel-head">
+        <div><h3 id="recentTitle">Today's bills</h3><p id="recentSub"></p></div>
+        <div class="input-wrap" style="width:240px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="billSearch">Search bills</label><input class="input input-sm" id="billSearch" type="search" placeholder="Search bill no. or table" maxlength="20"></div>
+      </div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>Bill</th><th>Table</th><th class="hide-sm">Time</th><th class="hide-sm">Method</th><th>Total</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="billsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="receiptModal" role="dialog" aria-modal="true" aria-label="Receipt">
+    <div class="modal receipt-modal">
+      <div class="receipt" id="receipt"></div>
+      <div class="modal-actions no-print">
+        <button class="btn btn-secondary" data-close="receiptModal">Close</button>
+        <button class="btn btn-dark" id="printReceipt" data-autofocus><i data-icon="file" data-size="16"></i>Print receipt</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/billing.js?v=3.1"></script>
+</body>
+</html>

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1.1">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to content</a>
@@ -27,6 +27,7 @@
         <li><a href="#roles">Roles</a></li>
         <li><a href="#how">How it works</a></li>
         <li><a href="#security">Security</a></li>
+        <li><a href="#demo">Live demo</a></li>
         <li><a href="login.html" class="btn btn-dark btn-sm"><i data-icon="lock" data-size="15"></i>Staff sign in</a></li>
       </ul>
     </nav>
@@ -135,13 +136,13 @@
         <div class="section-head">
           <span class="eyebrow">Users &amp; roles</span>
           <h2>Each role sees only what it needs.</h2>
-          <p>Access follows the principle of least privilege. This prototype is built around the <strong>Waiter</strong>, the staff member who takes orders at tables.</p>
+          <p>Access follows the principle of least privilege. Every role below has its own working workspace in this prototype. The <strong>Waiter</strong> is our primary user.</p>
         </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead><tr><th scope="col">Role</th><th scope="col">Responsibility</th><th scope="col">Main permissions</th></tr></thead>
             <tbody>
-              <tr class="highlight"><td><div class="role-cell"><span class="icon-tile"><i data-icon="clipboard" data-size="17"></i></span>Waiter</div></td><td>Takes orders at tables</td><td>Create / update orders, view table status <span class="pill pill-role no-dot" style="margin-left:6px;">This prototype</span></td></tr>
+              <tr class="highlight"><td><div class="role-cell"><span class="icon-tile"><i data-icon="clipboard" data-size="17"></i></span>Waiter</div></td><td>Takes orders at tables</td><td>Create / update orders, view table status <span class="pill pill-role no-dot" style="margin-left:6px;">Primary role</span></td></tr>
               <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="chef" data-size="17"></i></span>Kitchen Staff</div></td><td>Prepares orders</td><td>View order queue, update order status</td></tr>
               <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="receipt" data-size="17"></i></span>Cashier</div></td><td>Handles billing at the counter</td><td>Create bills, accept payments, print receipts</td></tr>
               <tr><td><div class="role-cell"><span class="icon-tile"><i data-icon="chart" data-size="17"></i></span>Manager</div></td><td>Supervises daily operations</td><td>Manage inventory, approve discounts / refunds, view sales reports</td></tr>
@@ -189,6 +190,24 @@
       </div>
     </section>
 
+    <!-- ================= DEMO ================= -->
+    <section class="section" id="demo" style="padding-bottom:0">
+      <div class="container">
+        <div class="section-head center">
+          <span class="eyebrow">Live prototype</span>
+          <h2>Try every role yourself.</h2>
+          <p>Sign in with any demo account and any password that meets the password rules. Orders flow live between roles: the waiter sends, the kitchen cooks, the cashier bills, and it all shows up in the manager's reports and the admin's audit log.</p>
+        </div>
+        <div class="demo-grid">
+          <a class="demo-card" href="login.html"><span class="icon-tile"><i data-icon="clipboard"></i></span><b>Waiter</b><span class="mono">m.usman</span><small>Take orders, track them, request the bill</small></a>
+          <a class="demo-card" href="login.html"><span class="icon-tile"><i data-icon="chef"></i></span><b>Kitchen</b><span class="mono">chef.imran</span><small>Live ticket board with timers</small></a>
+          <a class="demo-card" href="login.html"><span class="icon-tile"><i data-icon="receipt"></i></span><b>Cashier</b><span class="mono">bilal.ahmed</span><small>Bills, discounts, payments, receipts</small></a>
+          <a class="demo-card" href="login.html"><span class="icon-tile"><i data-icon="chart"></i></span><b>Manager</b><span class="mono">sara.khan</span><small>Inventory, sales reports, refunds</small></a>
+          <a class="demo-card" href="login.html"><span class="icon-tile"><i data-icon="shield"></i></span><b>Admin</b><span class="mono">farah.admin</span><small>Menu, staff &amp; roles, audit log</small></a>
+        </div>
+      </div>
+    </section>
+
     <!-- ================= CTA ================= -->
     <section class="cta">
       <div class="container">
@@ -222,17 +241,17 @@
         </div>
         <div>
           <h4>Staff</h4>
-          <ul><li><a href="login.html">Staff sign in</a></li><li><a href="dashboard.html">Waiter dashboard</a></li></ul>
+          <ul><li><a href="login.html">Staff sign in</a></li><li><a href="#demo">Demo accounts</a></li></ul>
         </div>
       </div>
       <div class="footer-bottom">
         <span>© <span data-year></span> Cafe Management System (CMS). Semester project, Secure Software Development.</span>
-        <span>Prototype v1.0 · frontend only</span>
+        <span>Prototype v2.0 · frontend demo</span>
       </div>
     </div>
   </footer>
 
-  <script src="js/icons.js?v=1.1"></script>
-  <script src="js/common.js?v=1.1"></script>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
 </body>
 </html>

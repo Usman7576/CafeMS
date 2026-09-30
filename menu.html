@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu management — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="menu">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Menu management</h2><p>Add and edit items, set prices and switch items on or off. Price changes are audit-logged.</p></div>
+      <button class="btn btn-primary" id="addItem"><i data-icon="plus" data-size="18"></i>Add item</button>
+    </div>
+    <section class="panel">
+      <div class="panel-head">
+        <div class="tabs scroll" role="tablist" aria-label="Categories" id="catTabs"></div>
+        <div class="input-wrap" style="width:260px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="menuSearch">Search menu</label><input class="input input-sm" id="menuSearch" type="search" placeholder="Search items" maxlength="30"></div>
+      </div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>Item</th><th class="hide-sm">Category</th><th>Price</th><th>Status</th><th>On menu</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="menuBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="itemModal" role="dialog" aria-modal="true" aria-labelledby="itemTitle">
+    <form class="modal wide" id="itemForm" novalidate>
+      <div class="modal-head"><div class="icon-tile"><i data-icon="utensils" data-size="20"></i></div><div><h3 id="itemTitle">Add item</h3><p>All fields are validated before saving.</p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="itemErr" role="alert"></div>
+        <div class="form-grid">
+          <div class="field"><label for="fName">Item name</label><input class="input" id="fName" maxlength="40" required></div>
+          <div class="field"><label for="fCat">Category</label><input class="input" id="fCat" list="catList" maxlength="24" required><datalist id="catList"></datalist></div>
+          <div class="field"><label for="fPrice">Price</label><div class="input-group"><span class="addon">Rs</span><input class="input" id="fPrice" type="number" min="50" max="20000" step="10" inputmode="numeric" required></div></div>
+          <div class="field"><span class="label">Availability</span><label class="switch-row"><input type="checkbox" class="switch" id="fAvail" checked><span>Show on the menu</span></label></div>
+          <div class="field span-2" style="margin-bottom:0"><label for="fDesc" class="label">Description <span class="opt" id="descCount">0 / 80</span></label><input class="input" id="fDesc" maxlength="80"></div>
+        </div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="itemModal">Cancel</button><button type="submit" class="btn btn-primary">Save item</button></div>
+    </form>
+  </div>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/menu.js?v=3.1"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit log — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="audit">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Audit log</h2><p>Append-only record of critical actions: sign-ins, refunds, price, role and stock changes (SR-7).</p></div>
+      <button class="btn btn-secondary" id="exportAudit"><i data-icon="file" data-size="16"></i>Export CSV</button>
+    </div>
+    <div class="integrity" id="integrity"></div>
+    <section class="panel">
+      <div class="panel-head">
+        <div class="tabs" role="tablist" aria-label="Severity" id="sevTabs">
+          <button class="tab" role="tab" data-s="all" aria-selected="true">All <span class="n" data-n="all"></span></button>
+          <button class="tab" role="tab" data-s="high" aria-selected="false">High <span class="n" data-n="high"></span></button>
+          <button class="tab" role="tab" data-s="warning" aria-selected="false">Warning <span class="n" data-n="warning"></span></button>
+          <button class="tab" role="tab" data-s="info" aria-selected="false">Info <span class="n" data-n="info"></span></button>
+        </div>
+        <div class="toolbar">
+          <label class="sr-only" for="userFilter">Filter by user</label><select class="select input-sm" id="userFilter"></select>
+          <div class="input-wrap" style="width:240px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="auditSearch">Search log</label><input class="input input-sm" id="auditSearch" type="search" placeholder="Search action or details" maxlength="40"></div>
+        </div>
+      </div>
+      <div class="table-wrap flush">
+        <table class="data-table audit-table">
+          <thead><tr><th>#</th><th>Time</th><th>User</th><th>Action</th><th class="hide-sm">Details</th><th>Severity</th><th class="hide-md">Hash</th></tr></thead>
+          <tbody id="auditBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/audit.js?v=3.1"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kitchen display — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="kitchen">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div>
+        <h2>Kitchen display <span class="live-dot" aria-hidden="true"></span><span class="live-label">Live</span></h2>
+        <p>Tickets appear the moment a waiter sends them. Oldest tickets are at the top.</p>
+      </div>
+      <div class="kds-stats" id="kdsStats"></div>
+    </div>
+    <div class="kds" id="kds">
+      <section class="kds-col" aria-labelledby="colNew"><header><h3 id="colNew"><span class="pill pill-placed">New</span></h3><span class="n" id="nNew">0</span></header><div class="kds-list" id="listNew"></div></section>
+      <section class="kds-col" aria-labelledby="colPrep"><header><h3 id="colPrep"><span class="pill pill-preparing">Preparing</span></h3><span class="n" id="nPrep">0</span></header><div class="kds-list" id="listPrep"></div></section>
+      <section class="kds-col" aria-labelledby="colReady"><header><h3 id="colReady"><span class="pill pill-ready">Ready for pickup</span></h3><span class="n" id="nReady">0</span></header><div class="kds-list" id="listReady"></div></section>
+    </div>
+  </main>
+
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/kitchen.js?v=3.1"></script>
+</body>
+</html>

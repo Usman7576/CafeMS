@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff & roles — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="users">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Staff &amp; roles</h2><p>Create accounts, assign roles and disable access. Every change is audit-logged.</p></div>
+      <button class="btn btn-primary" id="addUser"><i data-icon="plus" data-size="18"></i>Add staff member</button>
+    </div>
+    <section class="role-strip" id="roleStrip" aria-label="Staff per role"></section>
+    <section class="panel">
+      <div class="panel-head">
+        <div><h3>Staff accounts</h3><p id="userCount"></p></div>
+        <div class="input-wrap" style="width:260px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="userSearch">Search staff</label><input class="input input-sm" id="userSearch" type="search" placeholder="Search name or username" maxlength="30"></div>
+      </div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>Staff member</th><th>Role</th><th>Status</th><th class="hide-sm">Last sign-in</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel" style="margin-top:20px;">
+      <div class="panel-head"><div><h3>Role permissions</h3><p>Least privilege: each role only gets the functions it needs (SR-3)</p></div></div>
+      <div class="table-wrap flush"><table class="data-table matrix" id="matrix"></table></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="userModal" role="dialog" aria-modal="true" aria-labelledby="userTitle">
+    <form class="modal" id="userForm" novalidate>
+      <div class="modal-head"><div class="icon-tile"><i data-icon="users" data-size="20"></i></div><div><h3 id="userTitle">Add staff member</h3><p>A temporary password is issued in person. The user must change it at first sign-in.</p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="userErr" role="alert"></div>
+        <div class="field"><label for="uName">Full name</label><input class="input" id="uName" maxlength="60" required autocomplete="off"></div>
+        <div class="field"><label for="uUser">Username</label><input class="input" id="uUser" maxlength="30" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. ahmed.raza"></div>
+        <div class="field" style="margin-bottom:0"><label for="uRole">Role</label><select class="select" id="uRole"></select></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="userModal">Cancel</button><button type="submit" class="btn btn-primary">Create account</button></div>
+    </form>
+  </div>
+  <div class="modal-backdrop" id="roleModal" role="dialog" aria-modal="true" aria-labelledby="roleTitle">
+    <form class="modal" id="roleForm" novalidate>
+      <div class="modal-head"><div class="icon-tile warn"><i data-icon="key" data-size="20"></i></div><div><h3 id="roleTitle">Change role</h3><p id="roleSub"></p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="roleErr" role="alert"></div>
+        <div class="role-options" id="roleOptions" role="radiogroup" aria-label="Role"></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="roleModal">Cancel</button><button type="submit" class="btn btn-primary">Save role</button></div>
+    </form>
+  </div>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/users.js?v=3.1"></script>
+</body>
+</html>

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1.1">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
 </head>
 <body>
   <div class="auth">
@@ -19,7 +19,7 @@
       <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Cafe Management System</small></span></a>
       <div>
         <h2>Everything for your shift, in one place.</h2>
-        <p>Sign in to see your tables, take orders and follow them all the way to the table.</p>
+        <p>Waiters, kitchen, cashiers, managers and admins each get a workspace built for their job, and nothing more.</p>
         <ul class="auth-points">
           <li><span class="icon-tile"><i data-icon="users" data-size="18"></i></span><span><b>Role-based access</b>The screens you see depend on the role your admin gave you.</span></li>
           <li><span class="icon-tile"><i data-icon="clock" data-size="18"></i></span><span><b>Automatic sign-out</b>Idle sessions end after 5 minutes to protect shared devices.</span></li>
@@ -38,7 +38,7 @@
       <div class="auth-form-wrap">
         <div class="auth-form">
           <h1>Staff sign in</h1>
-          <p class="sub">Welcome back. Enter your staff credentials to start your shift.</p>
+          <p class="sub">Welcome back. Enter your staff credentials to open your workspace.</p>
 
           <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
 
@@ -78,9 +78,10 @@
             <noscript><p class="field-error" style="display:flex;margin-top:10px;">JavaScript is required to sign in.</p></noscript>
           </form>
 
-          <div class="demo-note">
-            <i data-icon="info" data-size="18"></i>
-            <span><b>Prototype demo.</b> The backend isn't connected yet, so any valid username and a password that meets the rules will sign you in as a <b>Waiter</b>. Please don't use a real password. Your role is always assigned by the server, never chosen on this page.</span>
+          <div class="demo-box">
+            <div class="demo-head"><i data-icon="info" data-size="16"></i><b>Prototype demo accounts</b></div>
+            <p>Pick an account to fill in the username, then type any password that meets the rules above. Your role comes from the staff directory, never from this page. Please don't use a real password.</p>
+            <div class="demo-chips" id="demoAccounts"></div>
           </div>
         </div>
       </div>
@@ -103,8 +104,9 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=1.1"></script>
-  <script src="js/common.js?v=1.1"></script>
-  <script src="js/login.js?v=1.1"></script>
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/login.js?v=3.1"></script>
 </body>
 </html>

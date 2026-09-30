@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overview — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
+</head>
+<body data-page="overview">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2 id="greeting">Overview</h2><p id="today"></p></div>
+      <div class="head-actions" id="headActions"></div>
+    </div>
+    <section class="kpis" aria-label="Today at a glance">
+      <div class="kpi"><div class="icon-tile ok"><i data-icon="trend"></i></div><div><small>Revenue today</small><strong id="kRevenue">Rs 0</strong><div class="sub" id="kRevenueSub"></div></div></div>
+      <div class="kpi"><div class="icon-tile"><i data-icon="receipt"></i></div><div><small>Bills paid</small><strong id="kBills">0</strong><div class="sub" id="kBillsSub"></div></div></div>
+      <div class="kpi"><div class="icon-tile info"><i data-icon="chef"></i></div><div><small>Orders in progress</small><strong id="kActive">0</strong><div class="sub" id="kActiveSub"></div></div></div>
+      <div class="kpi"><div class="icon-tile warn"><i data-icon="package"></i></div><div><small>Stock alerts</small><strong id="kStock">0</strong><div class="sub" id="kStockSub"></div></div></div>
+    </section>
+    <div class="dash-grid">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Revenue by hour</h3><p>Paid bills today, including tax</p></div><a href="reports.html" class="btn btn-ghost btn-sm">Full report<i data-icon="arrow-right" data-size="15"></i></a></div>
+          <div class="panel-body"><div class="chart" id="hourChart"></div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Floor right now</h3><p>Live table and kitchen status</p></div></div>
+          <div class="panel-body">
+            <div class="flow" id="flow"></div>
+            <div class="floor mini" id="floorMini"></div>
+          </div>
+        </section>
+      </div>
+      <div class="stack">
+        <section class="panel" id="stockPanel">
+          <div class="panel-head"><div><h3>Stock alerts</h3><p>Items at or below their reorder level</p></div></div>
+          <ul class="ready-list" id="stockList"></ul>
+        </section>
+        <section class="panel" id="activityPanel">
+          <div class="panel-head"><div><h3 id="activityTitle">Recent activity</h3><p id="activitySub"></p></div></div>
+          <ul class="activity" id="activity"></ul>
+        </section>
+        <section class="panel" id="settingsPanel" hidden>
+          <div class="panel-head"><div><h3>System settings</h3><p>Admin only · changes are audit-logged</p></div></div>
+          <div class="panel-body" id="settingsBody"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/icons.js?v=3.1"></script>
+  <script src="js/common.js?v=3.1"></script>
+  <script src="js/store.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
+  <script src="js/overview.js?v=3.1"></script>
+</body>
+</html>
