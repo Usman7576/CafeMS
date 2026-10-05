@@ -6,11 +6,16 @@
   const h = CMS.h, me = App.session.user, role = App.session.role;
   const limit = Store.DISCOUNT_LIMIT[role] || 0;
   const DISCOUNTS = [0, 5, 10, 15, 20, 25];
-  let selected = null, discount = 0, method = "Cash", tendered = "", query = "";
+  let selected = null, discount = 0, method = "Cash", tendered = "", phone = "", query = "";
 
   document.addEventListener("DOMContentLoaded", function () {
     const m = /^#t(\d+)$/.exec(location.hash);
     if (m) selected = Number(m[1]);
+    if (role === "Cashier") {
+      // Billing is the cashier's home page, so greet them by name
+      const hour = new Date().getHours();
+      document.getElementById("billHeading").textContent = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + ", " + App.session.name.split(" ")[0];
+    }
     renderAll();
     Store.on(renderAll);
     document.getElementById("billSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); renderBills(); });
@@ -41,7 +46,7 @@
     open.forEach(function (t) {
       const state = t.billRequested ? ["Bill requested", "pill-bill"] : t.allServed ? ["Ready to bill", "pill-ready"] : ["Still being served", "pill-preparing"];
       wrap.appendChild(h("button", { type: "button", class: "table-card" + (selected === t.no ? " selected" : "") + (t.billRequested ? " attention" : ""), "aria-pressed": String(selected === t.no),
-        onclick: function () { selected = t.no; discount = 0; tendered = ""; history.replaceState(null, "", "#t" + t.no); renderTables(); renderBill();
+        onclick: function () { selected = t.no; discount = 0; tendered = ""; phone = ""; history.replaceState(null, "", "#t" + t.no); renderTables(); renderBill();
           if (window.innerWidth <= 1100) document.getElementById("billPanel").scrollIntoView({ behavior: "smooth", block: "start" }); } }, [
         h("div", { class: "tc-top" }, [h("span", { class: "tc-no", text: "T" + t.no }), h("span", { class: "pill " + state[1], text: state[0] })]),
         h("div", { class: "tc-total", text: CMS.money(t.totals.total) }),
@@ -114,6 +119,14 @@
       ])]);
     }
 
+    // Optional customer mobile for the digital receipt (personal data: masked for cashiers once saved)
+    const phoneInput = h("input", { class: "input", id: "custPhone", type: "tel", inputmode: "numeric", maxlength: "13", value: phone, placeholder: "03XXXXXXXXX", autocomplete: "off",
+      oninput: function (e) { phone = e.target.value; } });
+    const phoneRow = h("div", { class: "bill-section" }, [
+      h("label", { class: "label", for: "custPhone" }, ["Customer mobile ", h("span", { class: "opt", text: "Optional · for e-receipt" })]),
+      phoneInput
+    ]);
+
     const payBtn = h("button", { class: "btn btn-primary btn-lg btn-block", id: "payBtn", icon: "check-circle", iconSize: 18,
       text: "Charge " + CMS.money(t.total), onclick: function () { pay(tab, t); } });
     if (!tab.allServed) payBtn.disabled = true;
@@ -128,6 +141,7 @@
         h("div", { class: "grand" }, [h("span", { text: "Total due" }), h("span", { text: CMS.money(t.total) })])
       ]),
       h("div", { class: "bill-section" }, [h("div", { class: "label", text: "Payment method" }), methodRow, payExtra]),
+      phoneRow,
       h("div", { class: "bill-section" }, [
         !tab.allServed ? h("div", { class: "alert alert-warn show", icon: "alert", iconSize: 18 }, [h("span", { text: "Some orders on this table haven't been served yet, so it can't be billed." })]) : null,
         payBtn
@@ -141,9 +155,9 @@
     const btn = document.getElementById("payBtn");
     if (btn) { btn.disabled = true; btn.textContent = method === "Cash" ? "Recording…" : "Waiting for gateway…"; }
     setTimeout(function () {
-      const bill = CMS.attempt(function () { return Store.pay(tab.no, { discountPct: discount, method: method, tendered: tendered }, me); });
+      const bill = CMS.attempt(function () { return Store.pay(tab.no, { discountPct: discount, method: method, tendered: tendered, phone: phone }, me); });
       if (!bill) { renderBill(); return; }
-      selected = null; discount = 0; tendered = ""; history.replaceState(null, "", location.pathname);
+      selected = null; discount = 0; tendered = ""; phone = ""; history.replaceState(null, "", location.pathname);
       CMS.toast("Payment recorded · " + bill.no, "ok");
       showReceipt(bill);
     }, method === "Cash" ? 300 : 1200);
@@ -160,6 +174,7 @@
       h("div", { class: "r-head" }, [h("div", { class: "r-logo" }, [App.I("coffee", 22)]), h("b", { text: "CafeMS" }), h("small", { text: "Cafe Management System" }), h("small", { text: "NTN 0000000-0 · GST registered" })]),
       h("div", { class: "r-sep" }),
       row("Receipt", b.no), row("Date", CMS.dateTime(b.createdAt)), row("Table", String(b.table)), row("Cashier", cashier ? cashier.name : b.cashier),
+      b.phone ? row("Customer", b.phone) : null,
       h("div", { class: "r-sep" }),
       h("div", null, b.lines.map(function (l) { return h("div", { class: "r-line" }, [h("span", { text: l.qty + " × " + l.name }), h("span", { text: CMS.money(l.price * l.qty) })]); })),
       h("div", { class: "r-sep" }),
@@ -180,22 +195,34 @@
 
   // ----- Today's bills -----
   function renderBills() {
-    const bills = Store.bills().filter(function (b) { return new Date(b.createdAt).toDateString() === new Date().toDateString(); });
+    const bills = Store.bills(me).filter(function (b) { return new Date(b.createdAt).toDateString() === new Date().toDateString(); });
     const rows = bills.filter(function (b) { return !query || b.no.toLowerCase().indexOf(query) !== -1 || ("t" + b.table) === query || String(b.table) === query; });
-    document.getElementById("recentSub").textContent = bills.length + " bills today" + (role === "Cashier" ? " · refunds need a manager" : "");
+    document.getElementById("recentSub").textContent = bills.length + " bills today" + (role === "Cashier" ? " · refunds need a manager · customer numbers are masked" : "");
     const body = document.getElementById("billsBody");
     body.innerHTML = "";
-    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "7" }, [h("div", { class: "empty-state", style: "padding:24px", text: "No bills match." })])])); return; }
+    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state", style: "padding:24px", text: "No bills match." })])])); return; }
     rows.forEach(function (b) {
       const actions = h("div", { class: "row-actions" }, [h("button", { class: "btn btn-ghost btn-sm", text: "Receipt", "aria-label": "Show receipt " + b.no, onclick: function () { showReceipt(b); } })]);
-      if (role === "Manager" && b.status === "Paid") actions.appendChild(h("a", { class: "btn btn-ghost btn-sm", href: "reports.html#refund-" + b.no, text: "Refund" }));
+      if (b.status === "Paid") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { requestRefund(b); } }));
       body.appendChild(h("tr", null, [
         h("td", null, [h("span", { class: "mono", text: b.no })]), h("td", { text: "T" + b.table }),
         h("td", { class: "hide-sm time", text: CMS.clock(new Date(b.createdAt)) }), h("td", { class: "hide-sm", text: b.method === "Wallet" ? "Wallet" : b.method }),
+        h("td", { class: "hide-sm mono", text: b.phone || "—" }),
         h("td", { class: "num nowrap", text: CMS.money(b.total) }),
         h("td", null, [h("span", { class: "pill " + (b.status === "Paid" ? "pill-ready" : "pill-cancelled"), text: b.status })]),
         h("td", { class: "actions" }, [actions])
       ]));
     });
+  }
+
+  // ----- Refund: manager-only function (SR-3) -----
+  // IF role is authorised → continue to the refund form, ELSE → "Access denied".
+  // The data layer re-checks the role and logs the attempt, so hiding or skipping
+  // this check in the browser would not let a cashier refund.
+  function requestRefund(b) {
+    if (role === "Manager") { location.href = "reports.html#refund-" + b.no; return; }
+    try { Store.refund(b.no, "Attempted from billing", me); } catch (e) { /* denied and logged by the data layer */ }
+    CMS.confirm({ title: "Access denied", message: "Only a manager can issue refunds. Your attempt on " + b.no + " has been recorded in the audit log. Ask the manager on duty to process it.",
+      okText: "OK", cancelText: "Close", icon: "shield", danger: true });
   }
 })();

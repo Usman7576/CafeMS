@@ -3,11 +3,13 @@
 // REST API, which authenticates the user and enforces RBAC on every request.
 // Demo data lives in localStorage so all roles on this device share it.
 (function () {
-  const DB_KEY = "cms_db_v3";
+  const DB_KEY = "cms_db_v4";
   const TAX_RATE = 0.16;
   const ACTIVE = ["Placed", "Preparing", "Ready"];
   const ROLES = ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"];
   const DISCOUNT_LIMIT = { Cashier: 10, Manager: 25, Admin: 25 };
+  // Customer phone numbers are personal data (least privilege): only these roles see them in full
+  const PHONE_ROLES = ["Manager", "Admin"];
   const SIM = { toPreparing: 10000, toReady: 20000 };
   const TABLES = [
     { no: 1, seats: 2 }, { no: 2, seats: 2 }, { no: 3, seats: 4 }, { no: 4, seats: 4 }, { no: 5, seats: 4 },
@@ -24,6 +26,11 @@
   function commit(changed) { persist(); emit(changed); }
   function fail(msg) { const e = new Error(msg); e.userMessage = msg; throw e; }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  // "03001234567" → "0300-•••••67"
+  function maskPhone(p) { return p ? p.slice(0, 4) + "-•••••" + p.slice(-2) : ""; }
+  function canSeePhone(username) { const u = findUser(username); return !!u && PHONE_ROLES.indexOf(u.role) !== -1; }
+  // Bills leave the data layer with the phone masked unless the viewer may see it in full
+  function forViewer(b, viewer) { const c = clone(b); if (c.phone && !canSeePhone(viewer)) c.phone = maskPhone(c.phone); return c; }
 
   // ------------------------------------------------------------------ audit (hash-chained)
   function fnv(str) {
@@ -146,6 +153,7 @@
       [[12, 2], [7, 2]], [[8, 2], [15, 1]], [[2, 1], [3, 1], [10, 2]], [[9, 4], [15, 1]], [[4, 2], [13, 1]], [[11, 2], [5, 2]]
     ];
     const methods = ["Cash", "Card", "Cash", "Wallet", "Card", "Cash", "Card", "Card", "Cash", "Wallet", "Card"];
+    const PHONES = ["03001234567", "03214567890", "03337654321", "03451122334"];
     const auditQ = [];
     auditQ.push([early(0.0), "sara.khan", "Signed in", "Manager session started", "info"]);
     auditQ.push([early(0.01), "chef.imran", "Signed in", "Kitchen session started", "info"]);
@@ -162,7 +170,7 @@
         createdAt: at - 35 * 60000, updatedAt: at - 10 * 60000, billed: true, billNo: no });
       db.bills.push({ no: no, table: TABLES[i % 10].no, orderIds: [oid], lines: lines, discountPct: pct, subtotal: tt.sub, discount: tt.discount, tax: tt.tax,
         total: tt.total, method: methods[i], tendered: methods[i] === "Cash" ? Math.ceil(tt.total / 500) * 500 : tt.total,
-        cashier: "bilal.ahmed", createdAt: at, status: "Paid" });
+        cashier: "bilal.ahmed", createdAt: at, status: "Paid", phone: i % 3 === 0 ? PHONES[i / 3] : "" });
       auditQ.push([at, "bilal.ahmed", "Payment recorded", no + " · Table " + TABLES[i % 10].no + " · Rs " + tt.total.toLocaleString() + " · " + methods[i], "info"]);
       if (pct) auditQ.push([at + 1000, "bilal.ahmed", "Discount applied", no + " · " + pct + "% (Rs " + tt.discount + ")", "warning"]);
     });
@@ -398,22 +406,29 @@
       const tt = totals(tab.lines, pct);
       const tendered = opts.method === "Cash" ? Number(opts.tendered) : tt.total;
       if (opts.method === "Cash" && !(tendered >= tt.total)) fail("Cash received must be at least Rs " + tt.total.toLocaleString() + ".");
+      const phone = String(opts.phone || "").replace(/[\s-]/g, "");
+      if (phone && !/^03\d{9}$/.test(phone)) fail("Enter the customer's mobile as 03XXXXXXXXX, or leave it blank.");
       const bill = { no: "B-" + (++db.seq.bill), table: no, orderIds: tab.orders.map(function (o) { return o.id; }), lines: tab.lines, discountPct: pct,
         subtotal: tt.sub, discount: tt.discount, tax: tt.tax, total: tt.total, method: opts.method, tendered: tendered, change: tendered - tt.total,
-        cashier: by, createdAt: now(), status: "Paid" };
+        cashier: by, createdAt: now(), status: "Paid", phone: phone };
       db.bills.push(bill);
       db.orders.forEach(function (o) { if (bill.orderIds.indexOf(o.id) !== -1) { o.billed = true; o.billNo = bill.no; } });
       delete db.billRequested[no];
       log(by, "Payment recorded", bill.no + " · Table " + no + " · Rs " + bill.total.toLocaleString() + " · " + bill.method, "info");
       if (pct) log(by, "Discount applied", bill.no + " · " + pct + "% (Rs " + tt.discount.toLocaleString() + ")", pct > 10 ? "high" : "warning");
       commit();
-      return clone(bill);
+      return forViewer(bill, by);
     },
-    bills: function () { return clone(db.bills).sort(function (a, b) { return b.createdAt - a.createdAt; }); },
-    bill: function (no) { const b = db.bills.find(function (x) { return x.no === no; }); return b ? clone(b) : null; },
+    bills: function (viewer) { return db.bills.map(function (b) { return forViewer(b, viewer); }).sort(function (a, b) { return b.createdAt - a.createdAt; }); },
+    bill: function (no, viewer) { const b = db.bills.find(function (x) { return x.no === no; }); return b ? forViewer(b, viewer) : null; },
+    canSeePhone: canSeePhone,
     refund: function (no, reason, by) {
       const u = findUser(by);
-      if (!u || ["Manager", "Admin"].indexOf(u.role) === -1) fail("Only a manager can issue refunds.");
+      if (!u || ["Manager", "Admin"].indexOf(u.role) === -1) {
+        log(by, "Access denied", "Tried to refund " + no + " (refunds are manager-only)", "high");
+        commit();
+        fail("Access denied: only a manager can issue refunds.");
+      }
       const b = db.bills.find(function (x) { return x.no === no; });
       if (!b) fail("Bill not found.");
       if (b.status === "Refunded") fail(no + " has already been refunded.");

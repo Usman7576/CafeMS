@@ -83,7 +83,7 @@
     } else {
       document.getElementById("activityTitle").textContent = "Latest bills";
       document.getElementById("activitySub").textContent = "Payments recorded by cashiers today";
-      Store.bills().slice(0, 6).forEach(function (b) {
+      Store.bills(App.session.user).slice(0, 6).forEach(function (b) {
         const u = Store.findUser(b.cashier);
         act.appendChild(h("li", { class: b.status === "Refunded" ? "sev-high" : "sev-info" }, [h("span", { class: "dot" }), h("div", null, [
           h("b", { text: b.no + " · " + CMS.money(b.total) }), h("span", { text: "Table " + b.table + " · " + (b.method === "Wallet" ? "Mobile wallet" : b.method) + (b.status === "Refunded" ? " · refunded" : "") }),

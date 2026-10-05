@@ -1,4 +1,4 @@
-# Cafe Management System (CMS): Frontend Prototype v2.0
+# Cafe Management System (CMS): Frontend Prototype v2.1
 
 A secure, web-based Cafe Management System built as the semester project for **Secure Software Development (SSD)**.
 The prototype covers the full service loop across all five staff roles. A waiter takes an order, the kitchen prepares it, the cashier bills it, and it all appears in the manager's reports and the admin's tamper-evident audit log.
@@ -19,6 +19,8 @@ Sign in with any account below and **any password that meets the rules**: 8+ cha
 
 `old.staff` is a **disabled** account, and sign-in is refused. Unknown usernames get the same generic error, so it never reveals which accounts exist.
 
+Activity write-ups: [SUBMISSION.md](SUBMISSION.md) (Activity 1) and [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) (Activity 2: role-based prototype).
+
 ## Pages
 
 | Page | Roles | What it does |
@@ -28,7 +30,7 @@ Sign in with any account below and **any password that meets the rules**: 8+ cha
 | `dashboard.html` | Waiter | Shift KPIs, my orders (filters), ready-to-serve queue, floor plan, request bill |
 | `order.html` | Waiter | Take or **edit** an order: table picker, menu search/filter, ticket, live totals, notes |
 | `kitchen.html` | Kitchen | Live ticket board (New → Preparing → Ready) with colour-coded ticket timers |
-| `billing.html` | Cashier, Manager | Open tables, role-limited discounts, cash/card/wallet, change calculator, printable receipt |
+| `billing.html` | Cashier, Manager | Open tables, role-limited discounts, cash/card/wallet, change calculator, optional customer mobile (masked for cashiers), printable receipt, manager-only refunds |
 | `overview.html` | Manager, Admin | Revenue by hour, live floor, stock alerts, activity feed, admin settings |
 | `inventory.html` | Manager | Stock levels, low-stock alerts, restock / write-off with reasons |
 | `reports.html` | Manager, Admin | KPIs, hourly revenue, payment split, best sellers, categories, tax summary, refunds, CSV export |
@@ -56,7 +58,8 @@ When no kitchen user has the display open, the kitchen is **simulated**: an orde
 | Requirement | In this prototype |
 |---|---|
 | SR-1 Strong authentication | Username format and password complexity rules; generic failure messages (no account enumeration) |
-| SR-3 RBAC / least privilege | Each role gets only its own navigation and pages. Opening another role's page redirects and writes an *Access denied* audit entry. Disabled or re-roled users are signed out on their next page load. Discount limits per role (Cashier 10%, Manager 25%). Refunds are manager-only. Admins can't demote or disable themselves, and at least one admin must always remain. |
+| SR-3 RBAC / least privilege | Each role gets only its own navigation and pages. Opening another role's page redirects and writes an *Access denied* audit entry. Disabled or re-roled users are signed out on their next page load. Discount limits per role (Cashier 10%, Manager 25%). Refunds are manager-only: a cashier who clicks **Refund** gets *Access denied*, the data layer rejects the request again, and the attempt is audited. Admins can't demote or disable themselves, and at least one admin must always remain. |
+| Personal data (least privilege) | Customer mobile numbers are shown in full only to Manager/Admin. Cashiers get a masked value (`0300-•••••43`), and the masking happens in the data layer, so the full number never reaches a cashier's page. |
 | SR-4 Input validation / XSS | All data-layer writes are validated. All user text is rendered with `textContent`, never `innerHTML`. CSV exports neutralise spreadsheet formula injection. |
 | SR-6 Sessions | Auto sign-out after 5 min idle with a 30 s warning. Sign-in pauses after 5 failures. |
 | SR-7 Auditing | Sign-ins, failures, lockouts, access denials, price/menu changes, role and account changes, refunds, discounts, stock changes and exports are logged. Entries are **hash-chained**, so editing or deleting one is detected on the audit page. |

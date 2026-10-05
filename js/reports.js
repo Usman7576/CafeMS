@@ -17,7 +17,7 @@
     if (m) openRefund(m[1]);
   });
 
-  function todayBills() { return Store.bills().filter(function (b) { return new Date(b.createdAt).toDateString() === new Date().toDateString(); }); }
+  function todayBills() { return Store.bills(App.session.user).filter(function (b) { return new Date(b.createdAt).toDateString() === new Date().toDateString(); }); }
 
   function render() {
     const s = Store.salesToday();
@@ -74,7 +74,7 @@
   }
 
   function openRefund(no) {
-    const b = Store.bill(no);
+    const b = Store.bill(no, App.session.user);
     if (!b || b.status !== "Paid") { CMS.toast(no + " can't be refunded.", "err"); return; }
     refundNo = no;
     CMS.clearError(document.getElementById("refundErr"));
