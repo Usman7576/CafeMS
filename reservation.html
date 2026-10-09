@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New reservation — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css?v=3.5">
+</head>
+<body data-page="reservation">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>New reservation</h2><p>Reserve a table before the guest arrives and keep the floor plan predictable.</p></div>
+      <a href="reservations.html" class="btn btn-secondary"><i data-icon="clipboard" data-size="18"></i>Open reservation queue</a>
+    </div>
+    <div class="dash-grid">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Reservation details</h3><p>All fields marked required must be completed.</p></div></div>
+        <form class="panel-body" id="reservationForm" novalidate>
+          <div class="alert alert-error" id="reservationErr" role="alert"></div>
+          <div class="form-grid">
+            <div class="field"><label for="guestName">Guest name <span class="label opt">Required</span></label><input class="input" id="guestName" maxlength="60" autocomplete="name" required></div>
+            <div class="field"><label for="guestPhone">Mobile number <span class="label opt">Required</span></label><input class="input" id="guestPhone" inputmode="tel" maxlength="13" placeholder="03XXXXXXXXX" required><div class="field-hint">Used only to identify the reservation.</div></div>
+            <div class="field"><label for="reservationDate">Date <span class="label opt">Required</span></label><input class="input" id="reservationDate" type="date" required></div>
+            <div class="field"><label for="reservationTime">Time <span class="label opt">Required</span></label><input class="input" id="reservationTime" type="time" min="10:00" max="23:00" required></div>
+            <div class="field"><label for="partySize">Party size <span class="label opt">Required</span></label><input class="input" id="partySize" type="number" min="1" max="20" step="1" value="2" required></div>
+            <div class="field span-2"><label for="reservationNotes">Notes <span class="label opt">Optional · max 160</span></label><textarea class="textarea" id="reservationNotes" maxlength="160" rows="3" placeholder="Accessibility needs, birthday, high chair…"></textarea></div>
+          </div>
+          <div class="modal-actions" style="padding:18px 0 0;border-top:1px solid var(--line);margin-top:4px;"><button type="reset" class="btn btn-secondary">Clear</button><button type="submit" class="btn btn-primary"><i data-icon="calendar" data-size="17"></i>Create reservation</button></div>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h3>Recent reservations</h3><p>Created in this browser or synced workspace.</p></div></div>
+        <div class="panel-body" id="recentReservations"></div>
+      </section>
+    </div>
+  </main>
+  <script src="js/icons.js?v=3.5"></script>
+  <script src="js/common.js?v=3.5"></script>
+  <script src="js/store.js?v=3.5"></script>
+  <script src="js/app.js?v=3.5"></script>
+  <script src="js/reservation.js?v=3.5"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@
   const PAGES = {
     dashboard: { title: "Dashboard",       roles: ["Waiter"] },
     order:     { title: "Take order",      roles: ["Waiter"] },
+    reservation: { title: "New reservation", roles: ["Waiter", "Manager"] },
+    reservations: { title: "Reservation queue", roles: ["Waiter", "Manager"] },
     kitchen:   { title: "Kitchen display", roles: ["Kitchen"] },
     billing:   { title: "Billing",         roles: ["Cashier", "Manager"] },
     overview:  { title: "Overview",        roles: ["Manager", "Admin"] },
@@ -19,6 +21,8 @@
     Waiter: [
       { page: "dashboard", href: "dashboard.html", icon: "dashboard", label: "Dashboard" },
       { page: "order", href: "order.html", icon: "clipboard", label: "Take order" },
+      { page: "reservation", href: "reservation.html", icon: "calendar", label: "New reservation" },
+      { page: "reservations", href: "reservations.html", icon: "clipboard", label: "Reservation queue" },
       { href: "dashboard.html#ready", icon: "bell", label: "Ready to serve", badge: true },
       { href: "dashboard.html#floor", icon: "grid", label: "Tables" }
     ],
@@ -28,7 +32,9 @@
       { page: "overview", href: "overview.html", icon: "dashboard", label: "Overview" },
       { page: "billing", href: "billing.html", icon: "receipt", label: "Billing" },
       { page: "inventory", href: "inventory.html", icon: "package", label: "Inventory", badge: true },
-      { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" }
+      { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" },
+      { page: "reservation", href: "reservation.html", icon: "calendar", label: "New reservation" },
+      { page: "reservations", href: "reservations.html", icon: "clipboard", label: "Reservation queue" }
     ],
     Admin: [
       { page: "overview", href: "overview.html", icon: "dashboard", label: "Overview" },

@@ -1,4 +1,4 @@
-# Cafe Management System (CMS): Frontend Prototype v2.0
+# Cafe Management System (CMS): MongoDB-backed prototype
 
 A secure, web-based Cafe Management System built as the semester project for **Secure Software Development (SSD)**.
 The prototype covers the full service loop across all five staff roles. A waiter takes an order, the kitchen prepares it, the cashier bills it, and it all appears in the manager's reports and the admin's tamper-evident audit log.
@@ -19,6 +19,8 @@ Sign in with any account below and **any password that meets the rules**: 8+ cha
 
 `old.staff` is a **disabled** account, and sign-in is refused. Unknown usernames get the same generic error, so it never reveals which accounts exist.
 
+Activity write-ups: [SUBMISSION.md](SUBMISSION.md) (Activity 1), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) (Activity 2: role-based prototype), and [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md) (Activity 3: parallel module development and integration).
+
 ## Pages
 
 | Page | Roles | What it does |
@@ -28,13 +30,15 @@ Sign in with any account below and **any password that meets the rules**: 8+ cha
 | `dashboard.html` | Waiter | Shift KPIs, my orders (filters), ready-to-serve queue, floor plan, request bill |
 | `order.html` | Waiter | Take or **edit** an order: table picker, menu search/filter, ticket, live totals, notes |
 | `kitchen.html` | Kitchen | Live ticket board (New → Preparing → Ready) with colour-coded ticket timers |
-| `billing.html` | Cashier, Manager | Open tables, role-limited discounts, cash/card/wallet, change calculator, printable receipt |
+| `billing.html` | Cashier, Manager | Open tables, role-limited discounts, cash/card/wallet, change calculator, optional customer mobile (masked for cashiers), printable receipt, manager-only refunds |
 | `overview.html` | Manager, Admin | Revenue by hour, live floor, stock alerts, activity feed, admin settings |
 | `inventory.html` | Manager | Stock levels, low-stock alerts, restock / write-off with reasons |
 | `reports.html` | Manager, Admin | KPIs, hourly revenue, payment split, best sellers, categories, tax summary, refunds, CSV export |
 | `menu.html` | Admin | Add / edit / delete items, prices, on/off switch, large-price-change warning |
 | `users.html` | Admin | Create staff, change roles, enable/disable accounts, permission matrix |
 | `audit.html` | Admin | Hash-chained audit log with integrity check, filters, CSV export |
+| `reservation.html` | Waiter, Manager | Create and validate a table reservation |
+| `reservations.html` | Waiter, Manager | Search, filter and update reservation status |
 | `404.html` | Public | Custom not-found page |
 
 ## How the data flows
@@ -49,14 +53,15 @@ Inventory (low-stock alerts, auto sold-out)            Cashier bills table → r
                         Admin audit log ◄── every critical action from every role
 ```
 
-When no kitchen user has the display open, the kitchen is **simulated**: an order moves to Preparing after about 10 s and to Ready about 20 s later. An admin can switch this off. Demo data is stored in the browser's `localStorage`, so every role on the same device shares it. Use **Reset demo data** in the user menu to start again.
+When no kitchen user has the display open, the kitchen is **simulated**: an order moves to Preparing after about 10 s and to Ready about 20 s later. An admin can switch this off. The browser keeps a local cache for offline use, while the Node.js API synchronizes the application state to MongoDB. Use **Reset demo data** in the user menu to start again.
 
 ## Security-aware design
 
 | Requirement | In this prototype |
 |---|---|
 | SR-1 Strong authentication | Username format and password complexity rules; generic failure messages (no account enumeration) |
-| SR-3 RBAC / least privilege | Each role gets only its own navigation and pages. Opening another role's page redirects and writes an *Access denied* audit entry. Disabled or re-roled users are signed out on their next page load. Discount limits per role (Cashier 10%, Manager 25%). Refunds are manager-only. Admins can't demote or disable themselves, and at least one admin must always remain. |
+| SR-3 RBAC / least privilege | Each role gets only its own navigation and pages. Opening another role's page redirects and writes an *Access denied* audit entry. Disabled or re-roled users are signed out on their next page load. Discount limits per role (Cashier 10%, Manager 25%). Refunds are manager-only: a cashier who clicks **Refund** gets *Access denied*, the data layer rejects the request again, and the attempt is audited. Admins can't demote or disable themselves, and at least one admin must always remain. |
+| Personal data (least privilege) | Customer mobile numbers are shown in full only to Manager/Admin. Cashiers get a masked value (`0300-•••••43`), and the masking happens in the data layer, so the full number never reaches a cashier's page. |
 | SR-4 Input validation / XSS | All data-layer writes are validated. All user text is rendered with `textContent`, never `innerHTML`. CSV exports neutralise spreadsheet formula injection. |
 | SR-6 Sessions | Auto sign-out after 5 min idle with a 30 s warning. Sign-in pauses after 5 failures. |
 | SR-7 Auditing | Sign-ins, failures, lockouts, access denials, price/menu changes, role and account changes, refunds, discounts, stock changes and exports are logged. Entries are **hash-chained**, so editing or deleting one is detected on the audit page. |
@@ -80,13 +85,21 @@ js/<page>.js         one script per page
 
 Keyboard: **Ctrl/⌘ + K** opens quick search on any staff page. **Esc** closes dialogs.
 
-## Run locally
+## Run locally with MongoDB
+
+MongoDB Compass is a graphical client; it does not run the MongoDB database server by itself. Install and start MongoDB Community Server, or use a MongoDB Atlas connection string. Then:
 
 ```bash
-python -m http.server 8000
+npm install
+copy .env.example .env
+npm start
 ```
 
-Then open http://localhost:8000.
+Open http://localhost:3000. The default connection is `mongodb://127.0.0.1:27017`, database `cafems`. You can verify the connection at http://localhost:3000/api/health and inspect the `application_state` collection in Compass.
+
+For MongoDB Atlas, replace `MONGODB_URI` in `.env` with the connection string from Atlas. Never commit `.env`; it is ignored by git.
+
+To run the UI without MongoDB, use `python -m http.server 8000`; it will use the browser's local cache and will not synchronize to MongoDB.
 
 ## Deploy to Netlify
 

@@ -9,10 +9,10 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3.3">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3.5">
 </head>
-<body>
+<body class="landing-page">
   <a href="#main" class="skip-link">Skip to content</a>
 
   <header class="site-nav">
@@ -28,6 +28,7 @@
         <li><a href="#how">How it works</a></li>
         <li><a href="#security">Security</a></li>
         <li><a href="#demo">Live demo</a></li>
+        <li><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to night cafe mode" aria-pressed="false"><i data-icon="moon" data-size="16"></i><span>Night mode</span></button></li>
         <li><a href="login.html" class="btn btn-dark btn-sm"><i data-icon="lock" data-size="15"></i>Staff sign in</a></li>
       </ul>
     </nav>
@@ -35,15 +36,15 @@
 
   <main id="main">
     <!-- ================= HERO ================= -->
-    <section class="hero">
+    <section class="hero" data-reveal>
       <div class="container hero-grid">
         <div>
-          <span class="kicker"><b>SSD Project</b> Secure Software Development · Semester Project</span>
-          <h1>Run your cafe from <em>one secure</em> platform.</h1>
+          <span class="kicker"><b>Specialty cafe operations</b> Secure by design · effortless by default</span>
+          <h1>Make every shift feel <em>beautifully simple.</em></h1>
           <p class="lede">The Cafe Management System (CMS) replaces paper order slips and disconnected spreadsheets. Orders, table status, billing, stock and sales all live in one place, and each staff member can reach only the tools their role needs.</p>
           <div class="actions">
-            <a href="login.html" class="btn btn-primary btn-lg">Staff sign in <i data-icon="arrow-right" data-size="18"></i></a>
-            <a href="#features" class="btn btn-secondary btn-lg">Explore features</a>
+            <a href="login.html" class="btn btn-primary btn-lg">Order now <i data-icon="arrow-right" data-size="18"></i></a>
+            <a href="#features" class="btn btn-secondary btn-lg">View the platform</a>
           </div>
           <div class="trust">
             <span><i data-icon="check-circle" data-size="16"></i>Role-based access</span>
@@ -52,32 +53,27 @@
           </div>
         </div>
 
-        <!-- Product preview (illustrative) -->
-        <div class="preview" aria-hidden="true">
-          <div class="preview-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">cafems / waiter / dashboard</span></div>
-          <div class="preview-body">
-            <div class="preview-kpis">
-              <div class="preview-kpi"><small>In kitchen</small><strong>3</strong></div>
-              <div class="preview-kpi"><small>Ready to serve</small><strong style="color:var(--ok)">2</strong></div>
-              <div class="preview-kpi"><small>Tables busy</small><strong>6/10</strong></div>
-            </div>
-            <div class="preview-tables">
-              <span class="on">T1</span><span>T2</span><span class="on">T3</span><span class="on">T4</span><span>T5</span><span class="rd">T6</span>
-            </div>
-            <div class="preview-list">
-              <div class="preview-row"><span>Order</span><span>Status</span></div>
-              <div class="preview-row"><span><b>ORD-1045</b> · Table 6</span><span class="pill pill-ready">Ready</span></div>
-              <div class="preview-row"><span><b>ORD-1044</b> · Table 3</span><span class="pill pill-preparing">Preparing</span></div>
-              <div class="preview-row"><span><b>ORD-1046</b> · Table 1</span><span class="pill pill-placed">Placed</span></div>
-            </div>
-          </div>
+        <div class="hero-stage" aria-label="Animated coffee cup illustration" role="img">
+          <span class="bean bean-one" aria-hidden="true"></span><span class="bean bean-two" aria-hidden="true"></span><span class="bean bean-three" aria-hidden="true"></span>
+          <div class="steam steam-one" aria-hidden="true"></div><div class="steam steam-two" aria-hidden="true"></div><div class="steam steam-three" aria-hidden="true"></div>
+          <svg class="hero-cup" viewBox="0 0 360 300" aria-hidden="true">
+            <ellipse class="cup-shadow" cx="180" cy="257" rx="110" ry="17"></ellipse>
+            <path class="cup-saucer" d="M76 231c20 34 190 34 208 0 10 34-32 51-104 51S66 265 76 231Z"></path>
+            <path class="cup-body" d="M91 116h179v86c0 35-30 55-89 55s-90-20-90-55v-86Z"></path>
+            <path class="cup-rim" d="M86 116c0-18 194-18 194 0s-194 18-194 0Z"></path>
+            <ellipse class="coffee" cx="183" cy="116" rx="91" ry="11"></ellipse>
+            <path class="cup-handle" d="M270 139c68-21 73 75 7 76" fill="none"></path>
+            <path class="latte-swirl" d="M137 116c15-9 73-11 91 0-17 9-73 9-91 0Zm17 0c12-5 46-6 59 0-12 6-45 6-59 0Z"></path>
+          </svg>
+          <span class="stage-note note-one"><i data-icon="check-circle" data-size="15"></i>Orders in sync</span>
+          <span class="stage-note note-two"><i data-icon="shield" data-size="15"></i>Secure by design</span>
         </div>
       </div>
     </section>
 
     <!-- ================= PROBLEM / SOLUTION ================= -->
     <section class="section alt" id="about">
-      <div class="container">
+      <div class="container" data-reveal>
         <div class="section-head">
           <span class="eyebrow">Why CMS</span>
           <h2>Paper and spreadsheets cost cafes time, money and trust.</h2>
@@ -110,7 +106,7 @@
 
     <!-- ================= FEATURES ================= -->
     <section class="section" id="features">
-      <div class="container">
+      <div class="container" data-reveal>
         <div class="section-head center">
           <span class="eyebrow">Core modules</span>
           <h2>Everything a cafe needs, day to day.</h2>
@@ -124,7 +120,7 @@
           <article class="feature"><div class="icon-tile"><i data-icon="package"></i></div><h3>Inventory Management</h3><p>Stock levels, low-stock alerts and supplier records.</p><span class="tag">Must-have</span></article>
           <article class="feature"><div class="icon-tile"><i data-icon="chart"></i></div><h3>Reports &amp; Analytics</h3><p>Daily and monthly sales, popular items and stock usage.</p><span class="tag">Must-have</span></article>
           <article class="feature"><div class="icon-tile"><i data-icon="file"></i></div><h3>Audit Logging</h3><p>Tamper-evident records of logins, refunds and price changes.</p><span class="tag">Must-have</span></article>
-          <article class="feature"><div class="icon-tile"><i data-icon="calendar"></i></div><h3>Table Reservations</h3><p>Book, view and cancel table reservations.</p><span class="tag">Optional</span></article>
+          <article class="feature"><div class="icon-tile"><i data-icon="calendar"></i></div><h3>Table Reservations</h3><p>Create reservations and manage the live reservation queue.</p><span class="tag">Implemented</span></article>
           <article class="feature"><div class="icon-tile"><i data-icon="users"></i></div><h3>Staff Management</h3><p>Staff profiles, shifts and activity.</p><span class="tag">Planned</span></article>
         </div>
       </div>
@@ -132,7 +128,7 @@
 
     <!-- ================= ROLES ================= -->
     <section class="section alt" id="roles">
-      <div class="container">
+      <div class="container" data-reveal>
         <div class="section-head">
           <span class="eyebrow">Users &amp; roles</span>
           <h2>Each role sees only what it needs.</h2>
@@ -156,7 +152,7 @@
 
     <!-- ================= HOW IT WORKS ================= -->
     <section class="section" id="how">
-      <div class="container">
+      <div class="container" data-reveal>
         <div class="section-head center">
           <span class="eyebrow">How it works for waiters</span>
           <h2>From table to kitchen in three steps.</h2>
@@ -171,7 +167,7 @@
 
     <!-- ================= SECURITY ================= -->
     <section class="section alt" id="security">
-      <div class="container">
+      <div class="container" data-reveal>
         <div class="section-head">
           <span class="eyebrow">Security by design</span>
           <h2>Built as a Secure Software Development project.</h2>
@@ -187,6 +183,24 @@
           <div class="sec-item"><div class="icon-tile"><i data-icon="file"></i></div><div><h3>Audit trail <span class="sr-tag">SR-7</span></h3><p>Refunds, price changes, role changes and deletions are logged with user, time and action.</p></div></div>
           <div class="sec-item"><div class="icon-tile"><i data-icon="receipt"></i></div><div><h3>Payment security <span class="sr-tag">SR-8</span></h3><p>Card details are never stored; payments go through a trusted payment gateway.</p></div></div>
         </div>
+      </div>
+    </section>
+
+    <section class="section review-section" id="reviews">
+      <div class="container" data-reveal>
+        <div class="section-head center"><span class="eyebrow">The daily difference</span><h2>Calm operations make better coffee.</h2><p>Designed around the people who keep a cafe moving, from the first order to the last close.</p></div>
+        <div class="review-carousel" aria-live="polite">
+          <button class="review-arrow" id="reviewPrev" type="button" aria-label="Previous review"><i data-icon="arrow-left" data-size="18"></i></button>
+          <div class="review-card" id="reviewCard"><div class="review-stars" aria-label="5 out of 5 stars">★★★★★</div><blockquote></blockquote><div class="review-author"></div></div>
+          <button class="review-arrow" id="reviewNext" type="button" aria-label="Next review"><i data-icon="arrow-right" data-size="18"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="visit">
+      <div class="container visit-grid" data-reveal>
+        <div><span class="eyebrow">Come by anytime</span><h2>Your neighborhood cafe, running at its best.</h2><p>From the morning flat white to the last table at close, give your team one clear view of the day.</p><div class="visit-details"><div><i data-icon="clock" data-size="19"></i><span><b>Opening hours</b>Mon–Sun · 7:00 AM–11:00 PM</span></div><div><i data-icon="home" data-size="19"></i><span><b>Find us</b>12 Bean Street, Lahore</span></div></div></div>
+        <div class="location-card"><div class="location-pin"><i data-icon="coffee" data-size="22"></i></div><span class="location-route">CAFE / 01</span><strong>Good coffee.<br>Clear operations.</strong><a href="#demo" class="btn btn-secondary">Explore demo accounts <i data-icon="arrow-right" data-size="16"></i></a></div>
       </div>
     </section>
 
@@ -251,7 +265,8 @@
     </div>
   </footer>
 
-  <script src="js/icons.js?v=3.3"></script>
-  <script src="js/common.js?v=3.3"></script>
+  <script src="js/icons.js?v=3.5"></script>
+  <script src="js/common.js?v=3.5"></script>
+  <script src="js/home.js?v=3.5"></script>
 </body>
 </html>

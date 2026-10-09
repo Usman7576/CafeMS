@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reservation queue — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css?v=3.5">
+</head>
+<body data-page="reservations">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Reservation queue</h2><p>Search arrivals, check details, and keep reservation statuses current.</p></div>
+      <a href="reservation.html" class="btn btn-primary"><i data-icon="plus" data-size="18"></i>New reservation</a>
+    </div>
+    <section class="kpis" aria-label="Reservation summary">
+      <div class="kpi"><div class="icon-tile info"><i data-icon="calendar"></i></div><div><small>All reservations</small><strong id="rAll">0</strong><div class="sub">Saved records</div></div></div>
+      <div class="kpi"><div class="icon-tile warn"><i data-icon="clock"></i></div><div><small>Confirmed</small><strong id="rConfirmed">0</strong><div class="sub">Awaiting arrival</div></div></div>
+      <div class="kpi"><div class="icon-tile ok"><i data-icon="users"></i></div><div><small>Seated</small><strong id="rSeated">0</strong><div class="sub">Guests on the floor</div></div></div>
+      <div class="kpi"><div class="icon-tile"><i data-icon="check-circle"></i></div><div><small>Completed</small><strong id="rCompleted">0</strong><div class="sub">Finished visits</div></div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <div class="toolbar"><div class="input-wrap" style="width:250px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="reservationSearch">Search reservations</label><input class="input input-sm" id="reservationSearch" type="search" maxlength="60" placeholder="Search ID, guest or phone"></div><input class="input input-sm" id="queueDate" type="date" aria-label="Filter by date"><select class="select input-sm" id="queueStatus" aria-label="Filter by status"><option value="all">All statuses</option><option>Confirmed</option><option>Seated</option><option>Completed</option><option>Cancelled</option></select></div>
+      </div>
+      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Reference</th><th>Guest</th><th>Date &amp; time</th><th>Party</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="reservationBody"></tbody></table></div>
+    </section>
+  </main>
+  <div class="modal-backdrop" id="reservationDetail" role="dialog" aria-modal="true" aria-labelledby="reservationDetailTitle">
+    <div class="modal wide"><div class="modal-head"><div class="icon-tile"><i data-icon="calendar" data-size="20"></i></div><div><h3 id="reservationDetailTitle">Reservation</h3><p id="reservationDetailSub"></p></div></div><div class="modal-body" id="reservationDetailBody"></div><div class="modal-actions"><button class="btn btn-secondary" data-close="reservationDetail">Close</button><button class="btn btn-primary" id="saveReservationStatus">Save status</button></div></div>
+  </div>
+  <script src="js/icons.js?v=3.5"></script>
+  <script src="js/common.js?v=3.5"></script>
+  <script src="js/store.js?v=3.5"></script>
+  <script src="js/app.js?v=3.5"></script>
+  <script src="js/reservations.js?v=3.5"></script>
+</body>
+</html>

@@ -1,13 +1,13 @@
-// Prototype data layer ("fake backend").
-// In the final system every function here becomes a call to the Node.js/Express
-// REST API, which authenticates the user and enforces RBAC on every request.
-// Demo data lives in localStorage so all roles on this device share it.
+// Client data layer. MongoDB synchronization is handled by the Node/Express API;
+// localStorage remains a cache so the prototype still works when opened offline.
 (function () {
-  const DB_KEY = "cms_db_v3";
+  const DB_KEY = "cms_db_v4";
   const TAX_RATE = 0.16;
   const ACTIVE = ["Placed", "Preparing", "Ready"];
   const ROLES = ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"];
   const DISCOUNT_LIMIT = { Cashier: 10, Manager: 25, Admin: 25 };
+  // Customer phone numbers are personal data (least privilege): only these roles see them in full
+  const PHONE_ROLES = ["Manager", "Admin"];
   const SIM = { toPreparing: 10000, toReady: 20000 };
   const TABLES = [
     { no: 1, seats: 2 }, { no: 2, seats: 2 }, { no: 3, seats: 4 }, { no: 4, seats: 4 }, { no: 5, seats: 4 },
@@ -19,11 +19,50 @@
   const now = function () { return Date.now(); };
 
   function load() { try { return JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { return null; } }
-  function persist() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) {} }
+  let syncInFlight = null;
+  function persist() {
+    try { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+    catch (e) { console.warn("Could not cache CafeMS data locally.", e); }
+    if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return;
+    syncInFlight = fetch("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: db })
+    }).catch(function (e) {
+      console.warn("CafeMS could not synchronize with MongoDB.", e);
+    });
+  }
+  function syncFromMongo() {
+    if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return;
+    fetch("/api/state")
+      .then(function (response) {
+        if (!response.ok) throw new Error("API returned " + response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        if (payload.state) {
+          db = payload.state;
+          if (!Array.isArray(db.reservations)) {
+            db.reservations = [];
+            db.seq.reservation = db.seq.reservation || 1000;
+          }
+          try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { console.warn("Could not update local cache.", e); }
+          emit();
+        } else {
+          persist();
+        }
+      })
+      .catch(function (e) { console.warn("CafeMS is using its local cache; MongoDB sync failed.", e); });
+  }
   function emit(changed) { listeners.forEach(function (fn) { try { fn(changed || []); } catch (e) { console.error(e); } }); }
   function commit(changed) { persist(); emit(changed); }
   function fail(msg) { const e = new Error(msg); e.userMessage = msg; throw e; }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  // "03001234567" → "0300-•••••67"
+  function maskPhone(p) { return p ? p.slice(0, 4) + "-•••••" + p.slice(-2) : ""; }
+  function canSeePhone(username) { const u = findUser(username); return !!u && PHONE_ROLES.indexOf(u.role) !== -1; }
+  // Bills leave the data layer with the phone masked unless the viewer may see it in full
+  function forViewer(b, viewer) { const c = clone(b); if (c.phone && !canSeePhone(viewer)) c.phone = maskPhone(c.phone); return c; }
 
   // ------------------------------------------------------------------ audit (hash-chained)
   function fnv(str) {
@@ -146,6 +185,7 @@
       [[12, 2], [7, 2]], [[8, 2], [15, 1]], [[2, 1], [3, 1], [10, 2]], [[9, 4], [15, 1]], [[4, 2], [13, 1]], [[11, 2], [5, 2]]
     ];
     const methods = ["Cash", "Card", "Cash", "Wallet", "Card", "Cash", "Card", "Card", "Cash", "Wallet", "Card"];
+    const PHONES = ["03001234567", "03214567890", "03337654321", "03451122334"];
     const auditQ = [];
     auditQ.push([early(0.0), "sara.khan", "Signed in", "Manager session started", "info"]);
     auditQ.push([early(0.01), "chef.imran", "Signed in", "Kitchen session started", "info"]);
@@ -162,7 +202,7 @@
         createdAt: at - 35 * 60000, updatedAt: at - 10 * 60000, billed: true, billNo: no });
       db.bills.push({ no: no, table: TABLES[i % 10].no, orderIds: [oid], lines: lines, discountPct: pct, subtotal: tt.sub, discount: tt.discount, tax: tt.tax,
         total: tt.total, method: methods[i], tendered: methods[i] === "Cash" ? Math.ceil(tt.total / 500) * 500 : tt.total,
-        cashier: "bilal.ahmed", createdAt: at, status: "Paid" });
+        cashier: "bilal.ahmed", createdAt: at, status: "Paid", phone: i % 3 === 0 ? PHONES[i / 3] : "" });
       auditQ.push([at, "bilal.ahmed", "Payment recorded", no + " · Table " + TABLES[i % 10].no + " · Rs " + tt.total.toLocaleString() + " · " + methods[i], "info"]);
       if (pct) auditQ.push([at + 1000, "bilal.ahmed", "Discount applied", no + " · " + pct + "% (Rs " + tt.discount + ")", "warning"]);
     });
@@ -213,6 +253,12 @@
       if (db) return;
       db = load();
       if (!db || db.v !== 3) { seed(); persist(); }
+      if (!Array.isArray(db.reservations)) {
+        db.reservations = [];
+        db.seq.reservation = db.seq.reservation || 1000;
+        persist();
+      }
+      syncFromMongo();
       tick();
       setInterval(tick, 1000);
       window.addEventListener("storage", function (e) { if (e.key === DB_KEY && e.newValue) { db = JSON.parse(e.newValue); emit(); } });
@@ -253,6 +299,58 @@
       u.status = status;
       log(by, status === "Disabled" ? "Account disabled" : "Account enabled", username + " (" + u.role + ")", "high");
       commit();
+    },
+
+    // ---- reservations
+    reservations: function () { return clone(db.reservations).sort(function (a, b) {
+      return (a.date + "T" + a.time).localeCompare(b.date + "T" + b.time);
+    }); },
+    addReservation: function (data, by) {
+      const name = String(data.name || "").trim();
+      const phone = String(data.phone || "").replace(/[\s-]/g, "");
+      const date = String(data.date || "").trim();
+      const time = String(data.time || "").trim();
+      const party = Number(data.party);
+      const notes = String(data.notes || "").trim();
+      if (name.length < 2 || name.length > 60) fail("Guest name must be 2–60 characters.");
+      if (!/^03\d{9}$/.test(phone)) fail("Enter a valid mobile number as 03XXXXXXXXX.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail("Choose a valid reservation date.");
+      const dateParts = date.split("-").map(Number);
+      const parsedDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]));
+      if (isNaN(parsedDate.getTime()) || parsedDate.getUTCFullYear() !== dateParts[0] || parsedDate.getUTCMonth() !== dateParts[1] - 1 || parsedDate.getUTCDate() !== dateParts[2]) fail("Choose a valid reservation date.");
+      const today = new Date();
+      const todayValue = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+      if (date < todayValue) fail("Reservations cannot be made for a past date.");
+      if (!/^\d{2}:\d{2}$/.test(time)) fail("Choose a valid reservation time.");
+      const timeParts = time.split(":").map(Number);
+      if (timeParts[0] < 10 || timeParts[0] > 23 || timeParts[1] > 59 || (timeParts[0] === 23 && timeParts[1] > 0)) fail("Choose a time between 10:00 and 23:00.");
+      if (!(party >= 1 && party <= 20 && Number.isInteger(party))) fail("Party size must be a whole number from 1 to 20.");
+      if (notes.length > 160) fail("Notes must be 160 characters or fewer.");
+      const duplicate = db.reservations.some(function (r) {
+        return r.date === date && r.time === time && r.phone === phone && r.status !== "Cancelled";
+      });
+      if (duplicate) fail("This guest already has an active reservation at that time.");
+      const reservation = {
+        id: "R-" + (++db.seq.reservation), name: name, phone: phone, date: date, time: time,
+        party: party, notes: notes, status: "Confirmed", createdAt: now(), createdBy: by
+      };
+      db.reservations.push(reservation);
+      log(by, "Reservation created", reservation.id + " · " + name + " · " + date + " " + time, "info");
+      commit();
+      return clone(reservation);
+    },
+    updateReservation: function (id, status, by) {
+      const allowed = ["Confirmed", "Seated", "Completed", "Cancelled"];
+      const r = db.reservations.find(function (x) { return x.id === id; });
+      if (!r) fail("Reservation not found.");
+      if (allowed.indexOf(status) === -1) fail("Choose a valid reservation status.");
+      if (r.status === "Completed" || r.status === "Cancelled") fail("Closed reservations cannot be changed.");
+      if (status === r.status) fail("Choose a different status.");
+      r.status = status;
+      r.updatedAt = now();
+      log(by, "Reservation status changed", id + " · " + status, status === "Cancelled" ? "warning" : "info");
+      commit();
+      return clone(r);
     },
 
     // ---- menu
@@ -398,22 +496,29 @@
       const tt = totals(tab.lines, pct);
       const tendered = opts.method === "Cash" ? Number(opts.tendered) : tt.total;
       if (opts.method === "Cash" && !(tendered >= tt.total)) fail("Cash received must be at least Rs " + tt.total.toLocaleString() + ".");
+      const phone = String(opts.phone || "").replace(/[\s-]/g, "");
+      if (phone && !/^03\d{9}$/.test(phone)) fail("Enter the customer's mobile as 03XXXXXXXXX, or leave it blank.");
       const bill = { no: "B-" + (++db.seq.bill), table: no, orderIds: tab.orders.map(function (o) { return o.id; }), lines: tab.lines, discountPct: pct,
         subtotal: tt.sub, discount: tt.discount, tax: tt.tax, total: tt.total, method: opts.method, tendered: tendered, change: tendered - tt.total,
-        cashier: by, createdAt: now(), status: "Paid" };
+        cashier: by, createdAt: now(), status: "Paid", phone: phone };
       db.bills.push(bill);
       db.orders.forEach(function (o) { if (bill.orderIds.indexOf(o.id) !== -1) { o.billed = true; o.billNo = bill.no; } });
       delete db.billRequested[no];
       log(by, "Payment recorded", bill.no + " · Table " + no + " · Rs " + bill.total.toLocaleString() + " · " + bill.method, "info");
       if (pct) log(by, "Discount applied", bill.no + " · " + pct + "% (Rs " + tt.discount.toLocaleString() + ")", pct > 10 ? "high" : "warning");
       commit();
-      return clone(bill);
+      return forViewer(bill, by);
     },
-    bills: function () { return clone(db.bills).sort(function (a, b) { return b.createdAt - a.createdAt; }); },
-    bill: function (no) { const b = db.bills.find(function (x) { return x.no === no; }); return b ? clone(b) : null; },
+    bills: function (viewer) { return db.bills.map(function (b) { return forViewer(b, viewer); }).sort(function (a, b) { return b.createdAt - a.createdAt; }); },
+    bill: function (no, viewer) { const b = db.bills.find(function (x) { return x.no === no; }); return b ? forViewer(b, viewer) : null; },
+    canSeePhone: canSeePhone,
     refund: function (no, reason, by) {
       const u = findUser(by);
-      if (!u || ["Manager", "Admin"].indexOf(u.role) === -1) fail("Only a manager can issue refunds.");
+      if (!u || ["Manager", "Admin"].indexOf(u.role) === -1) {
+        log(by, "Access denied", "Tried to refund " + no + " (refunds are manager-only)", "high");
+        commit();
+        fail("Access denied: only a manager can issue refunds.");
+      }
       const b = db.bills.find(function (x) { return x.no === no; });
       if (!b) fail("Bill not found.");
       if (b.status === "Refunded") fail(no + " has already been refunded.");
