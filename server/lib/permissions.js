@@ -2,18 +2,23 @@
 const ROLES = Object.freeze(["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]);
 
 const PERMISSIONS = Object.freeze({
+  "menu.read": ["Waiter", "Admin"],
   "orders.write": ["Waiter"],
   "kitchen.read": ["Kitchen"],
   "kitchen.update": ["Kitchen"],
   "billing.pay": ["Cashier", "Manager"],
+  "billing.read": ["Cashier", "Manager", "Admin"],
   "billing.refund": ["Manager"],
   "billing.approveRefund": ["Manager", "Admin"],
+  "approvals.read": ["Manager", "Admin"],
   "customer.phone": ["Manager", "Admin"],
   "reservations.write": ["Waiter", "Manager"],
+  "inventory.read": ["Manager", "Admin"],
   "inventory.write": ["Manager"],
   "reports.read": ["Manager", "Admin"],
   "menu.write": ["Admin"],
   "users.manage": ["Admin"],
+  "settings.write": ["Admin"],
   "audit.read": ["Admin"],
   "risk.read": ["Admin"]
 });

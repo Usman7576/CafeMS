@@ -4,7 +4,8 @@ require("dotenv").config({ quiet: true });
 
 const crypto = require("crypto");
 const { loadConfig } = require("../server/config");
-const { createClient, ensureIndexes } = require("../server/db");
+const { createClient, ensureIndexes, assertTransactionsAvailable } = require("../server/db");
+const { seedCatalog } = require("./seed-data");
 const { hashPassword } = require("../server/lib/passwords");
 
 const STAFF = [
@@ -13,7 +14,8 @@ const STAFF = [
   { username: "chef.imran", name: "Imran Qureshi", role: "Kitchen" },
   { username: "bilal.ahmed", name: "Bilal Ahmed", role: "Cashier" },
   { username: "sara.khan", name: "Sara Khan", role: "Manager" },
-  { username: "farah.admin", name: "Farah Siddiqui", role: "Admin" }
+  { username: "farah.admin", name: "Farah Siddiqui", role: "Admin" },
+  { username: "zain.admin", name: "Zain Abbas", role: "Admin" }
 ];
 
 function randomPassword() {
@@ -27,7 +29,10 @@ async function main() {
   await client.connect();
   try {
     const db = client.db(config.mongoDb);
+    await assertTransactionsAvailable(db);
     await ensureIndexes(db);
+    await seedCatalog(db);
+    await db.collection("settings").updateOne({ _id: "app" }, { $setOnInsert: { kitchenSim: true } }, { upsert: true });
     const users = db.collection("users");
     const base = { failedAttempts: 0, lockedUntil: null, createdAt: new Date(), mfa: { enabled: false } };
 

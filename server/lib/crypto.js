@@ -38,4 +38,9 @@ function decrypt(value, context, keyring) {
   return Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]).toString("utf8");
 }
 
-module.exports = { randomToken, hashToken, safeEqual, encrypt, decrypt };
+// A keyed hash for exact-match lookups of encrypted values, such as a phone number
+function blindIndex(value, key) {
+  return crypto.createHmac("sha256", key).update(String(value)).digest("hex");
+}
+
+module.exports = { randomToken, hashToken, safeEqual, encrypt, decrypt, blindIndex };

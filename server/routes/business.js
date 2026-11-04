@@ -1,0 +1,164 @@
+// Business API. Each route states its permission; ownership and business rules live in the services.
+const express = require("express");
+const schemas = require("../lib/schemas");
+const { TABLES, ACTIVE_ORDER_STATUSES, TAX_RATE, DISCOUNT_LIMIT } = require("../lib/domain");
+const { AppError } = require("../lib/errors");
+const { can } = require("../lib/permissions");
+const { toCsv } = require("../lib/csv");
+const { inTransaction, idempotentTransaction } = require("../lib/tx");
+const { validate } = require("../middleware/auth");
+const { recordEvent } = require("../services/auditLog");
+
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const params = (schema) => validate(schema, "params");
+
+function createBusinessRouter({ db, middleware, services, personalLimiter }) {
+  const router = express.Router();
+  const { requireAuth, requirePermission, requireStepUp } = middleware;
+  const { catalog, orderService, billing, reservations, approvals, userService } = services;
+  const allow = (permission) => [requireAuth, requirePermission(permission)];
+
+  const tx = (work) => wrap(async (req, res) => res.json(await inTransaction(db, (session) => work(req, session))));
+  const once = (work, status = 200) => wrap(async (req, res) => {
+    const outcome = await idempotentTransaction(db, req, async (session) => ({ status, body: await work(req, session) }));
+    res.status(outcome.status).json(outcome.body);
+  });
+  const numericId = (req) => Number(req.validParams.id);
+  const tableNumber = (req) => {
+    const no = Number(req.validParams.no);
+    if (!TABLES.some((t) => t.no === no)) throw new AppError(404, "not_found", "Table not found.");
+    return no;
+  };
+
+  // ---------- Menu ----------
+  router.get("/menu", ...allow("menu.read"), wrap(async (req, res) => {
+    res.json({ items: can(req.auth.user.role, "menu.write") ? await catalog.listForAdmin() : await catalog.listForSale() });
+  }));
+  router.post("/menu", ...allow("menu.write"), validate(schemas.menuItem), wrap(async (req, res) => {
+    const id = await inTransaction(db, (session) => catalog.saveItem(req, null, req.body, session));
+    res.status(201).json({ id });
+  }));
+  router.put("/menu/:id", ...allow("menu.write"), params(schemas.params.numericId), validate(schemas.menuItem), tx(async (req, session) => ({ id: await catalog.saveItem(req, numericId(req), req.body, session) })));
+  router.delete("/menu/:id", ...allow("menu.write"), params(schemas.params.numericId), wrap(async (req, res) => {
+    await inTransaction(db, (session) => catalog.deleteItem(req, numericId(req), session));
+    res.status(204).end();
+  }));
+
+  // ---------- Inventory ----------
+  router.get("/inventory", ...allow("inventory.read"), wrap(async (_req, res) => res.json({ items: await catalog.listInventory() })));
+  router.post("/inventory/:id/adjust", ...allow("inventory.write"), params(schemas.params.numericId), validate(schemas.stockAdjustment),
+    tx((req, session) => catalog.adjustStock(req, numericId(req), req.body.delta, req.body.reason, session)));
+
+  // ---------- Orders and tables (waiter, own orders only) ----------
+  router.get("/orders", ...allow("orders.write"), wrap(async (req, res) => res.json({ orders: await orderService.listOwn(req.auth.user.username) })));
+  router.post("/orders", ...allow("orders.write"), validate(schemas.placeOrder), once((req, session) => orderService.place(req, req.body, session), 201));
+  router.put("/orders/:id", ...allow("orders.write"), params(schemas.params.orderId), validate(schemas.updateOrder), tx((req, session) => orderService.update(req, req.validParams.id, req.body, session)));
+  router.post("/orders/:id/serve", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.serve(req, req.validParams.id, session)));
+  router.post("/orders/:id/cancel", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.cancel(req, req.validParams.id, session)));
+  router.get("/tables", ...allow("orders.write"), wrap(async (req, res) => res.json({ tables: await orderService.tableStates(req.auth.user.username) })));
+  router.post("/tables/:no/request-bill", ...allow("orders.write"), params(schemas.params.tableNo), wrap(async (req, res) => {
+    const no = tableNumber(req);
+    await inTransaction(db, (session) => orderService.requestBill(req, no, session));
+    res.status(204).end();
+  }));
+
+  // ---------- Kitchen ----------
+  router.get("/kitchen/tickets", ...allow("kitchen.read"), wrap(async (_req, res) => res.json({ tickets: await orderService.kitchenTickets() })));
+  router.post("/kitchen/tickets/:id/status", ...allow("kitchen.update"), params(schemas.params.orderId), validate(schemas.kitchenStatus),
+    tx((req, session) => orderService.kitchenUpdate(req, req.validParams.id, req.body.status, session)));
+
+  // ---------- Billing ----------
+  router.get("/billing/open-tables", ...allow("billing.pay"), wrap(async (_req, res) => res.json({ tables: await billing.openTables() })));
+  router.post("/billing/tables/:no/pay", ...allow("billing.pay"), params(schemas.params.tableNo), validate(schemas.pay), once((req, session) => billing.pay(req, tableNumber(req), req.body, session), 201));
+  // Past days are for roles with report access; a cashier works with today's bills only
+  router.get("/bills", ...allow("billing.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => {
+    res.json({ bills: await billing.list(can(req.auth.user.role, "reports.read") ? req.validQuery : {}) });
+  }));
+  router.get("/bills/:no", ...allow("billing.read"), params(schemas.params.billNo), wrap(async (req, res) => res.json(await billing.get(req.validParams.no))));
+  router.get("/bills/:no/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.billNo), wrap(async (req, res) => res.json({ phone: await billing.revealPhone(req, req.validParams.no) })));
+  router.post("/bills/:no/refund", ...allow("billing.refund"), params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
+    const outcome = await idempotentTransaction(db, req, (session) => billing.refund(req, req.validParams.no, req.body.reason, session));
+    res.status(outcome.status).json(outcome.body);
+  }));
+
+  // ---------- Approvals: the deciding person confirms an authenticator code first ----------
+  router.get("/approvals", ...allow("approvals.read"), wrap(async (req, res) => res.json({ approvals: await approvals.listFor(req.auth.user.role) })));
+  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), tx((req, session) => approvals.approve(req, req.validParams.id, session)));
+  router.post("/approvals/:id/reject", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
+    await inTransaction(db, (session) => approvals.reject(req, req.validParams.id, session));
+    res.status(204).end();
+  }));
+
+  // ---------- Reservations ----------
+  router.get("/reservations", ...allow("reservations.write"), validate(schemas.reservationQuery, "query"), wrap(async (req, res) => res.json({ reservations: await reservations.list(req.validQuery) })));
+  router.post("/reservations", ...allow("reservations.write"), validate(schemas.reservation), once((req, session) => reservations.create(req, req.body, session), 201));
+  router.post("/reservations/:id/status", ...allow("reservations.write"), params(schemas.params.reservationId), validate(schemas.reservationStatus),
+    tx((req, session) => reservations.setStatus(req, req.validParams.id, req.body.status, session)));
+  router.get("/reservations/:id/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.reservationId), wrap(async (req, res) => res.json({ phone: await reservations.revealPhone(req, req.validParams.id) })));
+
+  // ---------- Reports and exports: limited and recorded, because bulk export is how insiders take data ----------
+  router.get("/reports/sales", ...allow("reports.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => res.json(await billing.salesReport(req.validQuery.date))));
+  router.get("/reports/sales.csv", ...allow("reports.read"), personalLimiter("export", 10), validate(schemas.salesQuery, "query"), wrap(async (req, res) => {
+    const bills = await billing.list(req.validQuery);
+    const rows = [["Bill", "Time", "Table", "Method", "Subtotal", "Discount", "Tax", "Total", "Status"]]
+      .concat(bills.map((b) => [b.no, b.createdAt.toISOString(), b.table, b.method, b.subtotal, b.discount, b.tax, b.total, b.status]));
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Report exported", details: `Sales CSV · ${bills.length} bills`, severity: "warning" });
+    res.attachment("sales.csv").type("text/csv").send(toCsv(rows));
+  }));
+
+  // ---------- Audit log ----------
+  const auditRows = (query) => {
+    const filter = {};
+    if (query.severity) filter.severity = query.severity;
+    if (query.before) filter.at = { $lt: new Date(query.before) };
+    return db.collection("audit_events").find(filter, { projection: { _id: 0 } }).sort({ at: -1, _id: -1 }).limit(query.limit).toArray();
+  };
+  router.get("/audit", ...allow("audit.read"), validate(schemas.auditQuery, "query"), wrap(async (req, res) => res.json({ entries: await auditRows(req.validQuery) })));
+  router.get("/audit.csv", ...allow("audit.read"), personalLimiter("export", 10), validate(schemas.auditQuery, "query"), wrap(async (req, res) => {
+    const entries = await auditRows(req.validQuery);
+    const rows = [["Time", "User", "Role", "Action", "Details", "Severity", "IP"]].concat(entries.map((e) => [e.at.toISOString(), e.actor, e.role, e.action, e.details, e.severity, e.ip]));
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Audit log exported", details: `${entries.length} entries`, severity: "warning" });
+    res.attachment("audit.csv").type("text/csv").send(toCsv(rows));
+  }));
+
+  // ---------- Settings: an allow-list, so no other key can ever be written ----------
+  router.get("/settings", ...allow("settings.write"), wrap(async (_req, res) => {
+    const doc = await db.collection("settings").findOne({ _id: "app" });
+    res.json({ kitchenSim: Boolean(doc && doc.kitchenSim) });
+  }));
+  router.put("/settings", ...allow("settings.write"), validate(schemas.settings), wrap(async (req, res) => {
+    await db.collection("settings").updateOne({ _id: "app" }, { $set: { kitchenSim: req.body.kitchenSim } }, { upsert: true });
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Setting changed", details: `kitchenSim = ${req.body.kitchenSim}` });
+    res.json({ kitchenSim: req.body.kitchenSim });
+  }));
+
+  // ---------- Snapshot: one role-filtered read for the screens. Each role gets only its own data. ----------
+  router.get("/snapshot", requireAuth, wrap(async (req, res) => {
+    const { username, role } = req.auth.user;
+    const allowed = (permission) => can(role, permission);
+    const snapshot = {
+      constants: { tables: TABLES, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: TAX_RATE, discountLimit: Object.hasOwn(DISCOUNT_LIMIT, role) ? DISCOUNT_LIMIT[role] : 0 }
+    };
+    const parts = [];
+    const add = (key, load) => parts.push(load().then((value) => { snapshot[key] = value; }));
+    if (allowed("menu.read")) add("menu", () => (allowed("menu.write") ? catalog.listForAdmin() : catalog.listForSale()));
+    if (allowed("orders.write")) {
+      add("orders", () => orderService.listOwn(username));
+      add("tables", () => orderService.tableStates(username));
+    }
+    if (allowed("kitchen.read")) add("tickets", () => orderService.kitchenTickets());
+    if (allowed("billing.pay") || allowed("reports.read")) add("openTables", () => billing.openTables());
+    if (allowed("billing.read")) add("bills", () => billing.list());
+    if (allowed("inventory.read")) add("inventory", () => catalog.listInventory());
+    if (allowed("reservations.write")) add("reservations", () => reservations.list());
+    if (allowed("reports.read")) add("sales", () => billing.salesReport());
+    if (allowed("approvals.read")) add("approvals", () => approvals.listFor(role));
+    if (allowed("users.manage")) add("users", () => userService.list());
+    await Promise.all(parts);
+    res.json(snapshot);
+  }));
+
+  return router;
+}
+
+module.exports = { createBusinessRouter };

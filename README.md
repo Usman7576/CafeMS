@@ -7,7 +7,7 @@ The prototype covers the full service loop across all five staff roles. A waiter
 
 ## Current status
 
-Security hardening is in progress on the `security-hardening` branch. Sign-in, MFA, sessions and page access are now enforced by the server. Orders, billing, stock and reports still run in the browser with sample data until Phases 2 and 3 move them to the server, so those screens are not yet secure.
+Security hardening is in progress on the `security-hardening` branch. Sign-in, MFA, sessions, page access and all business rules now run on the server, through the API in `server/`. The screens still use browser sample data until Phase 3 connects them to that API, so they are not yet secure.
 
 There are no shared or default passwords. In development, `npm run seed:dev` creates the staff accounts with random passwords, shown once. Each person adds an authenticator app at first sign-in.
 
@@ -80,16 +80,17 @@ Keyboard: **Ctrl/⌘ + K** opens quick search on any staff page. **Esc** closes 
 
 ## Run locally
 
-Requires Node.js 20+ and a running MongoDB server.
+Requires Node.js 20+ and Docker Desktop. MongoDB runs as a replica set in Docker, because payments and orders use transactions.
 
 ```bash
 npm install
+docker compose up -d --wait
 npm run setup:env
 npm run seed:dev
 npm start
 ```
 
-Open http://localhost:3000. `setup:env` generates the secret keys in `.env`, which git ignores. The server refuses to start if a key is missing or weak.
+Open http://localhost:3000. `setup:env` generates the secret keys in `.env`, which git ignores. The server refuses to start if a key is missing or weak, or if MongoDB is not a replica set.
 
 Run the tests with `npm test`. They use a temporary database and do not touch your data.
 

@@ -12,13 +12,14 @@ const newKey = () => `k1:${crypto.randomBytes(32).toString("base64")}`;
 const defaults = {
   NODE_ENV: "development",
   PORT: "3000",
-  MONGODB_URI: "mongodb://127.0.0.1:27017",
+  MONGODB_URI: "mongodb://127.0.0.1:27018/?directConnection=true",
   MONGODB_DB: "cafems",
   APP_ORIGIN: "http://localhost:3000",
   JWT_KEYS: newKey(),
   JWT_ACTIVE_KEY: "k1",
   DATA_KEYS: newKey(),
-  DATA_ACTIVE_KEY: "k1"
+  DATA_ACTIVE_KEY: "k1",
+  BLIND_INDEX_KEY: crypto.randomBytes(32).toString("base64")
 };
 
 const missing = Object.keys(defaults).filter((name) => !has(name));

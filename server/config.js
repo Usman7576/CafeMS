@@ -49,6 +49,8 @@ function loadConfig(env) {
 
   const jwt = parseKeyring(env.JWT_KEYS, env.JWT_ACTIVE_KEY, "JWT_KEYS");
   const data = parseKeyring(env.DATA_KEYS, env.DATA_ACTIVE_KEY, "DATA_KEYS");
+  const blindIndexKey = parseKeyring(`index:${env.BLIND_INDEX_KEY || ""}`, "index", "BLIND_INDEX_KEY").keys.get("index");
+  if ([...jwt.keys.values(), ...data.keys.values()].some((k) => k.equals(blindIndexKey))) throw new ConfigError("BLIND_INDEX_KEY must be a separate key.");
   for (const a of jwt.keys.values()) {
     for (const b of data.keys.values()) {
       if (a.equals(b)) throw new ConfigError("JWT_KEYS and DATA_KEYS must not share a key.");
@@ -66,6 +68,8 @@ function loadConfig(env) {
     trustProxy: s.TRUST_PROXY,
     jwt,
     data,
+    blindIndexKey,
+    refundApprovalLimit: 5000,
     limits: Object.freeze({
       jsonBody: "100kb",
       apiPerMinute: 300,

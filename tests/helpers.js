@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const request = require("supertest");
-const { MongoMemoryServer } = require("mongodb-memory-server");
+const { MongoMemoryReplSet } = require("mongodb-memory-server");
 const { MongoClient } = require("mongodb");
 const { authenticator } = require("otplib");
 const { loadConfig } = require("../server/config");
@@ -21,6 +21,7 @@ function testEnv(extra = {}) {
     JWT_ACTIVE_KEY: "k1",
     DATA_KEYS: `k1:${crypto.randomBytes(32).toString("base64")}`,
     DATA_ACTIVE_KEY: "k1",
+    BLIND_INDEX_KEY: crypto.randomBytes(32).toString("base64"),
     ...extra
   };
 }
@@ -31,7 +32,7 @@ function testConfig(limits = {}) {
 }
 
 async function startDb() {
-  const server = await MongoMemoryServer.create();
+  const server = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   const client = await MongoClient.connect(server.getUri());
   const db = client.db("cafems_test");
   await ensureIndexes(db);
@@ -64,6 +65,7 @@ function browser(app) {
     let req = request(app)[method](path);
     const cookie = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
     if (cookie) req = req.set("Cookie", cookie);
+    if (opts.headers) req = req.set(opts.headers);
     if (method !== "get" && opts.origin !== null) req = req.set("Origin", opts.origin || ORIGIN);
     if (method !== "get" && csrf && !opts.noCsrf) req = req.set("X-CSRF-Token", opts.csrf || csrf);
     if (body !== undefined) req = req.send(body);
@@ -74,6 +76,7 @@ function browser(app) {
     jar,
     get: (path, opts) => send("get", path, undefined, opts),
     post: (path, body, opts) => send("post", path, body, opts),
+    put: (path, body, opts) => send("put", path, body, opts),
     delete: (path, opts) => send("delete", path, undefined, opts),
     loadCsrf: async () => {
       const res = await send("get", "/api/v1/auth/me");

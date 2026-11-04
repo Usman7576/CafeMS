@@ -58,12 +58,18 @@ function createAuthMiddleware(config, db, sessions) {
   return { requireAuth, requirePermission, requireStepUp };
 }
 
-// Strict schema validation; unknown fields and wrong types (such as NoSQL operator objects) are refused
+// Strict schema validation; unknown fields and wrong types (such as NoSQL operator objects) are refused.
+// Only messages written for users (marked "!") are shown; anything else stays generic.
+const TARGET = Object.freeze({ body: "body", params: "validParams", query: "validQuery" });
+
 function validate(schema, source = "body") {
   return function validateInput(req, _res, next) {
     const result = schema.safeParse(req[source]);
-    if (!result.success) return next(invalidInput());
-    req[source === "body" ? "body" : "validParams"] = result.data;
+    if (!result.success) {
+      const friendly = result.error.issues.find((issue) => String(issue.message).startsWith("!"));
+      return next(friendly ? new AppError(400, "invalid_input", friendly.message.slice(1)) : invalidInput());
+    }
+    req[TARGET[source]] = result.data;
     return next();
   };
 }

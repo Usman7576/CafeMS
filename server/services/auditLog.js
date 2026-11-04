@@ -7,7 +7,7 @@ function clean(value) {
   return String(value === undefined || value === null ? "" : value).replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, " ").slice(0, MAX_TEXT);
 }
 
-async function recordEvent(db, req, event) {
+async function recordEvent(db, req, event, options = {}) {
   await db.collection("audit_events").insertOne({
     at: new Date(),
     actor: clean(event.actor || "system"),
@@ -18,7 +18,7 @@ async function recordEvent(db, req, event) {
     ip: req ? clean(req.ip) : "",
     userAgent: req ? clean(req.get("user-agent")) : "",
     requestId: req ? clean(req.id) : ""
-  });
+  }, options.session ? { session: options.session } : undefined);
 }
 
 module.exports = { recordEvent, clean };

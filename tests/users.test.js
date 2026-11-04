@@ -46,12 +46,25 @@ describe("invitations", () => {
     assert.equal((await a.client.post(INVITE, invitation("needs.stepup"))).body.error.code, "step_up_required");
   });
 
-  test("one Admin alone cannot create another Admin", async () => {
+  test("one Admin alone cannot create another Admin; a second Admin must approve", async () => {
     const a = await admin();
     await stepUp(a);
     const res = await a.client.post(INVITE, invitation("second.admin", "Admin"));
-    assert.equal(res.status, 403);
+    assert.equal(res.status, 202);
     assert.equal(await db.collection("users").findOne({ username: "second.admin" }), null);
+
+    const APPROVE = `/api/v1/approvals/${res.body.approvalId}/approve`;
+    await stepUp(a);
+    assert.equal((await a.client.post(APPROVE, {})).body.error.code, "same_person");
+
+    const b = await admin();
+    assert.equal((await b.client.post(APPROVE, {})).body.error.code, "step_up_required");
+    await stepUp(b);
+    const done = await b.client.post(APPROVE, {});
+    assert.equal(done.status, 200);
+    assert.ok(done.body.setupUrl);
+    assert.equal((await db.collection("users").findOne({ username: "second.admin" })).role, "Admin");
+    assert.equal((await b.client.post(APPROVE, {})).body.error.code, "already_decided");
   });
 
   test("the whole flow: invite, set password, enrol, sign in", async () => {
