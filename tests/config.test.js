@@ -1,0 +1,42 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const crypto = require("crypto");
+const { loadConfig, ConfigError } = require("../server/config");
+const { testEnv } = require("./helpers");
+
+const refuses = (env, pattern) => assert.throws(() => loadConfig(env), (e) => e instanceof ConfigError && pattern.test(e.message));
+
+test("accepts valid settings and freezes them", () => {
+  const config = loadConfig(testEnv());
+  assert.equal(config.appOrigin, "http://localhost:3000");
+  assert.ok(Object.isFrozen(config));
+});
+
+test("refuses to start without secrets", () => {
+  refuses(testEnv({ JWT_KEYS: "" }), /JWT_KEYS/);
+  refuses(testEnv({ DATA_KEYS: undefined }), /DATA_KEYS/);
+});
+
+test("refuses weak or wrongly sized keys", () => {
+  refuses(testEnv({ JWT_KEYS: `k1:${Buffer.alloc(32, 1).toString("base64")}` }), /weak/);
+  refuses(testEnv({ DATA_KEYS: `k1:${crypto.randomBytes(16).toString("base64")}` }), /32 random bytes/);
+});
+
+test("refuses an active key ID with no matching key", () => {
+  refuses(testEnv({ JWT_ACTIVE_KEY: "k9" }), /active key/);
+});
+
+test("refuses the same key for tokens and data", () => {
+  const shared = `k1:${crypto.randomBytes(32).toString("base64")}`;
+  refuses(testEnv({ JWT_KEYS: shared, DATA_KEYS: shared }), /must not share/);
+});
+
+test("production requires https", () => {
+  refuses(testEnv({ NODE_ENV: "production", APP_ORIGIN: "http://cafe.example" }), /https/);
+  assert.equal(loadConfig(testEnv({ NODE_ENV: "production", APP_ORIGIN: "https://cafe.example" })).usesTls, true);
+});
+
+test("error messages never contain secret values", () => {
+  const secret = "c2VjcmV0LXZhbHVlLXRoYXQtbXVzdC1ub3QtbGVhaw";
+  assert.throws(() => loadConfig(testEnv({ JWT_KEYS: `k1:${secret}` })), (e) => !e.message.includes(secret));
+});

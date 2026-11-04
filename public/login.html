@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff sign in — Cafe Management System</title>
+  <meta name="description" content="Staff sign in for the Cafe Management System.">
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=4.0">
+</head>
+<body>
+  <div class="auth">
+    <aside class="auth-aside">
+      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Cafe Management System</small></span></a>
+      <div>
+        <h2>Everything for your shift, in one place.</h2>
+        <p>Waiters, kitchen, cashiers, managers and admins each get a workspace built for their job, and nothing more.</p>
+        <ul class="auth-points">
+          <li><span class="icon-tile"><i data-icon="users" data-size="18"></i></span><span><b>Role-based access</b>The screens you see depend on the role your admin gave you.</span></li>
+          <li><span class="icon-tile"><i data-icon="clock" data-size="18"></i></span><span><b>Automatic sign-out</b>Idle sessions end after 5 minutes to protect shared devices.</span></li>
+          <li><span class="icon-tile"><i data-icon="shield" data-size="18"></i></span><span><b>Protected accounts</b>Every sign-in needs a password and an authenticator code.</span></li>
+        </ul>
+      </div>
+      <p class="foot">© <span data-year></span> Cafe Management System · SSD Semester Project</p>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-top">
+        <a href="index.html" class="brand auth-mobile-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+        <a href="index.html"><i data-icon="arrow-left" data-size="16"></i>Back to home</a>
+      </div>
+
+      <div class="auth-form-wrap">
+        <div class="auth-form">
+          <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
+
+          <!-- Step 1: password -->
+          <section class="auth-step" id="stepPassword">
+            <h1>Staff sign in</h1>
+            <p class="sub">Welcome back. Enter your staff credentials to open your workspace.</p>
+            <form id="loginForm" novalidate>
+              <div class="field">
+                <label for="username">Username</label>
+                <div class="input-wrap">
+                  <i data-icon="user" data-size="18"></i>
+                  <input class="input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" required>
+                </div>
+              </div>
+              <div class="field">
+                <label for="password">Password</label>
+                <div class="input-wrap">
+                  <i data-icon="lock" data-size="18"></i>
+                  <input class="input has-action" type="password" id="password" name="password" autocomplete="current-password" maxlength="128" required aria-describedby="capsWarn">
+                  <button type="button" class="input-action" id="togglePw" aria-label="Show password" aria-controls="password" aria-pressed="false"><i data-icon="eye" data-size="18"></i></button>
+                </div>
+                <div class="field-warn" id="capsWarn"><i data-icon="alert" data-size="14"></i>Caps Lock is on</div>
+              </div>
+              <div class="row">
+                <span class="auth-note">Shared device? Always sign out.</span>
+                <a href="#" id="forgotLink">Forgot password?</a>
+              </div>
+              <button type="submit" class="btn btn-dark btn-lg btn-block" id="loginBtn" disabled>Sign in</button>
+              <noscript><p class="field-error auth-noscript">JavaScript is required to sign in.</p></noscript>
+            </form>
+          </section>
+
+          <!-- Step 2: authenticator code -->
+          <section class="auth-step" id="stepMfa" hidden>
+            <h1>Enter your code</h1>
+            <p class="sub" id="mfaHint">Open your authenticator app and enter the 6-digit code for CafeMS.</p>
+            <form id="mfaForm" novalidate>
+              <div class="field">
+                <label for="mfaCode" id="mfaLabel">Authenticator code</label>
+                <div class="input-wrap">
+                  <i data-icon="shield" data-size="18"></i>
+                  <input class="input" type="text" id="mfaCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="11" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-dark btn-lg btn-block" id="mfaBtn">Verify</button>
+            </form>
+            <button type="button" class="auth-link" id="useRecovery">Lost your phone? Use a recovery code</button>
+          </section>
+
+          <!-- First sign-in: add an authenticator -->
+          <section class="auth-step" id="stepEnroll" hidden>
+            <h1>Protect your account</h1>
+            <p class="sub">Scan this code with an authenticator app such as Google Authenticator or Microsoft Authenticator.</p>
+            <img class="mfa-qr" id="enrollQr" alt="QR code for adding CafeMS to your authenticator app">
+            <p class="auth-note">Can't scan it? Enter this key in the app:</p>
+            <code class="mfa-key" id="enrollKey"></code>
+            <form id="enrollForm" novalidate>
+              <div class="field">
+                <label for="enrollCode">6-digit code from the app</label>
+                <div class="input-wrap">
+                  <i data-icon="shield" data-size="18"></i>
+                  <input class="input" type="text" inputmode="numeric" id="enrollCode" autocomplete="one-time-code" maxlength="6" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-dark btn-lg btn-block" id="enrollBtn">Turn on protection</button>
+            </form>
+          </section>
+
+          <!-- After enrolment: recovery codes, shown once -->
+          <section class="auth-step" id="stepRecovery" hidden>
+            <h1>Save your recovery codes</h1>
+            <p class="sub">Each code works once if you lose your phone. They are shown only now, so store them somewhere safe.</p>
+            <ul class="recovery-list" id="recoveryList"></ul>
+            <label class="recovery-confirm"><input type="checkbox" id="recoverySaved"> I have saved these codes</label>
+            <button type="button" class="btn btn-dark btn-lg btn-block" id="recoveryDone" disabled>Continue to my workspace</button>
+          </section>
+        </div>
+      </div>
+
+      <p class="auth-bottom"><i data-icon="lock" data-size="14"></i>Password and authenticator code · Role-based access</p>
+    </main>
+  </div>
+
+  <!-- Forgot password modal -->
+  <div class="modal-backdrop" id="forgotModal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="icon-tile"><i data-icon="key" data-size="20"></i></div>
+        <div>
+          <h3 id="forgotTitle">Reset your password</h3>
+          <p>For security, an Admin resets staff passwords. They will verify who you are, then give you a one-time link that expires after 24 hours.</p>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-dark" data-close="forgotModal" data-autofocus>Got it</button></div>
+    </div>
+  </div>
+
+  <script src="js/icons.js?v=4.0"></script>
+  <script src="js/common.js?v=4.0"></script>
+  <script src="js/login.js?v=4.0"></script>
+</body>
+</html>

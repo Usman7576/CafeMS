@@ -5,19 +5,11 @@ The prototype covers the full service loop across all five staff roles. A waiter
 
 > **Live demo:** _add your public URL here_
 
-## Demo accounts
+## Current status
 
-Sign in with any account below and **any password that meets the rules**: 8+ characters, with upper- and lower-case letters and a number. Don't use a real password.
+Security hardening is in progress on the `security-hardening` branch. Sign-in, MFA, sessions and page access are now enforced by the server. Orders, billing, stock and reports still run in the browser with sample data until Phases 2 and 3 move them to the server, so those screens are not yet secure.
 
-| Role | Username | Lands on |
-|---|---|---|
-| **Waiter** (primary role) | `m.usman` | Waiter dashboard |
-| Kitchen | `chef.imran` | Kitchen display |
-| Cashier | `bilal.ahmed` | Billing |
-| Manager | `sara.khan` | Overview |
-| Admin / Owner | `farah.admin` | Overview |
-
-`old.staff` is a **disabled** account, and sign-in is refused. Unknown usernames get the same generic error, so it never reveals which accounts exist.
+There are no shared or default passwords. In development, `npm run seed:dev` creates the staff accounts with random passwords, shown once. Each person adds an authenticator app at first sign-in.
 
 Activity write-ups: [SUBMISSION.md](SUBMISSION.md) (Activity 1), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) (Activity 2: role-based prototype), and [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md) (Activity 3: parallel module development and integration).
 
@@ -25,8 +17,9 @@ Activity write-ups: [SUBMISSION.md](SUBMISSION.md) (Activity 1), [SUBMISSION-ACT
 
 | Page | Roles | What it does |
 |---|---|---|
-| `index.html` | Public | Landing page: purpose, 9 modules, roles, SR-1 to SR-8, demo accounts |
-| `login.html` | Public | Sign-in with validation, show/hide password, Caps Lock warning, rules checklist, lockout |
+| `index.html` | Public | Landing page: purpose, 9 modules, roles, SR-1 to SR-8 |
+| `login.html` | Public | Password and authenticator sign-in, MFA enrolment, recovery codes |
+| `setup.html` | Public | Set a password from a single-use Admin invitation or reset link |
 | `dashboard.html` | Waiter | Shift KPIs, my orders (filters), ready-to-serve queue, floor plan, request bill |
 | `order.html` | Waiter | Take or **edit** an order: table picker, menu search/filter, ticket, live totals, notes |
 | `kitchen.html` | Kitchen | Live ticket board (New → Preparing → Ready) with colour-coded ticket timers |
@@ -85,34 +78,20 @@ js/<page>.js         one script per page
 
 Keyboard: **Ctrl/⌘ + K** opens quick search on any staff page. **Esc** closes dialogs.
 
-## Run locally with MongoDB
+## Run locally
 
-MongoDB Compass is a graphical client; it does not run the MongoDB database server by itself. Install and start MongoDB Community Server, or use a MongoDB Atlas connection string. Then:
+Requires Node.js 20+ and a running MongoDB server.
 
 ```bash
 npm install
-copy .env.example .env
+npm run setup:env
+npm run seed:dev
 npm start
 ```
 
-Open http://localhost:3000. The default connection is `mongodb://127.0.0.1:27017`, database `cafems`. You can verify the connection at http://localhost:3000/api/health and inspect the `application_state` collection in Compass.
+Open http://localhost:3000. `setup:env` generates the secret keys in `.env`, which git ignores. The server refuses to start if a key is missing or weak.
 
-For MongoDB Atlas, replace `MONGODB_URI` in `.env` with the connection string from Atlas. Never commit `.env`; it is ignored by git.
-
-To run the UI without MongoDB, use `python -m http.server 8000`; it will use the browser's local cache and will not synchronize to MongoDB.
-
-## Deploy to Netlify
-
-The repository root contains `index.html` and `netlify.toml`, so no build command or framework adapter is required.
-
-1. Push this repository to GitHub, GitLab or Bitbucket.
-2. In Netlify, choose **Add new site → Import an existing project** and select the repository.
-3. Leave the build command empty. Set the publish directory to `.` if Netlify does not detect it automatically.
-4. Deploy the site. Netlify will use the included `netlify.toml` and the custom `404.html` page.
-
-For a manual deploy, drag this repository root (the folder containing `index.html`) onto https://app.netlify.com/drop.
-
-After changing CSS or JS, bump the `?v=` number in the HTML files so browsers load the new files.
+Run the tests with `npm test`. They use a temporary database and do not touch your data.
 
 ## Team
 

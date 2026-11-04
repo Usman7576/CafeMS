@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set your password — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=4.0">
+</head>
+<body>
+  <div class="auth">
+    <aside class="auth-aside">
+      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Cafe Management System</small></span></a>
+      <div>
+        <h2>Set up your staff account.</h2>
+        <p>This link works once and expires after 24 hours. Next you will add an authenticator app.</p>
+      </div>
+      <p class="foot">© <span data-year></span> Cafe Management System · SSD Semester Project</p>
+    </aside>
+    <main class="auth-main">
+      <div class="auth-form-wrap">
+        <div class="auth-form">
+          <h1>Choose a password</h1>
+          <p class="sub">Use something only you know, and not a password from another site.</p>
+          <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
+          <form id="setupForm" novalidate>
+            <div class="field">
+              <label for="newPassword">New password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input" type="password" id="newPassword" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">
+              </div>
+              <ul class="pw-rules" id="pwRules" aria-label="Password requirements">
+                <li data-rule="len">At least 12 characters</li>
+                <li data-rule="upper">One uppercase letter</li>
+                <li data-rule="lower">One lowercase letter</li>
+                <li data-rule="num">One number</li>
+                <li data-rule="sym">One symbol</li>
+              </ul>
+            </div>
+            <div class="field">
+              <label for="confirmPassword">Confirm password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input" type="password" id="confirmPassword" autocomplete="new-password" maxlength="128" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-dark btn-lg btn-block" id="setupBtn">Continue</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/icons.js?v=4.0"></script>
+  <script src="js/common.js?v=4.0"></script>
+  <script src="js/setup.js?v=4.0"></script>
+</body>
+</html>
