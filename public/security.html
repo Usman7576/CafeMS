@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=5.0">
+  <link rel="stylesheet" href="css/style.css?v=5.0">
+</head>
+<body data-page="security">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Security</h2><p>Alerts, requests waiting for a second person, locked accounts and recent high-severity events.</p></div>
+      <a class="btn btn-secondary" href="audit.html"><i data-icon="file" data-size="16"></i>Full audit log</a>
+    </div>
+    <div class="dash-grid">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Open alerts</h3><p>Raised automatically from the audit log. Repeats update the same alert.</p></div></div>
+          <ul class="ready-list" id="alertList"></ul>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>High-severity events</h3><p>Most recent first</p></div></div>
+          <ul class="activity" id="securityEvents"></ul>
+        </section>
+      </div>
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Waiting for approval</h3><p>A different person must decide</p></div></div>
+          <ul class="ready-list" id="approvalList"></ul>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Erase customer data</h3><p>For a customer's request. Removes their number, name and notes; bill totals stay for tax records.</p></div></div>
+          <form class="panel-body" id="eraseForm" novalidate>
+            <div class="alert alert-error" id="eraseErr" role="alert"></div>
+            <div class="field"><label for="erasePhone">Customer mobile number</label><input class="input" id="erasePhone" type="tel" maxlength="13" placeholder="03XXXXXXXXX" autocomplete="off" required></div>
+            <button type="submit" class="btn btn-danger" id="eraseBtn">Erase data</button>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Locked accounts</h3><p>Locks end by themselves after 15 minutes</p></div></div>
+          <ul class="ready-list" id="lockedList"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="js/icons.js?v=5.0"></script>
+  <script src="js/common.js?v=5.0"></script>
+  <script src="js/store.js?v=5.0"></script>
+  <script src="js/app.js?v=5.0"></script>
+  <script src="js/security.js?v=5.0"></script>
+</body>
+</html>

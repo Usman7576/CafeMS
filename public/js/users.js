@@ -13,7 +13,7 @@
   };
   let query = "", roleTarget = null, roleChoice = null;
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     const sel = document.getElementById("uRole");
     Store.ROLES.forEach(function (r) { sel.appendChild(h("option", { value: r, text: r })); });
     document.getElementById("userSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); renderRows(); });
@@ -40,7 +40,7 @@
   function renderStrip() {
     const users = Store.users().filter(function (u) { return u.status === "Active"; });
     const strip = document.getElementById("roleStrip");
-    strip.innerHTML = "";
+    strip.replaceChildren();
     Store.ROLES.forEach(function (r) {
       const n = users.filter(function (u) { return u.role === r; }).length;
       strip.appendChild(h("div", { class: "role-card" }, [h("span", { class: "icon-tile", icon: ROLE_ICON[r], iconSize: 18 }), h("div", null, [h("b", { text: String(n) }), h("span", { text: r === "Kitchen" ? "Kitchen staff" : r + (n === 1 ? "" : "s") })])]));
@@ -53,31 +53,46 @@
     const rows = all.filter(function (u) { return !query || u.name.toLowerCase().indexOf(query) !== -1 || u.username.indexOf(query) !== -1; })
       .sort(function (a, b) { return Store.ROLES.indexOf(b.role) - Store.ROLES.indexOf(a.role) || a.name.localeCompare(b.name); });
     const body = document.getElementById("usersBody");
-    body.innerHTML = "";
+    body.replaceChildren();
     rows.forEach(function (u) {
       const self = u.username === me;
+      const invited = u.status === "Invited";
       const ini = u.name.split(" ").map(function (p) { return p[0]; }).join("").replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase();
       body.appendChild(h("tr", { class: u.status !== "Active" ? "dim" : "" }, [
         h("td", null, [h("div", { class: "person" }, [h("span", { class: "avatar sm", text: ini }), h("div", null, [h("b", { text: u.name + (self ? " (you)" : "") }), h("small", { class: "sub-line mono", text: "@" + u.username })])])]),
         h("td", null, [h("span", { class: "role-tag", icon: ROLE_ICON[u.role], iconSize: 14, text: u.role })]),
-        h("td", null, [h("span", { class: "pill " + (u.status === "Active" ? "pill-ready" : "pill-cancelled"), text: u.status })]),
+        h("td", null, [h("span", { class: "pill " + (u.status === "Active" ? "pill-ready" : invited ? "pill-preparing" : "pill-cancelled"), text: u.locked ? "Locked" : u.status })]),
         h("td", { class: "hide-sm time", text: u.lastLogin ? CMS.dateTime(u.lastLogin) : "Never" }),
         h("td", { class: "actions" }, [h("div", { class: "row-actions" }, self ? [h("span", { class: "muted small", text: "Your account" })] : [
           h("button", { class: "btn btn-secondary btn-sm", text: "Change role", "aria-label": "Change role for " + u.name, onclick: function () { openRole(u); } }),
+          h("button", { class: "btn btn-ghost btn-sm", text: "New link", "aria-label": "Create a new sign-in link for " + u.name, onclick: function () { reset(u); } }),
           h("button", { class: "btn btn-ghost btn-sm", text: u.status === "Active" ? "Disable" : "Enable", "aria-label": (u.status === "Active" ? "Disable " : "Enable ") + u.name, onclick: function () { toggle(u); } })
         ])])
       ]));
     });
   }
 
-  function create(e) {
+  // A change that affects an Admin waits for a second Admin; anything else happens straight away
+  function report(result, done) {
+    if (result.approvalId) CMS.toast(result.message, "info");
+    else done();
+  }
+
+  async function create(e) {
     e.preventDefault();
     const data = { name: document.getElementById("uName").value, username: document.getElementById("uUser").value, role: document.getElementById("uRole").value };
-    const ok = CMS.attempt(function () { Store.addUser(data, me); return true; }, document.getElementById("userErr"));
-    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.inviteUser(data); }); }, document.getElementById("userErr"));
+    if (!result) return;
     delete document.getElementById("uUser").dataset.touched;
     CMS.closeModal("userModal");
-    CMS.toast("Account created for " + data.name.trim() + " (" + data.role + ")", "ok");
+    report(result, function () { CMS.showLink("Invitation for " + data.name.trim(), result); });
+  }
+
+  async function reset(u) {
+    const ok = await CMS.confirm({ title: "Create a new sign-in link for " + u.name + "?", message: "Their password and authenticator stop working now, and they are signed out. They set new ones using the link.", okText: "Create link", danger: true, icon: "key" });
+    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.resetUser(u.username); }); });
+    if (result) report(result, function () { CMS.showLink("New link for " + u.name, result); });
   }
 
   function openRole(u) {
@@ -90,7 +105,7 @@
   }
   function renderRoleOptions() {
     const wrap = document.getElementById("roleOptions");
-    wrap.innerHTML = "";
+    wrap.replaceChildren();
     Store.ROLES.forEach(function (r) {
       wrap.appendChild(h("button", { type: "button", role: "radio", class: "role-opt", "aria-checked": String(r === roleChoice), onclick: function () { roleChoice = r; renderRoleOptions(); } }, [
         h("span", { class: "icon-tile", icon: ROLE_ICON[r], iconSize: 18 }), h("div", null, [h("b", { text: r }), h("small", { text: ROLE_DESC[r] })])
@@ -104,15 +119,17 @@
       const ok = await CMS.confirm({ title: "Grant full admin access?", message: roleTarget.name + " will be able to manage users, roles, prices and the audit log.", okText: "Make admin", danger: true, icon: "shield" });
       if (!ok) return;
     }
-    const ok = CMS.attempt(function () { Store.setRole(roleTarget.username, roleChoice, me); return true; }, document.getElementById("roleErr"));
-    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.setRole(roleTarget.username, roleChoice); }); }, document.getElementById("roleErr"));
+    if (!result) return;
     CMS.closeModal("roleModal");
-    CMS.toast(roleTarget.name + " is now " + roleChoice, "ok");
+    report(result, function () { CMS.toast(roleTarget.name + " is now " + roleChoice, "ok"); });
   }
   async function toggle(u) {
     const disabling = u.status === "Active";
     const ok = await CMS.confirm({ title: (disabling ? "Disable " : "Enable ") + u.name + "?", message: disabling ? "They'll be signed out immediately and won't be able to sign in until re-enabled." : "They'll be able to sign in again with their existing role (" + u.role + ").", okText: disabling ? "Disable account" : "Enable account", danger: disabling, icon: disabling ? "lock" : "key" });
-    if (ok && CMS.attempt(function () { Store.setStatus(u.username, disabling ? "Disabled" : "Active", me); return true; })) CMS.toast(u.name + (disabling ? " disabled" : " enabled"), "ok");
+    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.setStatus(u.username, disabling ? "Disabled" : "Active"); }); });
+    if (result) report(result, function () { CMS.toast(u.name + (disabling ? " disabled" : " enabled"), "ok"); });
   }
 
   function renderMatrix() {

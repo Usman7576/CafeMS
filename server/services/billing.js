@@ -2,10 +2,14 @@
 const { AppError } = require("../lib/errors");
 const { TABLES, DISCOUNT_LIMIT, calculateTotals, maskPhone, dayRange, localDate, localHour } = require("../lib/domain");
 const { encrypt, decrypt, blindIndex } = require("../lib/crypto");
-const { nextSequence } = require("../lib/tx");
+const { nextSequence, inTransaction } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
+const { enqueue } = require("./outbox");
+const { withTimeout } = require("./gateway");
 
-function createBillingService({ config, db, orderService, approvals }) {
+const OPEN_FOR_PAYMENT = ["Pending Payment", "Payment Failed"];
+
+function createBillingService({ config, db, orderService, approvals, gateway, logger }) {
   const bills = db.collection("bills");
   const orders = db.collection("orders");
   const tables = db.collection("tables");
@@ -42,7 +46,7 @@ function createBillingService({ config, db, orderService, approvals }) {
       const lines = aggregateLines(onTable);
       const doc = tableDocs.find((d) => d._id === t.no);
       return {
-        no: t.no, seats: t.seats, lines, totals: calculateTotals(lines), allServed: onTable.every((o) => o.status === "Served"),
+        no: t.no, seats: t.seats, lines, totals: calculateTotals(lines), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
         billRequested: doc && doc.billRequestedAt ? doc.billRequestedAt : null,
         waiters: [...new Set(onTable.map((o) => names.get(o.waiter) || o.waiter))],
         since: new Date(Math.min(...onTable.map((o) => o.createdAt.getTime())))
@@ -75,7 +79,7 @@ function createBillingService({ config, db, orderService, approvals }) {
     const bill = {
       _id: billNo, table: no, orderIds: open.map((o) => o._id), lines, discountPct: input.discountPct, subtotal: totals.sub,
       discount: totals.discount, tax: totals.tax, total: totals.total, method: input.method, tendered, change: tendered - totals.total,
-      cashier: actor.username, createdAt: new Date(), status: "Paid"
+      cashier: actor.username, createdAt: new Date(), status: input.method === "Cash" ? "Paid" : "Pending Payment"
     };
     if (input.phone) {
       bill.phoneEnc = encrypt(input.phone, `bill-phone:${billNo}`, config.data);
@@ -86,11 +90,81 @@ function createBillingService({ config, db, orderService, approvals }) {
     await orders.updateMany({ _id: { $in: bill.orderIds } }, { $set: { billed: true, billNo } }, { session });
     await tables.updateOne({ _id: no }, { $unset: { billRequestedAt: "" } }, { session });
 
-    await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment recorded", details: `${billNo} · Table ${no} · Rs ${bill.total} · ${bill.method}` }, { session });
+    await recordEvent(db, req, {
+      actor: actor.username, role: actor.role, action: bill.status === "Paid" ? "Payment recorded" : "Payment started",
+      details: `${billNo} · Table ${no} · Rs ${bill.total} · ${bill.method}`
+    }, { session });
+    if (bill.status === "Paid" && input.phone) await enqueue(db, "receipt", { billNo }, session);
     if (input.discountPct) {
       await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Discount applied", details: `${billNo} · ${input.discountPct}% (Rs ${bill.discount})`, severity: input.discountPct > 10 ? "high" : "warning" }, { session });
     }
     return billView(bill);
+  }
+
+  // Records the gateway's answer. The amount must match the stored bill, whatever the gateway says.
+  async function recordGatewayResult(req, no, result, actorName) {
+    const actor = req.auth ? req.auth.user : { username: actorName, role: "" };
+    let mismatch = null;
+    return inTransaction(db, async (session) => {
+      const bill = await bills.findOne({ _id: no }, { session });
+      if (!bill) throw new AppError(404, "not_found", "Bill not found.");
+      if (!OPEN_FOR_PAYMENT.includes(bill.status)) return bill;
+      if (result.amount !== bill.total) {
+        mismatch = `${no}: expected Rs ${bill.total}, gateway reported Rs ${result.amount}`;
+        throw new AppError(409, "amount_mismatch", "The gateway reported a different amount, so the payment was not accepted.");
+      }
+      const status = result.status === "approved" ? "Paid" : "Payment Failed";
+      const updated = await bills.findOneAndUpdate(
+        { _id: no, status: { $in: OPEN_FOR_PAYMENT } },
+        { $set: { status, gatewayRef: result.gatewayRef || null, settledAt: new Date() } },
+        { returnDocument: "after", session }
+      );
+      await recordEvent(db, req, {
+        actor: actor.username, role: actor.role, action: status === "Paid" ? "Payment recorded" : "Payment declined",
+        details: `${no} · Rs ${bill.total} · ${bill.method}`, severity: status === "Paid" ? "info" : "warning"
+      }, { session });
+      if (status === "Paid" && bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
+      return updated;
+    }).catch(async (error) => {
+      // Written after the rollback, because the record of a refused payment must survive it
+      if (mismatch) await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment amount mismatch", details: mismatch, severity: "high" });
+      throw error;
+    });
+  }
+
+  // Soft dependency: if the gateway is slow or down, the bill stays Pending Payment and can be retried
+  async function settle(req, no) {
+    const bill = await bills.findOne({ _id: no });
+    if (!bill) throw new AppError(404, "not_found", "Bill not found.");
+    if (bill.status !== "Pending Payment") return billView(bill);
+    let result;
+    try {
+      result = await withTimeout(gateway.charge({ reference: no, amount: bill.total, method: bill.method }), config.gateway.timeoutMs);
+    } catch (error) {
+      if (logger) logger.warn({ err: error, bill: no }, "Payment gateway unavailable");
+      await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Payment pending", details: `${no}: the gateway did not answer`, severity: "warning" });
+      return billView(await bills.findOne({ _id: no }));
+    }
+    return billView(await recordGatewayResult(req, no, result));
+  }
+
+  async function retryPayment(req, no, input) {
+    const actor = req.auth.user;
+    await inTransaction(db, async (session) => {
+      const bill = await bills.findOne({ _id: no }, { session });
+      if (!bill) throw new AppError(404, "not_found", "Bill not found.");
+      if (!OPEN_FOR_PAYMENT.includes(bill.status)) throw new AppError(409, "not_open", `${no} is not waiting for payment.`);
+      const method = input.method || bill.method;
+      if (method === "Cash") {
+        if (input.tendered === undefined || input.tendered < bill.total) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${bill.total.toLocaleString()}.`);
+        await bills.updateOne({ _id: no }, { $set: { status: "Paid", method, tendered: input.tendered, change: input.tendered - bill.total, settledAt: new Date() } }, { session });
+        await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment recorded", details: `${no} · Rs ${bill.total} · Cash after retry` }, { session });
+        if (bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
+      } else {
+        await bills.updateOne({ _id: no }, { $set: { status: "Pending Payment", method, tendered: bill.total, change: 0 } }, { session });
+      }
+    });
+    return settle(req, no);
   }
 
   async function list({ date } = {}) {
@@ -131,6 +205,7 @@ function createBillingService({ config, db, orderService, approvals }) {
     const bill = await bills.findOne({ _id: no }, { session });
     if (!bill) throw new AppError(404, "not_found", "Bill not found.");
     if (bill.status === "Refunded") throw new AppError(409, "already_refunded", `${no} has already been refunded.`);
+    if (bill.status !== "Paid") throw new AppError(409, "not_paid", `${no} has not been paid, so there is nothing to refund.`);
     if (bill.refundPending) {
       // An approval that expired undecided must not leave the bill stuck
       const live = await db.collection("approvals").findOne({ type: "refund", "payload.no": no, status: "Pending", expiresAt: { $gt: new Date() } }, { session });
@@ -173,12 +248,13 @@ function createBillingService({ config, db, orderService, approvals }) {
     return {
       date: day, revenue, bills: paid.length, avg: paid.length ? Math.round(revenue / paid.length) : 0, items: qty,
       refunds: refunded.length, refundAmount: refunded.reduce((s, b) => s + b.total, 0),
+      unpaid: rows.filter((b) => OPEN_FOR_PAYMENT.includes(b.status)).length,
       discounts: paid.reduce((s, b) => s + b.discount, 0), tax: paid.reduce((s, b) => s + b.tax, 0),
       byHour, byMethod, byCat, top: [...items.values()].sort((a, b) => b.qty - a.qty).slice(0, 6)
     };
   }
 
-  return { openTables, pay, list, get, revealPhone, refund, applyRefund, salesReport };
+  return { openTables, pay, settle, retryPayment, recordGatewayResult, list, get, revealPhone, refund, applyRefund, salesReport };
 }
 
 module.exports = { createBillingService };

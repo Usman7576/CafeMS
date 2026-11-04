@@ -16,9 +16,9 @@
     if (input) input.focus();
   }
   function showAlert(msg, type) {
-    alertBox.innerHTML = "";
+    alertBox.replaceChildren();
     alertBox.className = "alert show alert-" + (type || "error");
-    alertBox.insertAdjacentHTML("afterbegin", Icons.svg(type === "info" ? "info" : "alert", 18));
+    alertBox.prepend(Icons.node(type === "info" ? "info" : "alert", 18));
     alertBox.appendChild(CMS.h("span", { text: msg }));
   }
   function hideAlert() { alertBox.className = "alert"; }
@@ -120,7 +120,7 @@
   el("togglePw").addEventListener("click", function () {
     const show = password.type === "password";
     password.type = show ? "text" : "password";
-    el("togglePw").innerHTML = Icons.svg(show ? "eye-off" : "eye", 18);
+    el("togglePw").replaceChildren(Icons.node(show ? "eye-off" : "eye", 18));
     el("togglePw").setAttribute("aria-label", show ? "Hide password" : "Show password");
     el("togglePw").setAttribute("aria-pressed", String(show));
     password.focus();

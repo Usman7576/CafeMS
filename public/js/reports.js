@@ -2,11 +2,11 @@
 // sellers, category sales, tax summary, bills with refunds, CSV export, print.
 (function () {
   if (!window.App) return;
-  const h = CMS.h, me = App.session.user;
+  const h = CMS.h, canRefund = App.session.role === "Manager";
   const COLORS = { Cash: "#3d2518", Card: "#c47a2c", Wallet: "#1d7a4b" };
   let refundNo = null;
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     document.getElementById("reportDate").textContent = CMS.dateLong(new Date()) + " · all figures in PKR";
     document.getElementById("exportCsv").addEventListener("click", exportCsv);
     document.getElementById("printReport").addEventListener("click", function () { window.print(); });
@@ -16,8 +16,6 @@
     const m = /^#refund-(B-\d+)$/.exec(location.hash);
     if (m) openRefund(m[1]);
   });
-
-  function todayBills() { return Store.bills(App.session.user).filter(function (b) { return new Date(b.createdAt).toDateString() === new Date().toDateString(); }); }
 
   function render() {
     const s = Store.salesToday();
@@ -42,7 +40,7 @@
     CMS.hBars(document.getElementById("catChart"), Object.keys(s.byCat).sort(function (a, b) { return s.byCat[b] - s.byCat[a]; }).map(function (c) { return { label: c, value: s.byCat[c], display: CMS.money(s.byCat[c]) }; }));
 
     const tax = document.getElementById("taxSummary");
-    tax.innerHTML = "";
+    tax.replaceChildren();
     const gross = s.revenue - s.tax + s.discounts;
     [["Gross sales", CMS.money(gross)], ["Discounts", "− " + CMS.money(s.discounts)], ["Net sales (before tax)", CMS.money(gross - s.discounts)], ["GST collected (16%)", CMS.money(s.tax)]].forEach(function (r) {
       tax.appendChild(h("div", { class: "row" }, [h("span", { class: "muted", text: r[0] }), h("span", { text: r[1] })]));
@@ -54,27 +52,28 @@
 
   function renderBills() {
     const body = document.getElementById("billsBody");
-    body.innerHTML = "";
-    const bills = todayBills();
-    if (!bills.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state", style: "padding:24px", text: "No bills yet today." })])])); return; }
+    body.replaceChildren();
+    const bills = Store.bills();
+    if (!bills.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state pad-24", text: "No bills yet today." })])])); return; }
     bills.forEach(function (b) {
-      const u = Store.findUser(b.cashier);
       const actions = h("div", { class: "row-actions" });
-      if (b.status === "Paid") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { openRefund(b.no); } }));
-      else actions.appendChild(h("span", { class: "muted small", title: b.refund ? b.refund.reason : "", text: b.refund ? "by " + (Store.findUser(b.refund.by) || { name: b.refund.by }).name.split(" ")[0] : "" }));
+      if (b.phone) actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Number", "aria-label": "Show customer number for " + b.no, onclick: function () { CMS.showPhone(function () { return Store.billPhone(b.no); }); } }));
+      if (b.refundPending) actions.appendChild(h("span", { class: "muted small", text: "Awaiting approval" }));
+      else if (b.status === "Paid" && canRefund) actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { openRefund(b.no); } }));
+      else if (b.refund) actions.appendChild(h("span", { class: "muted small", title: b.refund.reason, text: "by " + Store.staffName(b.refund.by).split(" ")[0] }));
       body.appendChild(h("tr", null, [
         h("td", null, [h("span", { class: "mono", text: b.no })]), h("td", { text: "T" + b.table }),
-        h("td", { class: "hide-sm time", text: CMS.clock(new Date(b.createdAt)) }), h("td", { class: "hide-sm", text: u ? u.name : b.cashier }),
+        h("td", { class: "hide-sm time", text: CMS.clock(new Date(b.createdAt)) }), h("td", { class: "hide-sm", text: Store.staffName(b.cashier) }),
         h("td", { class: "hide-sm", text: b.method === "Wallet" ? "Mobile wallet" : b.method }),
         h("td", { class: "num nowrap", text: CMS.money(b.total) }),
-        h("td", null, [h("span", { class: "pill " + (b.status === "Paid" ? "pill-ready" : "pill-cancelled"), text: b.status })]),
+        h("td", null, [h("span", { class: "pill " + (b.status === "Paid" ? "pill-ready" : b.status === "Pending Payment" ? "pill-preparing" : "pill-cancelled"), text: b.status })]),
         h("td", { class: "actions" }, [actions])
       ]));
     });
   }
 
   function openRefund(no) {
-    const b = Store.bill(no, App.session.user);
+    const b = Store.bill(no);
     if (!b || b.status !== "Paid") { CMS.toast(no + " can't be refunded.", "err"); return; }
     refundNo = no;
     CMS.clearError(document.getElementById("refundErr"));
@@ -84,24 +83,18 @@
     CMS.openModal("refundModal");
     setTimeout(function () { document.getElementById("refundReason").focus(); }, 50);
   }
-  function doRefund(e) {
+  async function doRefund(e) {
     e.preventDefault();
     const reason = document.getElementById("refundReason").value;
-    const ok = CMS.attempt(function () { Store.refund(refundNo, reason, me); return true; }, document.getElementById("refundErr"));
-    if (!ok) return;
+    const result = await CMS.attempt(function () { return Store.refund(refundNo, reason); }, document.getElementById("refundErr"));
+    if (!result) return;
     CMS.closeModal("refundModal");
-    CMS.toast(refundNo + " refunded and logged", "ok");
+    CMS.toast(result.approvalId ? result.message : refundNo + " refunded and logged", result.approvalId ? "info" : "ok");
     if (location.hash) history.replaceState(null, "", location.pathname);
   }
 
-  function exportCsv() {
-    const rows = [["Bill", "Date", "Time", "Table", "Cashier", "Method", "Subtotal", "Discount", "Tax", "Total", "Status", "Refund reason"]];
-    todayBills().slice().reverse().forEach(function (b) {
-      const d = new Date(b.createdAt);
-      rows.push([b.no, d.toLocaleDateString(), CMS.clock(d), b.table, b.cashier, b.method, b.subtotal, b.discount, b.tax, b.total, b.status, b.refund ? b.refund.reason : ""]);
-    });
-    CMS.downloadCSV("sales-" + new Date().toISOString().slice(0, 10) + ".csv", rows);
-    Store.log(me, "Report exported", "Sales CSV · " + (rows.length - 1) + " bills", "info");
-    CMS.toast("Sales report exported", "ok");
+  async function exportCsv() {
+    const ok = await CMS.attempt(async function () { await Api.download("/reports/sales.csv", "sales-" + new Date().toISOString().slice(0, 10) + ".csv"); return true; });
+    if (ok) CMS.toast("Sales report exported. This has been logged.", "ok");
   }
 })();

@@ -64,6 +64,13 @@ describe("every role against every route (RBAC matrix)", () => {
     ["get", "/reports/sales", ["Manager", "Admin"]],
     ["get", "/reports/sales.csv", ["Manager", "Admin"]],
     ["get", "/audit", ["Admin"]],
+    ["get", "/audit/verify", ["Admin"]],
+    ["get", "/audit/public-keys", ["Admin"]],
+    ["get", "/alerts", ["Admin"]],
+    ["post", "/alerts/aaaaaaaaaaaaaaaaaaaaaaaa/acknowledge", ["Admin"]],
+    ["post", "/customers/erase", ["Admin"]],
+    ["put", "/menu/999999/photo", ["Admin"]],
+    ["post", "/bills/B-1/retry-payment", ["Cashier", "Manager"]],
     ["get", "/audit.csv", ["Admin"]],
     ["get", "/settings", ["Admin"]],
     ["put", "/settings", ["Admin"]],
@@ -95,9 +102,9 @@ describe("what each role receives (least privilege)", () => {
   test("the snapshot holds only that role's data", async () => {
     assert.deepEqual(await keysOf("Kitchen"), ["constants", "tickets"]);
     assert.deepEqual(await keysOf("Waiter"), ["constants", "menu", "orders", "reservations", "tables"]);
-    assert.deepEqual(await keysOf("Cashier"), ["bills", "constants", "openTables"]);
-    assert.deepEqual(await keysOf("Manager"), ["approvals", "bills", "constants", "inventory", "openTables", "reservations", "sales"]);
-    assert.deepEqual(await keysOf("Admin"), ["approvals", "bills", "constants", "inventory", "menu", "openTables", "sales", "users"]);
+    assert.deepEqual(await keysOf("Cashier"), ["bills", "constants", "openTables", "staffNames"]);
+    assert.deepEqual(await keysOf("Manager"), ["approvals", "bills", "constants", "inventory", "openTables", "reservations", "sales", "staffNames"]);
+    assert.deepEqual(await keysOf("Admin"), ["alerts", "approvals", "bills", "constants", "inventory", "menu", "openTables", "recentAudit", "sales", "settings", "staffNames", "users"]);
   });
 
   test("no response holds password hashes, MFA secrets or session data", async () => {

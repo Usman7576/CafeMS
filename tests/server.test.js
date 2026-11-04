@@ -26,9 +26,8 @@ describe("removed and hidden paths", () => {
     for (const path of paths) assert.equal((await request(app).get(path)).status, 404, path);
   });
 
-  test("the public health check reveals status only (finding 18)", async () => {
-    const res = await request(app).get("/api/health");
-    assert.deepEqual(res.body, { ok: true });
+  test("the public health checks reveal status only (finding 18)", async () => {
+    for (const path of ["/api/health", "/api/health/live", "/api/health/ready"]) assert.deepEqual((await request(app).get(path)).body, { ok: true });
   });
 });
 
@@ -116,6 +115,46 @@ describe("security headers (finding 13)", () => {
     }
   });
 
+  test("the CSP has no exceptions: no inline styles, no third-party hosts, Trusted Types required", async () => {
+    const csp = (await request(app).get("/login.html")).headers["content-security-policy"];
+    assert.ok(!csp.includes("unsafe-inline"));
+    assert.ok(!csp.includes("unsafe-eval"));
+    assert.ok(!csp.includes("https:"));
+    assert.match(csp, /style-src 'self'(;|$)/);
+    assert.match(csp, /font-src 'self'(;|$)/);
+    assert.match(csp, /require-trusted-types-for 'script'/);
+  });
+
+  test("no page uses inline styles or third-party resources", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const dir = path.join(__dirname, "..", "public");
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".html"))) {
+      const html = fs.readFileSync(path.join(dir, file), "utf8");
+      assert.ok(!/\sstyle=/i.test(html), `${file} has an inline style`);
+      assert.ok(!/(?:src|href)="https?:/i.test(html), `${file} loads a third-party resource`);
+    }
+  });
+
+  test("no browser script writes HTML from strings or stores business data on the device", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const dir = path.join(__dirname, "..", "public", "js");
+    for (const file of fs.readdirSync(dir)) {
+      const code = fs.readFileSync(path.join(dir, file), "utf8");
+      for (const sink of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function"]) {
+        assert.ok(!code.includes(sink), `${file} uses ${sink}`);
+      }
+      // Only the landing page's theme preference is stored; common.js only deletes the old prototype data
+      if (file !== "home.js") assert.ok(!/localStorage\.(?:setItem|getItem)/.test(code), `${file} stores data on the device`);
+    }
+  });
+
+  test("fonts load from this server", async () => {
+    assert.equal((await request(app).get("/fonts/inter-latin-400-normal.woff2")).status, 200);
+    assert.equal((await request(app).get("/css/fonts.css")).status, 200);
+  });
+
   test("API responses are never cached", async () => {
     assert.match((await request(app).get("/api/v1/auth/me")).headers["cache-control"], /no-store/);
   });
@@ -177,9 +216,10 @@ describe("fail-secure when the database is down", () => {
   });
 
   test("health reports 503 without details", async () => {
-    const res = await request(broken()).get("/api/health");
+    const res = await request(broken()).get("/api/health/ready");
     assert.equal(res.status, 503);
     assert.deepEqual(res.body, { ok: false });
+    assert.equal((await request(broken()).get("/api/health/live")).status, 200);
   });
 });
 
@@ -202,5 +242,5 @@ test("every route has a guard, so none can be left open by accident (complete me
 
   // Public routes are an explicit, reviewed list
   const open = found.filter((r) => r.guards.includes("public")).map((r) => r.path).sort();
-  assert.deepEqual(open, ["/api/health", "/login", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/verify", "/setup"].sort());
+  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/login", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/verify", "/payments/callback", "/setup"].sort());
 });

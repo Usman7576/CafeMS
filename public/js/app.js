@@ -14,7 +14,9 @@
     reports:   { title: "Sales reports",   roles: ["Manager", "Admin"] },
     menu:      { title: "Menu management", roles: ["Admin"] },
     users:     { title: "Staff & roles",   roles: ["Admin"] },
-    audit:     { title: "Audit log",       roles: ["Admin"] }
+    audit:     { title: "Audit log",       roles: ["Admin"] },
+    security:  { title: "Security",        roles: ["Admin"] },
+    account:   { title: "My account",      roles: ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"] }
   };
   const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
   const NAV = {
@@ -41,7 +43,8 @@
       { page: "menu", href: "menu.html", icon: "utensils", label: "Menu" },
       { page: "users", href: "users.html", icon: "users", label: "Staff & roles" },
       { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" },
-      { page: "audit", href: "audit.html", icon: "file", label: "Audit log" }
+      { page: "audit", href: "audit.html", icon: "file", label: "Audit log" },
+      { page: "security", href: "security.html", icon: "shield", label: "Security" }
     ]
   };
   const ACCESS = {
@@ -74,7 +77,7 @@
   }
 
   const h = CMS.h;
-  const I = function (n, s) { const span = document.createElement("span"); span.innerHTML = Icons.svg(n, s || 18); return span.firstChild; };
+  const I = function (n, s) { return Icons.node(n, s || 18); };
   const initials = session.name.split(" ").map(function (p) { return p[0]; }).join("").replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase();
 
   function signOut(msg) {
@@ -103,6 +106,7 @@
     sideNav,
     h("div", { class: "nav-section", text: "Account" }),
     h("ul", { class: "side-nav" }, [
+      h("li", null, [h("a", { href: "account.html", "aria-current": pageKey === "account" ? "page" : null }, [I("key"), "My account"])]),
       h("li", null, [h("a", { href: "index.html" }, [I("home"), "Public site"])]),
       h("li", null, [h("button", { type: "button", "data-signout": true }, [I("logout"), "Sign out"])])
     ]),
@@ -122,7 +126,7 @@
     h("div", { class: "head" }, [h("b", { text: session.name }), h("span", { class: "muted", text: "@" + session.user + " · " }), h("span", { class: "pill pill-role", text: session.role })]),
     h("a", { href: HOME[session.role] }, [I("home", 16), "My workspace"]),
     h("button", { type: "button", id: "openPalette" }, [I("search", 16), "Quick search", h("kbd", { class: "kbd", text: "Ctrl K" })]),
-    h("button", { type: "button", id: "resetDemo" }, [I("refresh", 16), "Reset demo data"]),
+    h("a", { href: "account.html" }, [I("key", 16), "My account"]),
     h("button", { type: "button", class: "danger", "data-signout": true }, [I("logout", 16), "Sign out"])
   ]);
 
@@ -138,7 +142,7 @@
 
   const footer = h("footer", { class: "app-footer" }, [
     h("span", { text: "© " + new Date().getFullYear() + " Cafe Management System · SSD semester project" }),
-    h("span", { text: "Business data moves to the secure server in the next phase" })
+    h("span", { text: "Every action is checked and recorded by the server" })
   ]);
 
   const idleModal = h("div", { class: "modal-backdrop", id: "idleModal", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "idleTitle", "data-static": true }, [
@@ -207,20 +211,15 @@
       if (ok) signOut("You have been signed out.");
     });
   });
-  document.getElementById("resetDemo").addEventListener("click", async function () {
-    const ok = await CMS.confirm({ title: "Reset demo data?", message: "All orders, bills, stock, menu, staff and audit entries go back to the starting demo data. This affects every role on this device.", okText: "Reset data", danger: true, icon: "refresh" });
-    if (ok) { Store.reset(session.user); CMS.toast("Demo data has been reset", "ok"); setTimeout(function () { location.reload(); }, 600); }
-  });
 
   // ---------- Role-aware notifications ----------
   function notifications() {
-    const orders = Store.orders();
     if (session.role === "Waiter") {
-      return orders.filter(function (o) { return o.waiter === session.user && o.status === "Ready"; })
+      return Store.orders().filter(function (o) { return o.waiter === session.user && o.status === "Ready"; })
         .map(function (o) { return { icon: "bell", text: o.id + " for Table " + o.table + " is ready to serve", href: "dashboard.html#ready" }; });
     }
     if (session.role === "Kitchen") {
-      return orders.filter(function (o) { return o.status === "Placed"; })
+      return Store.tickets().filter(function (o) { return o.status === "Placed"; })
         .map(function (o) { return { icon: "clipboard", text: "New order " + o.id + " · Table " + o.table, href: "kitchen.html" }; });
     }
     const out = [];
@@ -235,16 +234,16 @@
       });
     }
     if (session.role === "Admin") {
-      Store.auditLog().filter(function (e) { return e.severity === "high" && Date.now() - e.at < 86400000; }).slice(0, 4).forEach(function (e) {
+      Store.alerts().slice(0, 4).forEach(function (a) { out.push({ icon: "alert", tone: "danger", text: a.title + ": " + a.details, href: "security.html" }); });
+      Store.recentAudit().filter(function (e) { return e.severity === "high" && Date.now() - e.at < 86400000; }).slice(0, 4).forEach(function (e) {
         out.push({ icon: "shield", tone: "danger", text: e.action + ": " + e.details, href: "audit.html" });
       });
     }
     return out;
   }
   function badgeCount() {
-    const orders = Store.orders();
-    if (session.role === "Waiter") return orders.filter(function (o) { return o.waiter === session.user && o.status === "Ready"; }).length;
-    if (session.role === "Kitchen") return orders.filter(function (o) { return o.status === "Placed" || o.status === "Preparing"; }).length;
+    if (session.role === "Waiter") return Store.orders().filter(function (o) { return o.status === "Ready"; }).length;
+    if (session.role === "Kitchen") return Store.tickets().filter(function (o) { return o.status === "Placed" || o.status === "Preparing"; }).length;
     if (session.role === "Cashier") return Store.openTables().filter(function (t) { return t.billRequested; }).length;
     if (session.role === "Manager") return Store.lowStock().length;
     return 0;
@@ -254,7 +253,7 @@
     const items = notifications();
     document.getElementById("notifDot").textContent = items.length ? String(items.length) : "";
     document.getElementById("notifSub").textContent = items.length ? items.length + " need attention" : "You're all caught up";
-    list.innerHTML = "";
+    list.replaceChildren();
     if (!items.length) list.appendChild(h("div", { class: "notif-empty", text: "Nothing needs your attention right now." }));
     items.slice(0, 8).forEach(function (n) {
       list.appendChild(h("a", { class: "notif-item " + (n.tone || ""), href: n.href }, [I(n.icon, 16), h("span", { text: n.text })]));
@@ -262,21 +261,38 @@
     const b = badgeCount();
     document.querySelectorAll("[data-nav-badge]").forEach(function (el) { el.textContent = b ? String(b) : ""; });
   }
-  renderNotifs();
-  Store.on(function (changed) {
-    renderNotifs();
-    changed.forEach(function (o) {
-      if (session.role === "Waiter" && o.waiter === session.user && o.status === "Ready") CMS.toast(o.id + " for Table " + o.table + " is ready to serve", "info");
-      if (session.role === "Kitchen" && o.status === "Placed") CMS.toast("New order " + o.id + " for Table " + o.table, "info");
-    });
+  // The page's HTML was already checked by the server. This confirms the display copy still matches,
+  // then runs the page once the first data has arrived.
+  const readyPromise = new Promise(function (resolve) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", resolve); else resolve();
+  }).then(function () {
+    return Promise.all([Api.me(), Store.whenReady()]);
+  }).then(function (results) {
+    const me = results[0];
+    if (me.username !== session.user || me.role !== session.role) {
+      Session.set({ user: me.username, name: me.name, role: me.role, loginAt: me.loginAt });
+      window.location.replace(HOME[me.role]);
+      return new Promise(function () {});
+    }
+    return undefined;
   });
+  readyPromise.then(function () {
+    renderNotifs();
+    Store.on(function (changed) {
+      renderNotifs();
+      changed.forEach(function (o) {
+        if (session.role === "Waiter" && o.status === "Ready") CMS.toast(o.id + " for Table " + o.table + " is ready to serve", "info");
+        if (session.role === "Kitchen" && o.status === "Placed") CMS.toast("New order " + o.id + " for Table " + o.table, "info");
+      });
+    });
+  }).catch(function () { window.location.replace("login.html"); });
 
   // ---------- Command palette ----------
   const commands = navItems.map(function (n) { return { label: n.label, hint: "Go to", icon: n.icon, run: function () { location.href = n.href; } }; });
   if (session.role === "Waiter") commands.unshift({ label: "New order", hint: "Action", icon: "plus", run: function () { location.href = "order.html"; } });
   commands.push(
     { label: "Public website", hint: "Go to", icon: "home", run: function () { location.href = "index.html"; } },
-    { label: "Reset demo data", hint: "Action", icon: "refresh", run: function () { document.getElementById("resetDemo").click(); } },
+    { label: "My account", hint: "Go to", icon: "key", run: function () { location.href = "account.html"; } },
     { label: "Sign out", hint: "Action", icon: "logout", run: function () { document.querySelector("[data-signout]").click(); } }
   );
   let sel = 0, filtered = commands;
@@ -284,7 +300,7 @@
     const q = paletteInput.value.trim().toLowerCase();
     filtered = commands.filter(function (c) { return c.label.toLowerCase().indexOf(q) !== -1; });
     sel = Math.min(sel, Math.max(filtered.length - 1, 0));
-    paletteList.innerHTML = "";
+    paletteList.replaceChildren();
     if (!filtered.length) paletteList.appendChild(h("li", { class: "palette-empty", text: "No matches" }));
     filtered.forEach(function (c, i) {
       paletteList.appendChild(h("li", { role: "option", "aria-selected": String(i === sel), class: i === sel ? "active" : "",
@@ -341,5 +357,5 @@
   const flash = Session.flash();
   if (flash) setTimeout(function () { CMS.toast(flash, "err"); }, 200);
 
-  window.App = { session: session, signOut: signOut, home: HOME[session.role], I: I };
+  window.App = { session: session, signOut: signOut, home: HOME[session.role], I: I, ready: function (fn) { readyPromise.then(fn); } };
 })();

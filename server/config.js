@@ -1,5 +1,6 @@
 // Validates all settings at startup. The server refuses to run with a missing or
 // weak secret (fail-secure default), and error messages name the setting but never its value.
+const path = require("path");
 const { z } = require("zod");
 
 const KEY_ID = /^[a-z0-9-]{1,16}$/;
@@ -32,7 +33,8 @@ const schema = z.object({
   MONGODB_URI: z.string().min(1).default("mongodb://127.0.0.1:27017"),
   MONGODB_DB: z.string().regex(/^[A-Za-z0-9_-]{1,63}$/).default("cafems"),
   APP_ORIGIN: z.string().url().default("http://localhost:3000"),
-  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0)
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  UPLOAD_DIR: z.string().min(1).default("uploads")
 });
 
 function loadConfig(env) {
@@ -50,12 +52,15 @@ function loadConfig(env) {
   const jwt = parseKeyring(env.JWT_KEYS, env.JWT_ACTIVE_KEY, "JWT_KEYS");
   const data = parseKeyring(env.DATA_KEYS, env.DATA_ACTIVE_KEY, "DATA_KEYS");
   const blindIndexKey = parseKeyring(`index:${env.BLIND_INDEX_KEY || ""}`, "index", "BLIND_INDEX_KEY").keys.get("index");
-  if ([...jwt.keys.values(), ...data.keys.values()].some((k) => k.equals(blindIndexKey))) throw new ConfigError("BLIND_INDEX_KEY must be a separate key.");
-  for (const a of jwt.keys.values()) {
-    for (const b of data.keys.values()) {
-      if (a.equals(b)) throw new ConfigError("JWT_KEYS and DATA_KEYS must not share a key.");
-    }
-  }
+  const audit = parseKeyring(env.AUDIT_KEYS, env.AUDIT_ACTIVE_KEY, "AUDIT_KEYS");
+  const gatewaySecret = parseKeyring(`gateway:${env.GATEWAY_SECRET || ""}`, "gateway", "GATEWAY_SECRET").keys.get("gateway");
+  const allKeys = [...jwt.keys.values(), ...data.keys.values(), ...audit.keys.values(), blindIndexKey, gatewaySecret];
+  if (new Set(allKeys.map((k) => k.toString("base64"))).size !== allKeys.length) throw new ConfigError("Every secret must be a separate key.");
+
+  // Uploaded files must never be reachable through the web root
+  const uploadDir = path.resolve(s.UPLOAD_DIR);
+  const publicDir = path.resolve(__dirname, "..", "public");
+  if (uploadDir === publicDir || uploadDir.startsWith(publicDir + path.sep)) throw new ConfigError("UPLOAD_DIR must be outside the public folder.");
 
   return Object.freeze({
     env: s.NODE_ENV,
@@ -69,9 +74,14 @@ function loadConfig(env) {
     jwt,
     data,
     blindIndexKey,
+    audit,
+    gateway: Object.freeze({ secret: gatewaySecret, timeoutMs: 3000 }),
+    uploadDir,
+    retentionDays: 90,
     refundApprovalLimit: 5000,
     limits: Object.freeze({
       jsonBody: "100kb",
+      photoBody: "2mb",
       apiPerMinute: 300,
       authPer15Minutes: 20
     }),

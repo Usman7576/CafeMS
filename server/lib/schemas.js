@@ -23,7 +23,8 @@ module.exports = {
     reservationId: z.object({ id: z.string().regex(/^R-\d{1,12}$/) }).strict(),
     numericId: z.object({ id: z.string().regex(/^\d{1,9}$/) }).strict(),
     tableNo: z.object({ no: z.string().regex(/^\d{1,3}$/) }).strict(),
-    approvalId: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict()
+    approvalId: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict(),
+    alertId: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict()
   },
   placeOrder: z.object({ table: tableNo, lines, notes: notes.optional().default("") }).strict(),
   updateOrder: z.object({ version: z.number().int().min(0), lines, notes: notes.optional().default("") }).strict(),
@@ -34,6 +35,17 @@ module.exports = {
     tendered: z.number().int().min(0).max(100000000).optional(),
     phone: z.union([z.literal(""), mobile]).optional().default("")
   }).strict(),
+  retryPayment: z.object({
+    method: z.enum(["Cash", "Card", "Wallet"]).optional(),
+    tendered: z.number().int().min(0).max(100000000).optional()
+  }).strict(),
+  gatewayCallback: z.object({
+    reference: z.string().regex(/^B-\d{1,12}$/),
+    amount: z.number().int().min(0).max(100000000),
+    status: z.enum(["approved", "declined"]),
+    gatewayRef: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)
+  }).strict(),
+  eraseCustomer: z.object({ phone: mobile }).strict(),
   refund: z.object({ reason: text(80, "!Give a reason of 4-80 characters.").min(4, "!Give a reason of 4-80 characters.").transform(noControl) }).strict(),
   menuItem: z.object({
     name: text(40, "!Item name must be 2-40 characters.").min(2, "!Item name must be 2-40 characters.").transform(noControl),

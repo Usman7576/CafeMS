@@ -1,4 +1,7 @@
 const crypto = require("crypto");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const request = require("supertest");
 const { MongoMemoryReplSet } = require("mongodb-memory-server");
 const { MongoClient } = require("mongodb");
@@ -11,6 +14,8 @@ const { hashPassword } = require("../server/lib/passwords");
 const { encrypt } = require("../server/lib/crypto");
 
 const ORIGIN = "http://localhost:3000";
+// One audit key per test file, as a real deployment has one, so entries from every app instance verify
+const AUDIT_KEYS = `k1:${crypto.randomBytes(32).toString("base64")}`;
 const PASSWORD = "Correct-Horse-7-Battery";
 
 function testEnv(extra = {}) {
@@ -22,6 +27,10 @@ function testEnv(extra = {}) {
     DATA_KEYS: `k1:${crypto.randomBytes(32).toString("base64")}`,
     DATA_ACTIVE_KEY: "k1",
     BLIND_INDEX_KEY: crypto.randomBytes(32).toString("base64"),
+    AUDIT_KEYS,
+    AUDIT_ACTIVE_KEY: "k1",
+    GATEWAY_SECRET: crypto.randomBytes(32).toString("base64"),
+    UPLOAD_DIR: fs.mkdtempSync(path.join(os.tmpdir(), "cafems-uploads-")),
     ...extra
   };
 }
@@ -39,9 +48,9 @@ async function startDb() {
   return { db, stop: async () => { await client.close(); await server.stop(); } };
 }
 
-function buildApp(db, limits) {
+function buildApp(db, limits, gateway) {
   const config = testConfig(limits);
-  return { config, app: createApp({ config, db, logger: createLogger(config) }) };
+  return { config, app: createApp({ config, db, logger: createLogger(config), gateway }) };
 }
 
 // A small browser stand-in. It keeps cookies by hand because they are all marked Secure

@@ -280,6 +280,25 @@ describe("CSRF and origin (finding 13)", () => {
   });
 });
 
+describe("recovery codes", () => {
+  test("replacing them needs a fresh code and cancels the old ones", async () => {
+    const old = "ABCDE-FGH23";
+    const user = await createUser(db, config, { recoveryHashes: [hashToken(old)] });
+    const client = await signIn(app, db, user);
+    const PATH = "/api/v1/auth/mfa/recovery-codes";
+    assert.equal((await client.post(PATH, {})).body.error.code, "step_up_required");
+    assert.equal((await client.post("/api/v1/auth/step-up", { code: await freshCode(db, user) })).status, 204);
+    const res = await client.post(PATH, {});
+    assert.equal(res.body.recoveryCodes.length, 10);
+    assert.equal((await client.get(ME)).body.recoveryCodesLeft, 10);
+    const next = browser(app);
+    await next.post(LOGIN, { username: user.username, password: user.password });
+    assert.equal((await next.post(VERIFY, { recoveryCode: old })).status, 401);
+    await db.collection("users").updateOne({ username: user.username }, { $set: { failedAttempts: 0, lockedUntil: null } });
+    assert.equal((await next.post(VERIFY, { recoveryCode: res.body.recoveryCodes[0] })).status, 200);
+  });
+});
+
 describe("changing a password", () => {
   test("needs the current password, enforces the rules and ends other sessions", async () => {
     const user = await createUser(db, config);

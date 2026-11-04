@@ -43,4 +43,11 @@ function blindIndex(value, key) {
   return crypto.createHmac("sha256", key).update(String(value)).digest("hex");
 }
 
-module.exports = { randomToken, hashToken, safeEqual, encrypt, decrypt, blindIndex };
+// Builds an Ed25519 key pair from a 32-byte seed held in the settings
+const ED25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b657004220420", "hex");
+function ed25519Keys(seed) {
+  const privateKey = crypto.createPrivateKey({ key: Buffer.concat([ED25519_PKCS8_PREFIX, seed]), format: "der", type: "pkcs8" });
+  return { privateKey, publicKey: crypto.createPublicKey(privateKey) };
+}
+
+module.exports = { randomToken, hashToken, safeEqual, encrypt, decrypt, blindIndex, ed25519Keys };

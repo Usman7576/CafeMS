@@ -61,6 +61,12 @@ function createMfaService(config, db) {
     });
   }
 
+  async function replaceRecoveryCodes(username) {
+    const codes = generateRecoveryCodes();
+    await users.updateOne({ username }, { $set: { "mfa.recoveryHashes": codes.map(hashToken) } });
+    return codes;
+  }
+
   // Confirms the first code against the pending secret, then switches MFA on
   async function completeEnrolment(username, secretEnc, code) {
     const delta = checkDelta(code, secretEnc, username);
@@ -80,7 +86,7 @@ function createMfaService(config, db) {
     return codes;
   }
 
-  return { beginEnrolment, verifyCode, verifyRecoveryCode, completeEnrolment };
+  return { beginEnrolment, verifyCode, verifyRecoveryCode, completeEnrolment, replaceRecoveryCodes };
 }
 
 module.exports = { createMfaService };

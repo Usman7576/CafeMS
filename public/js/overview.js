@@ -5,7 +5,7 @@
   if (!window.App) return;
   const h = CMS.h, s = App.session, isAdmin = s.role === "Admin";
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     const hour = new Date().getHours();
     document.getElementById("greeting").textContent = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + ", " + s.name.split(" ")[0];
     document.getElementById("today").textContent = CMS.dateLong(new Date()) + " · " + (isAdmin ? "Owner / administrator view" : "Manager view");
@@ -20,8 +20,10 @@
   });
 
   function render() {
-    const sales = Store.salesToday(), orders = Store.orders(), low = Store.lowStock(), open = Store.openTables();
+    const sales = Store.salesToday(), low = Store.lowStock(), open = Store.openTables();
+    const orders = [].concat.apply([], open.map(function (t) { return t.orders; }));
     const active = orders.filter(function (o) { return Store.ACTIVE.indexOf(o.status) !== -1; });
+    CMS.renderApprovals(document.getElementById("approvalList"));
     document.getElementById("kRevenue").textContent = CMS.money(sales.revenue);
     document.getElementById("kRevenueSub").textContent = "Avg bill " + CMS.money(sales.avg);
     document.getElementById("kBills").textContent = sales.bills;
@@ -42,14 +44,14 @@
 
     // Flow + mini floor
     const flow = document.getElementById("flow");
-    flow.innerHTML = "";
+    flow.replaceChildren();
     [["Placed", "placed"], ["Preparing", "preparing"], ["Ready", "ready"]].forEach(function (f) {
       const n = orders.filter(function (o) { return o.status === f[0]; }).length;
       flow.appendChild(h("div", { class: "flow-step " + f[1] }, [h("b", { text: String(n) }), h("span", { text: f[0] })]));
     });
     flow.appendChild(h("div", { class: "flow-step bill" }, [h("b", { text: String(open.filter(function (t) { return t.billRequested; }).length) }), h("span", { text: "Awaiting bill" })]));
     const mini = document.getElementById("floorMini");
-    mini.innerHTML = "";
+    mini.replaceChildren();
     Store.TABLES.forEach(function (t) {
       const tab = open.find(function (x) { return x.no === t.no; });
       const st = !tab ? ["free", "Free"] : tab.billRequested ? ["bill", "Bill"] : tab.orders.some(function (o) { return o.status === "Ready"; }) ? ["ready", "Ready"] : ["mine", tab.allServed ? "Dining" : "Cooking"];
@@ -58,7 +60,7 @@
 
     // Stock alerts
     const sl = document.getElementById("stockList");
-    sl.innerHTML = "";
+    sl.replaceChildren();
     if (!low.length) sl.appendChild(h("li", { class: "empty-li" }, [h("span", { class: "muted", text: "All stock is above reorder levels." })]));
     low.sort(function (a, b) { return a.qty - b.qty; }).forEach(function (i) {
       sl.appendChild(h("li", null, [
@@ -70,24 +72,22 @@
 
     // Activity
     const act = document.getElementById("activity");
-    act.innerHTML = "";
+    act.replaceChildren();
     if (isAdmin) {
       document.getElementById("activityTitle").textContent = "Recent audit events";
-      const v = Store.verifyAudit();
-      document.getElementById("activitySub").textContent = v.ok ? "Hash chain verified · " + v.count + " entries" : "Integrity check FAILED at entry #" + v.brokenAt;
-      Store.auditLog().slice(0, 7).forEach(function (e) {
-        act.appendChild(h("li", { class: "sev-" + e.severity }, [h("span", { class: "dot" }), h("div", null, [h("b", { text: e.action }), h("span", { text: e.details }), h("small", { text: e.name + " · " + CMS.timeAgo(e.at) })])]));
+      document.getElementById("activitySub").textContent = "Recorded by the server";
+      Store.recentAudit().slice(0, 7).forEach(function (e) {
+        act.appendChild(h("li", { class: "sev-" + e.severity }, [h("span", { class: "dot" }), h("div", null, [h("b", { text: e.action }), h("span", { text: e.details }), h("small", { text: e.actor + " · " + CMS.timeAgo(e.at) })])]));
       });
       act.appendChild(h("li", { class: "more" }, [h("a", { href: "audit.html", text: "Open full audit log →" })]));
       renderSettings();
     } else {
       document.getElementById("activityTitle").textContent = "Latest bills";
       document.getElementById("activitySub").textContent = "Payments recorded by cashiers today";
-      Store.bills(App.session.user).slice(0, 6).forEach(function (b) {
-        const u = Store.findUser(b.cashier);
+      Store.bills().slice(0, 6).forEach(function (b) {
         act.appendChild(h("li", { class: b.status === "Refunded" ? "sev-high" : "sev-info" }, [h("span", { class: "dot" }), h("div", null, [
           h("b", { text: b.no + " · " + CMS.money(b.total) }), h("span", { text: "Table " + b.table + " · " + (b.method === "Wallet" ? "Mobile wallet" : b.method) + (b.status === "Refunded" ? " · refunded" : "") }),
-          h("small", { text: (u ? u.name : b.cashier) + " · " + CMS.timeAgo(b.createdAt) })
+          h("small", { text: Store.staffName(b.cashier) + " · " + CMS.timeAgo(b.createdAt) })
         ])]));
       });
     }
@@ -97,13 +97,17 @@
     const panel = document.getElementById("settingsPanel");
     panel.hidden = false;
     const body = document.getElementById("settingsBody");
-    body.innerHTML = "";
+    body.replaceChildren();
     const st = Store.settings();
     const sw = h("input", { type: "checkbox", class: "switch", id: "simToggle" });
     sw.checked = !!st.kitchenSim;
-    sw.addEventListener("change", function () { Store.setSetting("kitchenSim", sw.checked, s.user); CMS.toast("Kitchen simulation " + (sw.checked ? "on" : "off"), "ok"); });
+    sw.addEventListener("change", async function () {
+      const enabled = sw.checked;
+      const ok = await CMS.attempt(function () { return Store.setKitchenSim(enabled); });
+      if (ok) CMS.toast("Kitchen simulation " + (enabled ? "on" : "off"), "ok"); else sw.checked = !enabled;
+    });
     body.appendChild(h("label", { class: "setting", for: "simToggle" }, [
-      h("div", null, [h("b", { text: "Kitchen auto-simulation" }), h("small", { text: "Moves new orders to Preparing (10 s) and Ready (20 s) while no one has the kitchen display open. It pauses automatically when a kitchen user is working." })]),
+      h("div", null, [h("b", { text: "Kitchen auto-simulation" }), h("small", { text: "Moves new orders to Preparing (10 s) and Ready (20 s) while no kitchen staff are signed in. It pauses automatically when a kitchen user is working." })]),
       sw
     ]));
   }

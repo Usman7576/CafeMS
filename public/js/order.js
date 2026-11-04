@@ -2,17 +2,17 @@
 // ticket with quantity steppers and live totals, notes counter, confirmation.
 (function () {
   if (!window.App) return;
-  const h = CMS.h, me = App.session.user;
+  const h = CMS.h;
   const MAX_QTY = 20;
   let selectedTable = null, activeCat = "All", editing = null;
   const lines = new Map(); // menu id -> qty
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     const params = new URLSearchParams(location.search);
     const editId = params.get("edit");
     if (editId) {
       const o = Store.order(editId);
-      if (!o || o.waiter !== me || o.status !== "Placed") {
+      if (!o || o.status !== "Placed") {
         CMS.toast(o ? "The kitchen has already started " + editId + ". Send a new order for extra items." : "Order not found.", "err");
       } else {
         editing = o;
@@ -26,7 +26,7 @@
       }
     } else {
       const q = parseInt(params.get("table"), 10);
-      if (Store.TABLES.some(function (t) { return t.no === q; }) && Store.tableState(q, me).state !== "other") selectedTable = q;
+      if (Store.TABLES.some(function (t) { return t.no === q; }) && Store.tableState(q).state !== "other") selectedTable = q;
     }
 
     // Sticky "view ticket" bar for phones and tablets, where the ticket sits below the menu
@@ -68,9 +68,9 @@
   // ----- Step 1: tables -----
   function renderTables() {
     const wrap = document.getElementById("tablePicker");
-    wrap.innerHTML = "";
+    wrap.replaceChildren();
     Store.TABLES.forEach(function (t) {
-      const st = Store.tableState(t.no, me);
+      const st = Store.tableState(t.no);
       const isSel = selectedTable === t.no;
       const b = h("button", { class: "tbl " + st.state + (isSel ? " selected" : ""), type: "button", role: "radio",
         "aria-checked": String(isSel), "aria-label": "Table " + t.no + ", " + t.seats + " seats, " + st.label },
@@ -86,7 +86,7 @@
     const menu = Store.menu();
     const cats = ["All"].concat(Store.categories());
     const wrap = document.getElementById("catTabs");
-    wrap.innerHTML = "";
+    wrap.replaceChildren();
     cats.forEach(function (c) {
       const n = c === "All" ? menu.length : menu.filter(function (m) { return m.cat === c; }).length;
       wrap.appendChild(h("button", { class: "tab", role: "tab", type: "button", "aria-selected": String(c === activeCat),
@@ -99,7 +99,7 @@
       return (activeCat === "All" || m.cat === activeCat) && (m.name.toLowerCase().indexOf(q) !== -1 || m.desc.toLowerCase().indexOf(q) !== -1);
     });
     const grid = document.getElementById("menuGrid");
-    grid.innerHTML = "";
+    grid.replaceChildren();
     if (!items.length) {
       grid.appendChild(h("div", { class: "empty-state", icon: "search", iconSize: 30 }, [h("b", { text: "No items match your search" }), h("span", { text: "Try a different word or category." })]));
       return;
@@ -108,6 +108,7 @@
       const qty = lines.get(m.id) || 0;
       const avail = Store.isAvailable(m.id);
       grid.appendChild(h("article", { class: "dish" + (avail ? "" : " soldout") + (qty ? " picked" : "") }, [
+        m.hasPhoto ? h("img", { class: "dish-photo", src: Store.photoUrl(m.id), alt: "", loading: "lazy" }) : null,
         h("div", { class: "dish-top" }, [h("span", { class: "cat", text: m.cat }), qty ? h("span", { class: "qty-badge", text: "× " + qty }) : null]),
         h("span", { class: "name", text: m.name }),
         h("span", { class: "desc", text: m.desc }),
@@ -138,7 +139,7 @@
   function renderTicket() {
     const items = currentItems(), t = Store.totals(items);
     const list = document.getElementById("ticketLines");
-    list.innerHTML = "";
+    list.replaceChildren();
     items.forEach(function (it) {
       list.appendChild(h("li", null, [
         h("span", { class: "nm" }, [it.name, h("small", { text: CMS.money(it.price) + " each" })]),
@@ -167,8 +168,8 @@
     const hint = !selectedTable ? "Select a table to continue." : !items.length ? "Add at least one item." : "";
     document.getElementById("sendBtn").disabled = !!hint;
     const hintEl = document.getElementById("sendHint");
-    hintEl.innerHTML = "";
-    if (hint) { hintEl.insertAdjacentHTML("afterbegin", Icons.svg("info", 14)); hintEl.appendChild(document.createTextNode(hint)); }
+    hintEl.replaceChildren();
+    if (hint) hintEl.append(Icons.node("info", 14), hint);
   }
 
   async function clearTicket() {
@@ -188,7 +189,7 @@
     document.getElementById("confirmTitle").textContent = editing ? "Update " + editing.id + "?" : "Send order to kitchen?";
     document.getElementById("confirmSub").textContent = "Table " + selectedTable + " · " + t.count + (t.count === 1 ? " item" : " items") + ". Read the order back to the guest before sending.";
     const body = document.getElementById("confirmBody");
-    body.innerHTML = "";
+    body.replaceChildren();
     const box = h("div", { class: "summary" });
     items.forEach(function (it) { box.appendChild(h("div", { class: "row" }, [h("span", { text: it.qty + " × " + it.name }), h("span", { text: CMS.money(it.price * it.qty) })])); });
     box.appendChild(h("div", { class: "row" }, [h("span", { class: "muted", text: "Tax (16%)" }), h("span", { class: "muted", text: CMS.money(t.tax) })]));
@@ -199,10 +200,12 @@
     document.getElementById("confirmSend").textContent = editing ? "Save changes" : "Confirm & send";
     CMS.openModal("confirmModal");
   }
-  function send() {
+  async function send(e) {
     const note = document.getElementById("notes").value.trim().slice(0, 120);
-    const list = Array.from(lines.entries()).map(function (e) { return { id: e[0], qty: e[1] }; });
-    const o = CMS.attempt(function () { return editing ? Store.updateOrder(editing.id, list, note, me) : Store.place(selectedTable, list, note, me); });
+    const list = Array.from(lines.entries()).map(function (entry) { return { id: entry[0], qty: entry[1] }; });
+    const o = await CMS.busy(e.currentTarget, function () {
+      return CMS.attempt(function () { return editing ? Store.updateOrder(editing.id, list, note) : Store.place(selectedTable, list, note); });
+    });
     CMS.closeModal("confirmModal");
     if (!o) { renderMenu(); return; }
     if (editing) {

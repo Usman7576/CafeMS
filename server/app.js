@@ -19,16 +19,23 @@ const { createApprovalService } = require("./services/approvals");
 const { createBillingService } = require("./services/billing");
 const { createReservationService } = require("./services/reservations");
 const { createUserService } = require("./services/users");
+const { createAlertService } = require("./services/alerts");
+const { createCustomerService } = require("./services/customers");
+const { createPhotoService } = require("./services/photos");
+const { createSimulatedGateway, verifyCallback } = require("./services/gateway");
+const { bindAudit, recordEvent: audit } = require("./services/auditLog");
+const schemas = require("./lib/schemas");
 
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 // Only these asset folders are served. Everything else not listed as a page is a 404 (default deny).
-const ASSET_PATH = /^\/(?:css|js|assets)\/[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9]+)+$/;
+const ASSET_PATH = /^\/(?:css|js|assets|fonts)\/[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9]+)+$/;
 
-function createApp({ config, db, logger }) {
+function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy);
 
+  bindAudit(db, config);
   const sessions = createSessionService(config, db);
   const mfa = createMfaService(config, db);
   const middleware = createAuthMiddleware(config, db, sessions);
@@ -36,10 +43,13 @@ function createApp({ config, db, logger }) {
   const catalog = createCatalogService({ db });
   const approvals = createApprovalService({ db });
   const orderService = createOrderService({ db, catalog });
-  const billing = createBillingService({ config, db, orderService, approvals });
+  const billing = createBillingService({ config, db, orderService, approvals, gateway, logger });
   const reservations = createReservationService({ config, db });
   const userService = createUserService({ config, db, approvals });
-  const services = { catalog, approvals, orderService, billing, reservations, userService };
+  const alerts = createAlertService({ db, logger });
+  const customers = createCustomerService({ config, db });
+  const photos = createPhotoService({ config, db });
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),
@@ -58,11 +68,30 @@ function createApp({ config, db, logger }) {
   const api = express.Router();
   api.use(noStore);
   api.use(limiter(60 * 1000, config.limits.apiPerMinute, "Too many requests. Please wait a moment."));
-  api.use(originCheck(config));
   api.use(express.json({ limit: config.limits.jsonBody, strict: true }));
+
+  // The gateway calls this from its own server, so it has no browser Origin or session.
+  // Its HMAC signature, timestamp and the stored amount are what is checked instead.
+  api.post("/payments/callback", publicRoute, async (req, res, next) => {
+    try {
+      const parsed = schemas.gatewayCallback.safeParse(req.body);
+      const valid = parsed.success && verifyCallback(config.gateway.secret, req.get("x-gateway-timestamp"), req.get("x-gateway-signature"), parsed.data);
+      if (!valid) {
+        await audit(db, req, { actor: "payment-gateway", action: "Gateway callback refused", details: "Bad signature, old timestamp or bad data", severity: "high" });
+        throw new AppError(401, "bad_signature", "This callback was refused.");
+      }
+      await billing.recordGatewayResult(req, parsed.data.reference, parsed.data, "payment-gateway");
+      res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  api.use(originCheck(config));
   api.use(cookieParser());
 
-  const authLimiter = limiter(15 * 60 * 1000, config.limits.authPer15Minutes, "Too many attempts. Please wait a few minutes and try again.");
+  // Only failures count, so staff signing in from one shared cafe network do not lock each other out
+  const authLimiter = limiter(15 * 60 * 1000, config.limits.authPer15Minutes, "Too many attempts. Please wait a few minutes and try again.", { skipSuccessfulRequests: true });
   api.use("/auth", createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }));
   // Limits one person's sensitive reads, such as bulk exports (keyed by user, not by address)
   const personalLimiter = (name, perHour) => rateLimit({
@@ -74,12 +103,17 @@ function createApp({ config, db, logger }) {
     handler: (_req, _res, next) => next(new AppError(429, "rate_limited", "You have reached the hourly limit for this action."))
   });
   api.use("/users", createUsersRouter({ db, middleware, services }));
-  api.use(createBusinessRouter({ db, middleware, services, personalLimiter }));
+  api.use(createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit: config.limits.photoBody }));
   api.use((_req, _res, next) => next(new AppError(404, "not_found", "Not found.")));
   app.use("/api/v1", api);
 
-  // Public by design: reports status only, with no database name or version details
-  app.get("/api/health", publicRoute, async (_req, res) => {
+  // Liveness: the process is running. Readiness: it can also reach the database.
+  // Public by design: they report status only, with no database name or version details.
+  app.get("/api/health/live", publicRoute, (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true });
+  });
+  app.get(["/api/health", "/api/health/ready"], publicRoute, async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     try {
       await db.command({ ping: 1 });

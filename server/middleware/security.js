@@ -3,11 +3,6 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { AppError } = require("../lib/errors");
 
-// Transitional until Phase 3 removes inline styles, Google Fonts and innerHTML. Phase 3 then
-// drops 'unsafe-inline' and these font hosts, and turns on require-trusted-types-for.
-const TRANSITIONAL_STYLE_SOURCES = ["'unsafe-inline'", "https://fonts.googleapis.com"];
-const TRANSITIONAL_FONT_SOURCES = ["https://fonts.gstatic.com"];
-
 function securityHeaders(config) {
   return helmet({
     contentSecurityPolicy: {
@@ -15,8 +10,8 @@ function securityHeaders(config) {
       directives: {
         defaultSrc: ["'none'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", ...TRANSITIONAL_STYLE_SOURCES],
-        fontSrc: ["'self'", ...TRANSITIONAL_FONT_SOURCES],
+        styleSrc: ["'self'"],
+        fontSrc: ["'self'"],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
         manifestSrc: ["'self'"],
@@ -24,6 +19,8 @@ function securityHeaders(config) {
         baseUri: ["'none'"],
         formAction: ["'self'"],
         frameAncestors: ["'none'"],
+        // The browser refuses any script that writes HTML into the page from a plain string
+        requireTrustedTypesFor: ["'script'"],
         ...(config.usesTls ? { upgradeInsecureRequests: [] } : {})
       }
     },
@@ -50,12 +47,13 @@ function noStore(_req, res, next) {
   next();
 }
 
-function limiter(windowMs, max, message) {
+function limiter(windowMs, max, message, options = {}) {
   return rateLimit({
     windowMs,
     limit: max,
     standardHeaders: "draft-7",
     legacyHeaders: false,
+    ...options,
     handler: (_req, _res, next) => next(new AppError(429, "rate_limited", message))
   });
 }

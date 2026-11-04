@@ -13,7 +13,7 @@ function createReservationService({ config, db }) {
 
   const context = (field, id) => `reservation-${field}:${id}`;
   const view = (r) => ({
-    id: r._id, name: decrypt(r.nameEnc, context("name", r._id), config.data), phone: r.phoneMask, date: r.date, time: r.time, party: r.party,
+    id: r._id, name: r.nameEnc ? decrypt(r.nameEnc, context("name", r._id), config.data) : "Erased guest", phone: r.phoneMask, date: r.date, time: r.time, party: r.party,
     notes: r.notesEnc ? decrypt(r.notesEnc, context("notes", r._id), config.data) : "", status: r.status,
     createdAt: r.createdAt, updatedAt: r.updatedAt || null, createdBy: r.createdBy
   });
@@ -70,7 +70,7 @@ function createReservationService({ config, db }) {
 
   async function revealPhone(req, id) {
     const r = await reservations.findOne({ _id: id });
-    if (!r) throw new AppError(404, "not_found", "Reservation not found.");
+    if (!r || !r.phoneEnc) throw new AppError(404, "not_found", "Reservation not found.");
     await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Customer phone viewed", details: id, severity: "warning" });
     return decrypt(r.phoneEnc, context("phone", id), config.data);
   }

@@ -19,7 +19,11 @@ const defaults = {
   JWT_ACTIVE_KEY: "k1",
   DATA_KEYS: newKey(),
   DATA_ACTIVE_KEY: "k1",
-  BLIND_INDEX_KEY: crypto.randomBytes(32).toString("base64")
+  BLIND_INDEX_KEY: crypto.randomBytes(32).toString("base64"),
+  AUDIT_KEYS: newKey(),
+  AUDIT_ACTIVE_KEY: "k1",
+  GATEWAY_SECRET: crypto.randomBytes(32).toString("base64"),
+  BACKUP_KEY: crypto.randomBytes(32).toString("base64")
 };
 
 const missing = Object.keys(defaults).filter((name) => !has(name));

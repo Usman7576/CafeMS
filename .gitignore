@@ -1,4 +1,7 @@
 .claude/
 submission/
 .env
+uploads/
+backups/
 node_modules/
+.seed-credentials.txt

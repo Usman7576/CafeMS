@@ -7,10 +7,8 @@
   <meta name="theme-color" content="#3d2518">
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=4.0">
+  <link rel="stylesheet" href="css/fonts.css?v=5.0">
+  <link rel="stylesheet" href="css/style.css?v=5.0">
 </head>
 <body data-page="inventory">
   <main class="content" id="main">
@@ -30,7 +28,7 @@
           <button class="tab" role="tab" data-f="low" aria-selected="false">Running low</button>
           <button class="tab" role="tab" data-f="out" aria-selected="false">Out of stock</button>
         </div>
-        <div class="input-wrap" style="width:260px;max-width:100%;"><i data-icon="search" data-size="16"></i><label class="sr-only" for="stockSearch">Search stock</label><input class="input input-sm" id="stockSearch" type="search" placeholder="Search item or supplier" maxlength="30"></div>
+        <div class="input-wrap w-260"><i data-icon="search" data-size="16"></i><label class="sr-only" for="stockSearch">Search stock</label><input class="input input-sm" id="stockSearch" type="search" placeholder="Search item or supplier" maxlength="30"></div>
       </div>
       <div class="table-wrap flush">
         <table class="data-table">
@@ -47,15 +45,15 @@
       <div class="modal-body">
         <div class="alert alert-error" id="stockErr" role="alert"></div>
         <div class="field"><label for="stockQty" id="stockQtyLabel">Quantity to add</label><div class="input-group"><input class="input" id="stockQty" type="number" min="0" step="0.1" inputmode="decimal" required><span class="addon" id="stockUnit">kg</span></div></div>
-        <div class="field" style="margin-bottom:0"><label for="stockReason">Reason</label><input class="input" id="stockReason" type="text" maxlength="60" required placeholder="e.g. Delivery from supplier"></div>
+        <div class="field mb-0"><label for="stockReason">Reason</label><input class="input" id="stockReason" type="text" maxlength="60" required placeholder="e.g. Delivery from supplier"></div>
       </div>
       <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="stockModal">Cancel</button><button type="submit" class="btn btn-primary" id="stockSave">Save</button></div>
     </form>
   </div>
-  <script src="js/icons.js?v=4.0"></script>
-  <script src="js/common.js?v=4.0"></script>
-  <script src="js/store.js?v=4.0"></script>
-  <script src="js/app.js?v=4.0"></script>
-  <script src="js/inventory.js?v=4.0"></script>
+  <script src="js/icons.js?v=5.0"></script>
+  <script src="js/common.js?v=5.0"></script>
+  <script src="js/store.js?v=5.0"></script>
+  <script src="js/app.js?v=5.0"></script>
+  <script src="js/inventory.js?v=5.0"></script>
 </body>
 </html>

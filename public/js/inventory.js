@@ -1,10 +1,10 @@
 // Inventory (Manager): stock levels, low-stock alerts, restock and write-off.
 (function () {
   if (!window.App) return;
-  const h = CMS.h, me = App.session.user;
+  const h = CMS.h;
   let filter = "all", query = "", current = null, mode = "restock";
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     document.querySelectorAll("#stockTabs .tab").forEach(function (t) {
       t.addEventListener("click", function () {
         filter = t.getAttribute("data-f");
@@ -31,8 +31,8 @@
     document.getElementById("kOk").textContent = counts.ok;
     document.getElementById("kLow").textContent = counts.low;
     document.getElementById("kOut").textContent = counts.out;
-    const affected = Store.menu().filter(function (m) { return !Store.isAvailable(m.id) && m.available; }).length;
-    document.getElementById("kOutSub").textContent = affected + " menu item" + (affected === 1 ? "" : "s") + " sold out";
+    const affected = new Set([].concat.apply([], inv.filter(function (i) { return statusOf(i) === "out"; }).map(function (i) { return i.usedIn; }))).size;
+    document.getElementById("kOutSub").textContent = affected + " menu item" + (affected === 1 ? "" : "s") + " affected";
 
     const rows = inv.filter(function (i) {
       const st = statusOf(i);
@@ -40,16 +40,16 @@
     }).sort(function (a, b) { const o = { out: 0, low: 1, ok: 2 }; return o[statusOf(a)] - o[statusOf(b)] || a.name.localeCompare(b.name); });
 
     const body = document.getElementById("stockBody");
-    body.innerHTML = "";
-    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "7" }, [h("div", { class: "empty-state", style: "padding:28px", text: "No stock items match." })])])); return; }
+    body.replaceChildren();
+    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "7" }, [h("div", { class: "empty-state pad-28", text: "No stock items match." })])])); return; }
     rows.forEach(function (i) {
       const st = statusOf(i);
       const pct = Math.min(100, i.qty / (i.reorder * 3) * 100);
-      const used = Store.usedIn(i.id);
+      const used = i.usedIn;
       body.appendChild(h("tr", null, [
         h("td", null, [h("b", { class: "nowrap", text: i.name })]),
         h("td", { class: "num nowrap", text: CMS.qty(i.qty) + " " + i.unit }),
-        h("td", { class: "hide-sm" }, [h("div", { class: "level", title: "Reorder at " + i.reorder + " " + i.unit }, [h("div", { class: "level-fill " + st, style: "width:" + Math.max(pct, 2) + "%" }), h("i", { class: "level-mark", style: "left:" + (100 / 3) + "%" })])]),
+        h("td", { class: "hide-sm" }, [h("div", { class: "level", title: "Reorder at " + i.reorder + " " + i.unit }, [h("div", { class: "level-fill " + st, css: { width: Math.max(pct, 2) + "%" } }), h("i", { class: "level-mark", css: { left: (100 / 3) + "%" } })])]),
         h("td", null, [h("span", { class: "pill " + LABEL[st][1], text: LABEL[st][0] })]),
         h("td", { class: "hide-sm muted", text: i.supplier }),
         h("td", { class: "hide-md muted small", text: used.length ? used.join(", ") : "—" }),
@@ -79,13 +79,15 @@
     setTimeout(function () { document.getElementById("stockQty").select(); }, 50);
   }
 
-  function save(e) {
+  async function save(e) {
     e.preventDefault();
     const qty = Number(document.getElementById("stockQty").value);
     const reason = document.getElementById("stockReason").value.trim();
     const errBox = document.getElementById("stockErr");
     if (!(qty > 0)) { CMS.attempt(function () { const x = new Error(); x.userMessage = "Enter a quantity greater than zero."; throw x; }, errBox); return; }
-    const ok = CMS.attempt(function () { Store.adjustStock(current.id, mode === "restock" ? qty : -qty, reason, me); return true; }, errBox);
+    const ok = await CMS.busy(document.getElementById("stockSave"), function () {
+      return CMS.attempt(async function () { await Store.adjustStock(current.id, mode === "restock" ? qty : -qty, reason); return true; }, errBox);
+    });
     if (!ok) return;
     CMS.closeModal("stockModal");
     CMS.toast(current.name + (mode === "restock" ? " restocked (+" : " written off (−") + qty + " " + current.unit + ")", "ok");

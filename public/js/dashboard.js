@@ -2,15 +2,15 @@
 // floor plan with table actions, and items that are currently unavailable.
 (function () {
   if (!window.App) return;
-  const h = CMS.h, me = App.session.user;
+  const h = CMS.h;
   let filter = "active";
 
-  function mine() { return Store.orders().filter(function (o) { return o.waiter === me; }); }
+  function mine() { return Store.orders(); }
   function pill(status) { return h("span", { class: "pill pill-" + status.toLowerCase(), text: status }); }
   function itemsSummary(o) { return o.items.map(function (i) { return i.qty + "× " + i.name; }).join(", "); }
   function isToday(ts) { return new Date(ts).toDateString() === new Date().toDateString(); }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     const hour = new Date().getHours();
     const part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
     const first = App.session.name.split(" ")[0];
@@ -35,26 +35,26 @@
     document.getElementById("kpiActive").textContent = o.filter(function (x) { return x.status === "Placed" || x.status === "Preparing"; }).length;
     document.getElementById("kpiReady").textContent = o.filter(function (x) { return x.status === "Ready"; }).length;
     document.getElementById("kpiServed").textContent = o.filter(function (x) { return x.status === "Served" && isToday(x.createdAt); }).length;
-    const my = Store.TABLES.filter(function (t) { const s = Store.tableState(t.no, me).state; return s !== "free" && s !== "other"; }).length;
-    const busy = Store.TABLES.filter(function (t) { return Store.tableState(t.no, me).state !== "free"; }).length;
+    const my = Store.TABLES.filter(function (t) { const s = Store.tableState(t.no).state; return s !== "free" && s !== "other"; }).length;
+    const busy = Store.TABLES.filter(function (t) { return Store.tableState(t.no).state !== "free"; }).length;
     document.getElementById("kpiTables").textContent = my;
     document.getElementById("kpiTablesSub").textContent = busy + " of " + Store.TABLES.length + " tables busy";
   }
 
   // ----- Actions -----
-  function serve(o) { if (CMS.attempt(function () { return Store.setOrderStatus(o.id, "Served", me); })) CMS.toast(o.id + " served to Table " + o.table, "ok"); }
+  async function serve(o) { if (await CMS.attempt(function () { return Store.serve(o.id); })) CMS.toast(o.id + " served to Table " + o.table, "ok"); }
   async function cancel(o) {
     const ok = await CMS.confirm({ title: "Cancel " + o.id + "?", message: "The kitchen hasn't started this order yet. Stock will be returned and the ticket removed from the kitchen display.", okText: "Cancel order", cancelText: "Keep order", danger: true, icon: "trash" });
-    if (ok && CMS.attempt(function () { return Store.setOrderStatus(o.id, "Cancelled", me); })) CMS.toast(o.id + " cancelled", "err");
+    if (ok && await CMS.attempt(function () { return Store.cancel(o.id); })) CMS.toast(o.id + " cancelled", "err");
   }
   function details(o) {
     const t = Store.totals(o.items);
     document.getElementById("detailTitle").textContent = o.id + " · Table " + o.table;
     const sub = document.getElementById("detailSub");
-    sub.innerHTML = "";
+    sub.replaceChildren();
     sub.append("Placed " + CMS.timeAgo(o.createdAt) + " at " + CMS.clock(new Date(o.createdAt)) + " · ", pill(o.status));
     const body = document.getElementById("detailBody");
-    body.innerHTML = "";
+    body.replaceChildren();
     body.appendChild(summaryBox(o.items, t, o.notes));
     CMS.openModal("detailModal");
   }
@@ -88,7 +88,7 @@
     };
     Object.keys(sets).forEach(function (k) { const el = document.querySelector('[data-n="' + k + '"]'); if (el) el.textContent = sets[k].length; });
     const body = document.getElementById("ordersBody");
-    body.innerHTML = "";
+    body.replaceChildren();
     const rows = sets[filter];
     if (!rows.length) {
       body.appendChild(h("tr", null, [h("td", { colspan: "7" }, [h("div", { class: "empty-state", icon: "clipboard", iconSize: 32 }, [
@@ -115,7 +115,7 @@
     const ready = mine().filter(function (o) { return o.status === "Ready"; });
     document.getElementById("readyPill").textContent = ready.length;
     const list = document.getElementById("readyList");
-    list.innerHTML = "";
+    list.replaceChildren();
     if (!ready.length) {
       list.appendChild(h("li", { class: "empty-li" }, [h("div", { class: "empty-state", icon: "check-circle", iconSize: 28 }, [h("b", { text: "All caught up" }), h("span", { text: "You'll get an alert when the kitchen finishes an order." })])]));
       return;
@@ -132,9 +132,9 @@
   // ----- Floor plan + table actions -----
   function renderFloor() {
     const map = document.getElementById("floorMap");
-    map.innerHTML = "";
+    map.replaceChildren();
     Store.TABLES.forEach(function (t) {
-      const st = Store.tableState(t.no, me);
+      const st = Store.tableState(t.no);
       const btn = h("button", { class: "tbl " + st.state, type: "button", "aria-label": "Table " + t.no + ", " + t.seats + " seats, " + st.label }, [
         h("b", { text: "T" + t.no }), h("small", { text: t.seats + " seats" }), h("span", { class: "st", text: st.label })
       ]);
@@ -148,21 +148,24 @@
     document.getElementById("tableTitle").textContent = "Table " + t.no + " · " + t.seats + " seats";
     document.getElementById("tableSub").textContent = st.label + " · " + st.orders.length + " open order" + (st.orders.length === 1 ? "" : "s");
     const body = document.getElementById("tableBody");
-    body.innerHTML = "";
+    body.replaceChildren();
     const lines = [];
     st.orders.forEach(function (o) { lines.push(h("div", { class: "row" }, [h("span", null, [h("b", { class: "mono", text: o.id }), " " + itemsSummary(o)]), pill(o.status)])); });
     const tt = Store.totals([].concat.apply([], st.orders.map(function (o) { return o.items; })));
     lines.push(h("div", { class: "row total" }, [h("span", { text: "Table total (incl. tax)" }), h("span", { text: CMS.money(tt.total) })]));
     body.appendChild(h("div", { class: "summary" }, lines));
     const actions = document.getElementById("tableActions");
-    actions.innerHTML = "";
+    actions.replaceChildren();
     actions.appendChild(h("button", { class: "btn btn-secondary", "data-close": "tableModal", text: "Close" }));
     if (st.state === "bill") {
-      body.appendChild(h("p", { class: "field-hint", style: "margin-top:12px", text: "The cashier has been notified. The table becomes free once the bill is paid." }));
+      body.appendChild(h("p", { class: "field-hint mt-12", text: "The cashier has been notified. The table becomes free once the bill is paid." }));
     } else {
       actions.appendChild(h("a", { class: "btn btn-secondary", href: "order.html?table=" + t.no, icon: "plus", text: "Add items" }));
-      const req = h("button", { class: "btn btn-primary", icon: "receipt", text: "Request bill", "data-autofocus": true, onclick: function () {
-        if (CMS.attempt(function () { Store.requestBill(t.no, me); return true; })) { CMS.closeModal("tableModal"); CMS.toast("Bill requested for Table " + t.no + ". The cashier has been notified.", "ok"); }
+      const req = h("button", { class: "btn btn-primary", icon: "receipt", text: "Request bill", "data-autofocus": true, onclick: function (e) {
+        CMS.busy(e.currentTarget, async function () {
+          const ok = await CMS.attempt(async function () { await Store.requestBill(t.no); return true; });
+          if (ok) { CMS.closeModal("tableModal"); CMS.toast("Bill requested for Table " + t.no + ". The cashier has been notified.", "ok"); }
+        });
       } });
       if (!st.served) { req.disabled = true; req.title = "Serve every order on this table first"; }
       actions.appendChild(req);
@@ -172,7 +175,7 @@
 
   function renderUnavailable() {
     const list = document.getElementById("soldList");
-    list.innerHTML = "";
+    list.replaceChildren();
     const items = Store.menu().filter(function (m) { return !Store.isAvailable(m.id); });
     if (!items.length) { list.appendChild(h("li", { class: "empty-li" }, [h("span", { class: "muted", text: "Everything on the menu is available." })])); return; }
     items.forEach(function (m) {

@@ -28,7 +28,16 @@ test("refuses an active key ID with no matching key", () => {
 
 test("refuses the same key for tokens and data", () => {
   const shared = `k1:${crypto.randomBytes(32).toString("base64")}`;
-  refuses(testEnv({ JWT_KEYS: shared, DATA_KEYS: shared }), /must not share/);
+  refuses(testEnv({ JWT_KEYS: shared, DATA_KEYS: shared }), /separate key/);
+});
+
+test("uploads cannot be stored inside the web root", () => {
+  refuses(testEnv({ UPLOAD_DIR: "public/uploads" }), /outside the public folder/);
+  refuses(testEnv({ UPLOAD_DIR: "public" }), /outside the public folder/);
+});
+
+test("the backup key is not needed by the server", () => {
+  assert.equal(loadConfig({ ...testEnv(), BACKUP_KEY: undefined }).backupKey, undefined);
 });
 
 test("production requires https", () => {

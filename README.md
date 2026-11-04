@@ -7,7 +7,7 @@ The prototype covers the full service loop across all five staff roles. A waiter
 
 ## Current status
 
-Security hardening is in progress on the `security-hardening` branch. Sign-in, MFA, sessions, page access and all business rules now run on the server, through the API in `server/`. The screens still use browser sample data until Phase 3 connects them to that API, so they are not yet secure.
+Security hardening is in progress on the `security-hardening` branch. All screens now work through the server API, and nothing is decided or stored in the browser. Later phases add the lecture analysis tools and the DevSecOps toolchain.
 
 There are no shared or default passwords. In development, `npm run seed:dev` creates the staff accounts with random passwords, shown once. Each person adds an authenticator app at first sign-in.
 
@@ -93,6 +93,8 @@ npm start
 Open http://localhost:3000. `setup:env` generates the secret keys in `.env`, which git ignores. The server refuses to start if a key is missing or weak, or if MongoDB is not a replica set.
 
 Run the tests with `npm test`. They use a temporary database and do not touch your data.
+
+Back up with `npm run backup`, which writes an encrypted file and checksum to `backups/`. Restore into an empty database with `npm run restore -- <file> <database name>`. Keep `BACKUP_KEY` somewhere other than the backups.
 
 ## Team
 

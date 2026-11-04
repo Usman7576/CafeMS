@@ -2,14 +2,10 @@
 // timers. Kitchen staff see items and notes only — no prices or payments.
 (function () {
   if (!window.App) return;
-  const h = CMS.h, me = App.session.user;
-  const users = {};
-  Store.users().forEach(function (u) { users[u.username] = u.name; });
+  const h = CMS.h;
 
-  document.addEventListener("DOMContentLoaded", function () {
-    // While this display is open, the kitchen simulation pauses and this user drives the tickets.
-    Store.kitchenHeartbeat();
-    setInterval(Store.kitchenHeartbeat, 5000);
+  App.ready(function () {
+    // While kitchen staff are signed in, the server pauses its kitchen simulation.
     render();
     Store.on(render);
     setInterval(updateTimers, 1000);
@@ -21,8 +17,8 @@
   }
   function ageClass(ts) { const m = (Date.now() - ts) / 60000; return m >= 15 ? "late" : m >= 8 ? "warm" : "fresh"; }
 
-  function act(o, status, label) {
-    if (CMS.attempt(function () { return Store.setOrderStatus(o.id, status, me); })) CMS.toast(o.id + " · " + label, "ok");
+  async function act(o, status, label) {
+    if (await CMS.attempt(function () { return Store.setTicketStatus(o.id, status); })) CMS.toast(o.id + " · " + label, "ok");
   }
 
   function ticket(o) {
@@ -31,7 +27,7 @@
       ? h("button", { class: "btn btn-dark btn-block", icon: "chef", text: "Start preparing", onclick: function () { act(o, "Preparing", "preparing"); } })
       : col === "Preparing"
         ? h("button", { class: "btn btn-success btn-block", icon: "bell", text: "Mark ready", onclick: function () { act(o, "Ready", "ready for pickup"); } })
-        : h("div", { class: "kds-wait", icon: "clock", iconSize: 15, text: "Waiting for " + (users[o.waiter] || o.waiter).split(" ")[0] + " to pick up" });
+        : h("div", { class: "kds-wait", icon: "clock", iconSize: 15, text: "Waiting for pickup" });
     const since = col === "Placed" ? o.createdAt : o.createdAt;
     return h("article", { class: "kds-ticket " + ageClass(since), "data-since": String(since), "aria-label": o.id + " for table " + o.table }, [
       h("header", null, [
@@ -40,21 +36,21 @@
       ]),
       h("ul", { class: "kds-items" }, o.items.map(function (i) { return h("li", null, [h("b", { text: i.qty + "×" }), h("span", { text: i.name })]); })),
       o.notes ? h("div", { class: "kds-note", icon: "note", iconSize: 15 }, [h("span", { text: o.notes })]) : null,
-      h("div", { class: "kds-meta", text: "Waiter: " + (users[o.waiter] || o.waiter) + " · sent " + CMS.clock(new Date(o.createdAt)) }),
+      h("div", { class: "kds-meta", text: "Sent " + CMS.clock(new Date(o.createdAt)) }),
       btn
     ]);
   }
 
   function fill(listId, countId, orders, emptyText) {
     const list = document.getElementById(listId);
-    list.innerHTML = "";
+    list.replaceChildren();
     document.getElementById(countId).textContent = orders.length;
     if (!orders.length) list.appendChild(h("div", { class: "kds-empty", text: emptyText }));
     orders.forEach(function (o) { list.appendChild(ticket(o)); });
   }
 
   function render() {
-    const all = Store.orders().sort(function (a, b) { return a.createdAt - b.createdAt; });
+    const all = Store.tickets();
     const placed = all.filter(function (o) { return o.status === "Placed"; });
     const prep = all.filter(function (o) { return o.status === "Preparing"; });
     const ready = all.filter(function (o) { return o.status === "Ready"; });
@@ -64,10 +60,9 @@
 
     const open = placed.concat(prep);
     const oldest = open.length ? Math.min.apply(null, open.map(function (o) { return o.createdAt; })) : null;
-    const today = all.filter(function (o) { return o.status === "Served" && new Date(o.updatedAt).toDateString() === new Date().toDateString(); }).length;
     const stats = document.getElementById("kdsStats");
-    stats.innerHTML = "";
-    [["In queue", String(open.length)], ["Oldest ticket", oldest ? elapsed(oldest) : "—"], ["Served today", String(today)]].forEach(function (s, i) {
+    stats.replaceChildren();
+    [["In queue", String(open.length)], ["Oldest ticket", oldest ? elapsed(oldest) : "—"], ["At the pass", String(ready.length)]].forEach(function (s, i) {
       stats.appendChild(h("div", { class: "stat-chip" }, [h("small", { text: s[0] }), h("b", { text: s[1], "data-oldest": i === 1 && oldest ? String(oldest) : null })]));
     });
   }

@@ -3,12 +3,11 @@
 // never entered or stored here (SR-8). Refunds are manager-only (SR-3, SR-7).
 (function () {
   if (!window.App) return;
-  const h = CMS.h, me = App.session.user, role = App.session.role;
-  const limit = Store.DISCOUNT_LIMIT[role] || 0;
+  const h = CMS.h, role = App.session.role;
   const DISCOUNTS = [0, 5, 10, 15, 20, 25];
   let selected = null, discount = 0, method = "Cash", tendered = "", phone = "", query = "";
 
-  document.addEventListener("DOMContentLoaded", function () {
+  App.ready(function () {
     const m = /^#t(\d+)$/.exec(location.hash);
     if (m) selected = Number(m[1]);
     if (role === "Cashier") {
@@ -25,9 +24,10 @@
   function renderAll() { renderStats(); renderTables(); renderBill(); renderBills(); }
 
   function renderStats() {
-    const s = Store.salesToday(), open = Store.openTables();
+    const paid = Store.bills().filter(function (b) { return b.status === "Paid"; }), open = Store.openTables();
+    const s = { revenue: paid.reduce(function (sum, b) { return sum + b.total; }, 0), bills: paid.length };
     const box = document.getElementById("billStats");
-    box.innerHTML = "";
+    box.replaceChildren();
     [["Collected today", CMS.money(s.revenue)], ["Bills", String(s.bills)], ["Open tables", String(open.length)]].forEach(function (x) {
       box.appendChild(h("div", { class: "stat-chip" }, [h("small", { text: x[0] }), h("b", { text: x[1] })]));
     });
@@ -38,7 +38,7 @@
     const wrap = document.getElementById("openTables");
     const open = Store.openTables().sort(function (a, b) { return (b.billRequested ? 1 : 0) - (a.billRequested ? 1 : 0) || a.since - b.since; });
     if (selected && !open.some(function (t) { return t.no === selected; })) selected = null;
-    wrap.innerHTML = "";
+    wrap.replaceChildren();
     if (!open.length) {
       wrap.appendChild(h("div", { class: "empty-state", icon: "receipt", iconSize: 32 }, [h("b", { text: "No open tables" }), h("span", { text: "Tables appear here as soon as a waiter sends an order." })]));
       return;
@@ -60,7 +60,7 @@
   function renderBill() {
     const body = document.getElementById("billBody");
     const tab = selected ? Store.openTables().find(function (t) { return t.no === selected; }) : null;
-    body.innerHTML = "";
+    body.replaceChildren();
     document.getElementById("billState").textContent = "";
     if (!tab) {
       document.getElementById("billTitle").textContent = "Bill";
@@ -68,6 +68,7 @@
       body.appendChild(h("div", { class: "empty-state", icon: "clipboard", iconSize: 36 }, [h("b", { text: "No table selected" }), h("span", { text: "Choose an open table on the left to prepare its bill." })]));
       return;
     }
+    const limit = Store.discountLimit;
     const t = Store.totals(tab.lines, discount);
     document.getElementById("billTitle").textContent = "Table " + tab.no;
     document.getElementById("billSub").textContent = tab.orders.map(function (o) { return o.id; }).join(", ") + " · " + tab.waiters.join(", ");
@@ -154,26 +155,28 @@
     if (!ok) return;
     const btn = document.getElementById("payBtn");
     if (btn) { btn.disabled = true; btn.textContent = method === "Cash" ? "Recording…" : "Waiting for gateway…"; }
-    setTimeout(function () {
-      const bill = CMS.attempt(function () { return Store.pay(tab.no, { discountPct: discount, method: method, tendered: tendered, phone: phone }, me); });
-      if (!bill) { renderBill(); return; }
-      selected = null; discount = 0; tendered = ""; phone = ""; history.replaceState(null, "", location.pathname);
-      CMS.toast("Payment recorded · " + bill.no, "ok");
-      showReceipt(bill);
-    }, method === "Cash" ? 300 : 1200);
+    const bill = await CMS.attempt(function () { return Store.pay(tab.no, { discountPct: discount, method: method, tendered: tendered, phone: phone }); });
+    if (!bill) { renderBill(); return; }
+    selected = null; discount = 0; tendered = ""; phone = ""; history.replaceState(null, "", location.pathname);
+    renderAll();
+    if (bill.status !== "Paid") {
+      CMS.toast(bill.status === "Payment Failed" ? bill.no + " was declined. Try again or take another payment method." : "The gateway did not answer, so " + bill.no + " is pending. You can retry it below.", "err");
+      return;
+    }
+    CMS.toast("Payment recorded · " + bill.no, "ok");
+    showReceipt(bill);
   }
 
   // ----- Receipt -----
   function showReceipt(b) {
     const r = document.getElementById("receipt");
-    const cashier = Store.findUser(b.cashier);
-    r.innerHTML = "";
+    r.replaceChildren();
     const add = function () { Array.prototype.forEach.call(arguments, function (n) { if (n) r.appendChild(n); }); };
     const row = function (a, c, cls) { return h("div", { class: "r-row " + (cls || "") }, [h("span", { text: a }), h("span", { text: c })]); };
     add(
       h("div", { class: "r-head" }, [h("div", { class: "r-logo" }, [App.I("coffee", 22)]), h("b", { text: "CafeMS" }), h("small", { text: "Cafe Management System" }), h("small", { text: "NTN 0000000-0 · GST registered" })]),
       h("div", { class: "r-sep" }),
-      row("Receipt", b.no), row("Date", CMS.dateTime(b.createdAt)), row("Table", String(b.table)), row("Cashier", cashier ? cashier.name : b.cashier),
+      row("Receipt", b.no), row("Date", CMS.dateTime(b.createdAt)), row("Table", String(b.table)), row("Cashier", Store.staffName(b.cashier)),
       b.phone ? row("Customer", b.phone) : null,
       h("div", { class: "r-sep" }),
       h("div", null, b.lines.map(function (l) { return h("div", { class: "r-line" }, [h("span", { text: l.qty + " × " + l.name }), h("span", { text: CMS.money(l.price * l.qty) })]); })),
@@ -195,33 +198,40 @@
 
   // ----- Today's bills -----
   function renderBills() {
-    const bills = Store.bills(me).filter(function (b) { return new Date(b.createdAt).toDateString() === new Date().toDateString(); });
+    const bills = Store.bills();
     const rows = bills.filter(function (b) { return !query || b.no.toLowerCase().indexOf(query) !== -1 || ("t" + b.table) === query || String(b.table) === query; });
     document.getElementById("recentSub").textContent = bills.length + " bills today" + (role === "Cashier" ? " · refunds need a manager · customer numbers are masked" : "");
     const body = document.getElementById("billsBody");
-    body.innerHTML = "";
-    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state", style: "padding:24px", text: "No bills match." })])])); return; }
+    body.replaceChildren();
+    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state pad-24", text: "No bills match." })])])); return; }
     rows.forEach(function (b) {
       const actions = h("div", { class: "row-actions" }, [h("button", { class: "btn btn-ghost btn-sm", text: "Receipt", "aria-label": "Show receipt " + b.no, onclick: function () { showReceipt(b); } })]);
-      if (b.status === "Paid") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { requestRefund(b); } }));
+      if (b.phone && role === "Manager") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Number", "aria-label": "Show customer number for " + b.no, onclick: function () { CMS.showPhone(function () { return Store.billPhone(b.no); }); } }));
+      if (b.status === "Pending Payment" || b.status === "Payment Failed") actions.appendChild(h("button", { class: "btn btn-secondary btn-sm", text: "Retry", "aria-label": "Retry payment for " + b.no, onclick: function (e) { retry(b, e.currentTarget); } }));
+      if (b.status === "Paid" && !b.refundPending) actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { requestRefund(b); } }));
       body.appendChild(h("tr", null, [
         h("td", null, [h("span", { class: "mono", text: b.no })]), h("td", { text: "T" + b.table }),
         h("td", { class: "hide-sm time", text: CMS.clock(new Date(b.createdAt)) }), h("td", { class: "hide-sm", text: b.method === "Wallet" ? "Wallet" : b.method }),
         h("td", { class: "hide-sm mono", text: b.phone || "—" }),
         h("td", { class: "num nowrap", text: CMS.money(b.total) }),
-        h("td", null, [h("span", { class: "pill " + (b.status === "Paid" ? "pill-ready" : "pill-cancelled"), text: b.status })]),
+        h("td", null, [h("span", { class: "pill " + (b.status === "Paid" ? "pill-ready" : b.status === "Pending Payment" ? "pill-preparing" : "pill-cancelled"), text: b.status })]),
         h("td", { class: "actions" }, [actions])
       ]));
     });
   }
 
+  async function retry(b, button) {
+    await CMS.busy(button, async function () {
+      const bill = await CMS.attempt(function () { return Store.retryPayment(b.no); });
+      if (bill) CMS.toast(bill.status === "Paid" ? b.no + " paid" : b.no + " is still not paid: " + bill.status.toLowerCase(), bill.status === "Paid" ? "ok" : "err");
+    });
+  }
+
   // ----- Refund: manager-only function (SR-3) -----
-  // IF role is authorised → continue to the refund form, ELSE → "Access denied".
-  // The data layer re-checks the role and logs the attempt, so hiding or skipping
-  // this check in the browser would not let a cashier refund.
-  function requestRefund(b) {
+  // The server decides and logs the attempt, so changing this script would not let a cashier refund.
+  async function requestRefund(b) {
     if (role === "Manager") { location.href = "reports.html#refund-" + b.no; return; }
-    try { Store.refund(b.no, "Attempted from billing", me); } catch (e) { /* denied and logged by the data layer */ }
+    try { await Store.refund(b.no, "Attempted from billing"); } catch (e) { /* denied and logged by the server */ }
     CMS.confirm({ title: "Access denied", message: "Only a manager can issue refunds. Your attempt on " + b.no + " has been recorded in the audit log. Ask the manager on duty to process it.",
       okText: "OK", cancelText: "Close", icon: "shield", danger: true });
   }

@@ -20,7 +20,7 @@ function createOrderService({ db, catalog }) {
 
   const waiterView = (o) => ({
     id: o._id, table: o.table, items: o.items, notes: o.notes, status: o.status, waiter: o.waiter,
-    createdAt: o.createdAt, updatedAt: o.updatedAt, billed: o.billed, version: o.version, totals: calculateTotals(o.items)
+    createdAt: o.createdAt, updatedAt: o.updatedAt, billed: o.billed, billNo: o.billNo || null, version: o.version, totals: calculateTotals(o.items)
   });
   // The kitchen needs to cook, not to see prices or who is paying
   const kitchenView = (o) => ({

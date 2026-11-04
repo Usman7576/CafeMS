@@ -47,22 +47,32 @@
     ,moon: '<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z"/>'
   };
 
-  function svg(name, size) {
-    const body = P[name];
-    if (!body) return "";
-    const s = size || 20;
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s +
-      '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
-      body + "</svg>";
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const SHAPE = /<(\w+)([^>]*)\/>/g;
+  const ATTRIBUTE = /([\w-]+)="([^"]*)"/g;
+
+  // Builds the icon with DOM calls, reading only the fixed shapes above. No HTML parsing is involved.
+  function node(name, size) {
+    const s = String(size || 20);
+    const svg = document.createElementNS(SVG_NS, "svg");
+    const attrs = { width: s, height: s, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", focusable: "false" };
+    Object.keys(attrs).forEach(function (k) { svg.setAttribute(k, attrs[k]); });
+    const body = Object.prototype.hasOwnProperty.call(P, name) ? P[name] : "";
+    for (const shape of body.matchAll(SHAPE)) {
+      const el = document.createElementNS(SVG_NS, shape[1]);
+      for (const attr of shape[2].matchAll(ATTRIBUTE)) el.setAttribute(attr[1], attr[2]);
+      svg.appendChild(el);
+    }
+    return svg;
   }
 
   function render(root) {
     (root || document).querySelectorAll("i[data-icon]").forEach(function (el) {
-      el.outerHTML = svg(el.getAttribute("data-icon"), el.getAttribute("data-size"));
+      el.replaceWith(node(el.getAttribute("data-icon"), el.getAttribute("data-size")));
     });
   }
 
-  window.Icons = { svg: svg, render: render };
+  window.Icons = { node: node, render: render };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () { render(); });
   } else {

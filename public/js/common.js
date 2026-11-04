@@ -1,6 +1,9 @@
 // Shared helpers used on every page.
 (function () {
-  // ---------- DOM helper: builds elements with textContent only (no innerHTML for data) ----------
+  // The old prototype kept a full copy of the database in the browser. Remove it from any device that still has one.
+  try { ["cms_db_v4", "cms_kds_heartbeat"].forEach(function (key) { localStorage.removeItem(key); }); } catch (e) { /* storage unavailable */ }
+
+  // ---------- DOM helper: builds elements with textContent only, so data can never become markup ----------
   function h(tag, attrs, children) {
     const el = document.createElement(tag);
     if (attrs) {
@@ -9,11 +12,12 @@
         if (v === null || v === undefined || v === false) return;
         if (k === "class") el.className = v;
         else if (k === "text" || k === "icon" || k === "iconSize") return;
+        else if (k === "css") Object.assign(el.style, v);
         else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), v);
         else el.setAttribute(k, v === true ? "" : v);
       });
       if (attrs.text !== undefined) el.textContent = attrs.text;
-      if (attrs.icon) el.insertAdjacentHTML("afterbegin", Icons.svg(attrs.icon, attrs.iconSize || 16));
+      if (attrs.icon) el.prepend(Icons.node(attrs.icon, attrs.iconSize || 16));
     }
     (children || []).forEach(function (c) {
       if (c === null || c === undefined) return;
@@ -107,7 +111,7 @@
     csrfToken: null,
     call: async function (method, path, body, opts) {
       opts = opts || {};
-      const headers = { Accept: "application/json" };
+      const headers = Object.assign({ Accept: "application/json" }, opts.headers);
       if (body !== undefined) headers["Content-Type"] = "application/json";
       if (method !== "GET" && !opts.public) {
         if (!Api.csrfToken) await Api.me();
@@ -132,6 +136,31 @@
         throw failure;
       }
       return data;
+    },
+    upload: async function (path, file) {
+      if (!Api.csrfToken) await Api.me();
+      const response = await fetch("/api/v1" + path, { method: "PUT", credentials: "same-origin", headers: { "Content-Type": file.type, "X-CSRF-Token": Api.csrfToken }, body: file });
+      if (response.ok) return;
+      const info = await response.json().catch(function () { return {}; });
+      const failure = new Error((info.error && info.error.message) || "The file could not be uploaded.");
+      failure.userMessage = failure.message;
+      throw failure;
+    },
+    // Downloads a server-generated file, so the server can check, limit and log the export
+    download: async function (path, filename) {
+      const response = await fetch("/api/v1" + path, { credentials: "same-origin" });
+      if (!response.ok) {
+        const info = await response.json().catch(function () { return {}; });
+        const failure = new Error((info.error && info.error.message) || "The export could not be created.");
+        failure.userMessage = failure.message;
+        throw failure;
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const a = h("a", { href: url, download: filename });
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     },
     me: async function () {
       const me = await Api.call("GET", "/auth/me");
@@ -186,12 +215,12 @@
   });
 
   // ---------- Run an action and show validation errors from the data layer ----------
-  function attempt(fn, errBox) {
-    try { return fn(); } catch (e) {
+  async function attempt(fn, errBox) {
+    try { return await fn(); } catch (e) {
       const msg = e.userMessage || "Something went wrong. Please try again.";
       if (errBox) {
-        errBox.innerHTML = "";
-        errBox.insertAdjacentHTML("afterbegin", Icons.svg("alert", 18));
+        errBox.replaceChildren();
+        errBox.prepend(Icons.node("alert", 18));
         errBox.appendChild(h("span", { text: msg }));
         errBox.classList.add("show");
       } else toast(msg, "err");
@@ -200,6 +229,109 @@
     }
   }
   function clearError(errBox) { if (errBox) errBox.classList.remove("show"); }
+
+  // Stops double submission: the button stays disabled until the server has answered
+  async function busy(button, work) {
+    if (button.disabled) return undefined;
+    button.disabled = true;
+    try { return await work(); } finally { button.disabled = false; }
+  }
+
+  // ---------- Fresh authenticator code for sensitive actions ----------
+  function askForCode() {
+    return new Promise(function (resolve) {
+      const id = "stepup-" + Date.now();
+      const input = h("input", { class: "input", type: "text", inputmode: "numeric", maxlength: "6", autocomplete: "one-time-code", "aria-label": "Authenticator code", "data-autofocus": true });
+      const okBtn = h("button", { class: "btn btn-primary", type: "submit", text: "Confirm" });
+      const cancelBtn = h("button", { class: "btn btn-secondary", type: "button", text: "Cancel" });
+      const form = h("form", { class: "modal" }, [
+        h("div", { class: "modal-head" }, [
+          h("div", { class: "icon-tile warn", icon: "shield", iconSize: 20 }),
+          h("div", null, [h("h3", { id: id + "-t", text: "Confirm it's you" }), h("p", { text: "Enter a new code from your authenticator app. A code can be used only once, so you may need to wait for the next one." })])
+        ]),
+        h("div", { class: "modal-body" }, [input]),
+        h("div", { class: "modal-actions" }, [cancelBtn, okBtn])
+      ]);
+      const backdrop = h("div", { class: "modal-backdrop", id: id, role: "dialog", "aria-modal": "true", "aria-labelledby": id + "-t", "data-static": true }, [form]);
+      document.body.appendChild(backdrop);
+      const done = function (value) { closeModal(id); backdrop.remove(); resolve(value); };
+      cancelBtn.addEventListener("click", function () { done(null); });
+      form.addEventListener("submit", function (e) { e.preventDefault(); done(input.value.trim()); });
+      openModal(id);
+      input.focus();
+    });
+  }
+
+  // Runs an action. If the server asks for a fresh code, asks the user, proves it, and tries once more.
+  async function withStepUp(action) {
+    try {
+      return await action();
+    } catch (error) {
+      if (error.code !== "step_up_required") throw error;
+    }
+    const code = await askForCode();
+    if (!code) {
+      const cancelled = new Error("Cancelled.");
+      cancelled.userMessage = "Cancelled. Nothing was changed.";
+      throw cancelled;
+    }
+    await Api.call("POST", "/auth/step-up", { code: code });
+    return action();
+  }
+
+  // Shows a one-time link to the Admin, who passes it on in person
+  function showLink(title, result) {
+    const input = h("input", { class: "input mono", type: "text", readonly: true, "aria-label": "One-time link" });
+    input.value = result.setupUrl;
+    const id = "link-" + Date.now();
+    const copyBtn = h("button", { class: "btn btn-secondary", type: "button", text: "Copy link" });
+    const closeBtn = h("button", { class: "btn btn-primary", type: "button", text: "Done", "data-autofocus": true });
+    const backdrop = h("div", { class: "modal-backdrop", id: id, role: "dialog", "aria-modal": "true", "aria-labelledby": id + "-t", "data-static": true }, [
+      h("div", { class: "modal" }, [
+        h("div", { class: "modal-head" }, [
+          h("div", { class: "icon-tile", icon: "key", iconSize: 20 }),
+          h("div", null, [h("h3", { id: id + "-t", text: title }), h("p", { text: "Give this link to the person directly. It works once, expires in 24 hours and is not shown again." })])
+        ]),
+        h("div", { class: "modal-body" }, [input]),
+        h("div", { class: "modal-actions" }, [copyBtn, closeBtn])
+      ])
+    ]);
+    document.body.appendChild(backdrop);
+    copyBtn.addEventListener("click", function () { navigator.clipboard.writeText(input.value).then(function () { toast("Link copied", "ok"); }); });
+    closeBtn.addEventListener("click", function () { closeModal(id); backdrop.remove(); });
+    openModal(id);
+  }
+
+  // Shared list of requests waiting for a second person (Manager and Admin screens)
+  function renderApprovals(list) {
+    list.replaceChildren();
+    const rows = Store.approvals();
+    if (!rows.length) { list.appendChild(h("li", { class: "empty-li" }, [h("span", { class: "muted", text: "Nothing is waiting for approval." })])); return; }
+    const decide = async function (a, decision, button) {
+      await busy(button, async function () {
+        const result = await attempt(function () { return withStepUp(function () { return Store.decideApproval(a.id, decision); }); });
+        if (result === undefined) return;
+        if (result && result.setupUrl) showLink("Approved: one-time link", result);
+        toast(decision === "approve" ? "Request approved" : "Request rejected", "ok");
+      });
+    };
+    rows.forEach(function (a) {
+      const approve = h("button", { class: "btn btn-primary btn-sm", type: "button", text: "Approve", onclick: function (e) { decide(a, "approve", e.currentTarget); } });
+      const reject = h("button", { class: "btn btn-ghost btn-sm", type: "button", text: "Reject", onclick: function (e) { decide(a, "reject", e.currentTarget); } });
+      list.appendChild(h("li", null, [
+        h("span", { class: "tno warn", icon: "shield", iconSize: 18 }),
+        h("div", { class: "meta" }, [h("b", { text: a.summary }), h("small", { text: "Requested by " + a.requestedBy + " · " + timeAgo(a.createdAt) })]),
+        h("div", { class: "row-actions" }, [approve, reject])
+      ]));
+    });
+  }
+
+  // Full customer numbers are fetched only on request, and the server logs each one
+  async function showPhone(load) {
+    const phone = await attempt(load);
+    if (!phone) return;
+    confirmDialog({ title: "Customer number", message: phone + ". This view has been recorded in the audit log.", okText: "Close", cancelText: "Hide", icon: "user" });
+  }
 
   const dateLong = function (d) { return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
   const dateTime = function (ts) { const d = new Date(ts); return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) + ", " + clock(d); };
@@ -217,7 +349,7 @@
   // Vertical bar chart: data = [{ label, value, title }]
   function barChart(container, data, opts) {
     opts = opts || {};
-    container.innerHTML = "";
+    container.replaceChildren();
     // Draw at the container's real width so text stays crisp and readable
     const W = Math.max(300, Math.round(container.clientWidth || 640)), H = opts.height || 220, padL = 44, padB = 26, padT = 12;
     if (!container._chartResize && window.ResizeObserver) {
@@ -229,7 +361,7 @@
       container._chartResize.observe(container);
     }
     container._chartArgs = [container, data, opts];
-    const max = Math.max.apply(null, data.map(function (d) { return d.value; }).concat([1]));
+    const max = Math.max.apply(null, data.map(function (d) { return d.value; }).concat([100]));
     const step = Math.pow(10, Math.floor(Math.log10(max))), niceMax = Math.ceil(max / step) * step;
     const svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, class: "chart-svg", role: "img", "aria-label": opts.label || "Bar chart" });
     for (let i = 0; i <= 4; i++) {
@@ -252,20 +384,20 @@
   }
   // Horizontal bars: rows = [{ label, value, display, sub }]
   function hBars(container, rows) {
-    container.innerHTML = "";
+    container.replaceChildren();
     const max = Math.max.apply(null, rows.map(function (r) { return r.value; }).concat([1]));
     if (!rows.length) { container.appendChild(h("p", { class: "muted", text: "No sales yet today." })); return; }
     rows.forEach(function (r, i) {
       container.appendChild(h("div", { class: "hbar" }, [
         h("div", { class: "hbar-top" }, [h("span", { class: "hbar-label", text: r.label }), h("span", { class: "hbar-val", text: r.display || String(r.value) })]),
-        h("div", { class: "hbar-track" }, [h("div", { class: "hbar-fill" + (i === 0 ? " first" : ""), style: "width:" + Math.max(2, r.value / max * 100) + "%" })]),
+        h("div", { class: "hbar-track" }, [h("div", { class: "hbar-fill" + (i === 0 ? " first" : ""), css: { width: Math.max(2, r.value / max * 100) + "%" } })]),
         r.sub ? h("div", { class: "hbar-sub", text: r.sub }) : null
       ]));
     });
   }
   // Donut: segments = [{ label, value, color }]
   function donut(container, segments, centerLabel) {
-    container.innerHTML = "";
+    container.replaceChildren();
     const total = segments.reduce(function (s, x) { return s + x.value; }, 0);
     const wrap = h("div", { class: "donut-wrap" });
     const svg = svgEl("svg", { viewBox: "0 0 120 120", class: "donut", role: "img", "aria-label": "Share by payment method" });
@@ -284,29 +416,16 @@
     svg.appendChild(svgEl("text", { x: 60, y: 73, class: "donut-cap", "text-anchor": "middle" }, "total"));
     wrap.appendChild(svg);
     wrap.appendChild(h("ul", { class: "donut-legend" }, segments.map(function (s) {
-      return h("li", null, [h("i", { style: "background:" + s.color }), h("span", { text: s.label }), h("b", { text: total ? Math.round(s.value / total * 100) + "%" : "0%" }), h("small", { text: money(s.value) })]);
+      return h("li", null, [h("i", { css: { background: s.color } }), h("span", { text: s.label }), h("b", { text: total ? Math.round(s.value / total * 100) + "%" : "0%" }), h("small", { text: money(s.value) })]);
     })));
     container.appendChild(wrap);
-  }
-
-  // ---------- CSV export (neutralises spreadsheet formula injection) ----------
-  function downloadCSV(filename, rows) {
-    const esc = function (v) {
-      let s = String(v === null || v === undefined ? "" : v);
-      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    };
-    const csv = rows.map(function (r) { return r.map(esc).join(","); }).join("\r\n");
-    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-    const a = h("a", { href: url, download: filename });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   window.CMS = {
     h: h, money: money, timeAgo: timeAgo, clock: clock, dateLong: dateLong, dateTime: dateTime, compact: compact, qty: qty,
     toast: toast, openModal: openModal, closeModal: closeModal, confirm: confirmDialog,
-    attempt: attempt, clearError: clearError, barChart: barChart, hBars: hBars, donut: donut, downloadCSV: downloadCSV
+    attempt: attempt, clearError: clearError, busy: busy, withStepUp: withStepUp, showLink: showLink, renderApprovals: renderApprovals, showPhone: showPhone,
+    barChart: barChart, hBars: hBars, donut: donut
   };
   window.Session = Session;
   window.Api = Api;

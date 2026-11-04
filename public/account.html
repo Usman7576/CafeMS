@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My account — Cafe Management System</title>
+  <meta name="theme-color" content="#3d2518">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=5.0">
+  <link rel="stylesheet" href="css/style.css?v=5.0">
+</head>
+<body data-page="account">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>My account</h2><p>Your password, authenticator and signed-in devices.</p></div>
+    </div>
+    <div class="dash-grid">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Change password</h3><p>Your other devices are signed out when it changes.</p></div></div>
+          <form class="panel-body" id="passwordForm" novalidate>
+            <div class="alert alert-error" id="passwordErr" role="alert"></div>
+            <div class="field"><label for="currentPassword">Current password</label><input class="input" type="password" id="currentPassword" autocomplete="current-password" maxlength="128" required></div>
+            <div class="field"><label for="newPassword">New password</label><input class="input" type="password" id="newPassword" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">
+              <ul class="pw-rules" id="pwRules" aria-label="Password requirements">
+                <li data-rule="len">At least 12 characters</li>
+                <li data-rule="upper">One uppercase letter</li>
+                <li data-rule="lower">One lowercase letter</li>
+                <li data-rule="num">One number</li>
+                <li data-rule="sym">One symbol</li>
+              </ul>
+            </div>
+            <button type="submit" class="btn btn-primary" id="passwordSave">Change password</button>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Authenticator</h3><p id="mfaStatus"></p></div></div>
+          <div class="panel-body">
+            <p class="auth-note">Recovery codes let you sign in if you lose your phone. Making new ones cancels the old ones.</p>
+            <ul class="recovery-list" id="recoveryList" hidden></ul>
+            <button type="button" class="btn btn-secondary" id="newCodes">Make new recovery codes</button>
+          </div>
+        </section>
+      </div>
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Signed-in devices</h3><p>If you don't recognise one, sign it out and change your password.</p></div></div>
+          <ul class="ready-list" id="deviceList"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="js/icons.js?v=5.0"></script>
+  <script src="js/common.js?v=5.0"></script>
+  <script src="js/store.js?v=5.0"></script>
+  <script src="js/app.js?v=5.0"></script>
+  <script src="js/account.js?v=5.0"></script>
+</body>
+</html>

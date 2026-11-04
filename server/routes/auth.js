@@ -29,7 +29,7 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   const users = db.collection("users");
   const challenges = db.collection("auth_challenges");
   const tokens = db.collection("auth_tokens");
-  const { requireAuth } = middleware;
+  const { requireAuth, requireStepUp } = middleware;
 
   const audit = (req, event) => recordEvent(db, req, event);
 
@@ -213,7 +213,8 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
     const { user, session } = req.auth;
     res.json({
       username: user.username, name: user.name, role: user.role,
-      loginAt: session.createdAt, csrfToken: session.csrfToken, idleSeconds: Math.floor(config.auth.sessionIdleMs / 1000)
+      loginAt: session.createdAt, csrfToken: session.csrfToken, idleSeconds: Math.floor(config.auth.sessionIdleMs / 1000),
+      recoveryCodesLeft: user.mfa && user.mfa.recoveryHashes ? user.mfa.recoveryHashes.length : 0
     });
   });
 
@@ -241,6 +242,17 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
       }
       await db.collection("sessions").updateOne({ jti: session.jti }, { $set: { stepUpAt: new Date() } });
       res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/mfa/recovery-codes", requireAuth, requireStepUp, async (req, res, next) => {
+    try {
+      const { user } = req.auth;
+      const recoveryCodes = await mfa.replaceRecoveryCodes(user.username);
+      await audit(req, { actor: user.username, role: user.role, action: "Recovery codes replaced", details: "Old codes cancelled", severity: "warning" });
+      res.json({ recoveryCodes });
     } catch (error) {
       next(error);
     }

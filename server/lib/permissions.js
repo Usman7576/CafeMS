@@ -12,6 +12,7 @@ const PERMISSIONS = Object.freeze({
   "billing.approveRefund": ["Manager", "Admin"],
   "approvals.read": ["Manager", "Admin"],
   "customer.phone": ["Manager", "Admin"],
+  "customer.erase": ["Admin"],
   "reservations.write": ["Waiter", "Manager"],
   "inventory.read": ["Manager", "Admin"],
   "inventory.write": ["Manager"],
@@ -20,6 +21,7 @@ const PERMISSIONS = Object.freeze({
   "users.manage": ["Admin"],
   "settings.write": ["Admin"],
   "audit.read": ["Admin"],
+  "alerts.manage": ["Admin"],
   "risk.read": ["Admin"]
 });
 
@@ -36,7 +38,9 @@ const PAGES = Object.freeze({
   "/reports.html": ["Manager", "Admin"],
   "/menu.html": ["Admin"],
   "/users.html": ["Admin"],
-  "/audit.html": ["Admin"]
+  "/audit.html": ["Admin"],
+  "/security.html": ["Admin"],
+  "/account.html": ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]
 });
 
 const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/setup.html", "/404.html"]);

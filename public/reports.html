@@ -7,10 +7,8 @@
   <meta name="theme-color" content="#3d2518">
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=4.0">
+  <link rel="stylesheet" href="css/fonts.css?v=5.0">
+  <link rel="stylesheet" href="css/style.css?v=5.0">
 </head>
 <body data-page="reports">
   <main class="content" id="main">
@@ -33,7 +31,7 @@
       <section class="panel"><div class="panel-head"><div><h3>Sales by category</h3><p>Before tax</p></div></div><div class="panel-body"><div id="catChart"></div></div></section>
       <section class="panel"><div class="panel-head"><div><h3>Tax summary</h3><p>For end-of-day reconciliation</p></div></div><div class="panel-body"><div class="summary" id="taxSummary"></div></div></section>
     </div>
-    <section class="panel" style="margin-top:20px;">
+    <section class="panel mt-20">
       <div class="panel-head"><div><h3>Bills today</h3><p>Refunds require a reason and are written to the audit log</p></div></div>
       <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Bill</th><th>Table</th><th class="hide-sm">Time</th><th class="hide-sm">Cashier</th><th class="hide-sm">Method</th><th>Total</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="billsBody"></tbody></table></div>
     </section>
@@ -44,15 +42,15 @@
       <div class="modal-head"><div class="icon-tile danger"><i data-icon="refresh" data-size="20"></i></div><div><h3 id="refundTitle">Issue refund</h3><p id="refundSub"></p></div></div>
       <div class="modal-body">
         <div class="alert alert-error" id="refundErr" role="alert"></div>
-        <div class="field" style="margin-bottom:0"><label for="refundReason">Reason for refund</label><input class="input" id="refundReason" type="text" maxlength="80" required placeholder="e.g. Wrong item served"><div class="field-hint">Recorded in the audit log with your name and the time.</div></div>
+        <div class="field mb-0"><label for="refundReason">Reason for refund</label><input class="input" id="refundReason" type="text" maxlength="80" required placeholder="e.g. Wrong item served"><div class="field-hint">Recorded in the audit log with your name and the time.</div></div>
       </div>
       <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="refundModal">Cancel</button><button type="submit" class="btn btn-danger">Refund bill</button></div>
     </form>
   </div>
-  <script src="js/icons.js?v=4.0"></script>
-  <script src="js/common.js?v=4.0"></script>
-  <script src="js/store.js?v=4.0"></script>
-  <script src="js/app.js?v=4.0"></script>
-  <script src="js/reports.js?v=4.0"></script>
+  <script src="js/icons.js?v=5.0"></script>
+  <script src="js/common.js?v=5.0"></script>
+  <script src="js/store.js?v=5.0"></script>
+  <script src="js/app.js?v=5.0"></script>
+  <script src="js/reports.js?v=5.0"></script>
 </body>
 </html>

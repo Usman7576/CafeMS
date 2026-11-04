@@ -3,6 +3,7 @@ const { AppError } = require("../lib/errors");
 const { fromMilli, toMilli } = require("../lib/domain");
 const { nextSequence } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
+const { enqueue } = require("./outbox");
 
 function createCatalogService({ db }) {
   const menu = db.collection("menu");
@@ -29,12 +30,12 @@ function createCatalogService({ db }) {
   // Waiters see what they need to sell an item; recipes and stock levels stay private
   async function listForSale() {
     const [items, stock] = await Promise.all([menu.find().sort({ _id: 1 }).toArray(), stockMap()]);
-    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, available: !unavailableReason(m, stock), reason: unavailableReason(m, stock) }));
+    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: Boolean(m.photo), available: !unavailableReason(m, stock), reason: unavailableReason(m, stock) }));
   }
 
   async function listForAdmin() {
     const [items, stock] = await Promise.all([menu.find().sort({ _id: 1 }).toArray(), stockMap()]);
-    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, available: m.available, reason: unavailableReason(m, stock) }));
+    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: Boolean(m.photo), available: m.available, reason: unavailableReason(m, stock) }));
   }
 
   const inventoryView = (ing, usedIn) => ({
@@ -64,13 +65,21 @@ function createCatalogService({ db }) {
     });
 
     for (const [ing, qtyMilli] of needed) {
-      const result = await inventory.updateOne({ _id: ing, qtyMilli: { $gte: qtyMilli } }, { $inc: { qtyMilli: -qtyMilli } }, { session });
-      if (result.modifiedCount !== 1) {
+      const updated = await inventory.findOneAndUpdate({ _id: ing, qtyMilli: { $gte: qtyMilli } }, { $inc: { qtyMilli: -qtyMilli } }, { returnDocument: "after", session });
+      if (updated) await notifyIfCrossedReorder(updated, qtyMilli, session);
+      else {
         const short = lines.map((l) => items.get(l.id)).find((m) => (m.recipe || []).some((r) => r.ing === ing));
         throw new AppError(409, "item_unavailable", `There is not enough stock for ${short.name}.`);
       }
     }
     return { snapshot, stockUsed: [...needed].map(([ing, qtyMilli]) => ({ ing, qtyMilli })) };
+  }
+
+  // Only the moment stock falls to its reorder level sends a message, not every order after it
+  async function notifyIfCrossedReorder(ing, removedMilli, session) {
+    if (ing.qtyMilli <= ing.reorderMilli && ing.qtyMilli + removedMilli > ing.reorderMilli) {
+      await enqueue(db, "low-stock", { ingredient: ing.name }, session);
+    }
   }
 
   // Returns exactly what the order took, even if the recipe has changed since
@@ -108,12 +117,15 @@ function createCatalogService({ db }) {
   }
 
   async function deleteItem(req, id, session) {
+    let deletedPhoto = null;
     const item = await menu.findOne({ _id: id }, { session });
     if (!item) throw new AppError(404, "not_found", "Item not found.");
     const inUse = await db.collection("orders").findOne({ billed: false, status: { $ne: "Cancelled" }, "items.id": id }, { session });
     if (inUse) throw new AppError(409, "item_in_use", "This item is on an open order. Remove it after the table has paid.");
     await menu.deleteOne({ _id: id }, { session });
+    deletedPhoto = item.photo ? item.photo.file : null;
     await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Menu item deleted", details: `${item.name} · Rs ${item.price}`, severity: "high" }, { session });
+    return deletedPhoto;
   }
 
   async function adjustStock(req, id, delta, reason, session) {
@@ -125,6 +137,7 @@ function createCatalogService({ db }) {
       const exists = await inventory.findOne({ _id: id }, { session });
       throw exists ? new AppError(409, "stock_too_low", "Stock can't go below zero.") : new AppError(404, "not_found", "Item not found.");
     }
+    if (deltaMilli < 0) await notifyIfCrossedReorder(updated, -deltaMilli, session);
     await recordEvent(db, req, {
       actor: req.auth.user.username, role: req.auth.user.role,
       action: delta > 0 ? "Stock restocked" : "Stock written off",
