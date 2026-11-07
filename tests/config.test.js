@@ -40,9 +40,15 @@ test("the backup key is not needed by the server", () => {
   assert.equal(loadConfig({ ...testEnv(), BACKUP_KEY: undefined }).backupKey, undefined);
 });
 
+const PRODUCTION_DB = "mongodb://cafems_app:Long-Random-Password-1@mongo:27017/?replicaSet=rs0";
+
 test("production requires https", () => {
-  refuses(testEnv({ NODE_ENV: "production", APP_ORIGIN: "http://cafe.example" }), /https/);
-  assert.equal(loadConfig(testEnv({ NODE_ENV: "production", APP_ORIGIN: "https://cafe.example" })).usesTls, true);
+  refuses(testEnv({ NODE_ENV: "production", APP_ORIGIN: "http://cafe.example", MONGODB_URI: PRODUCTION_DB }), /https/);
+  assert.equal(loadConfig(testEnv({ NODE_ENV: "production", APP_ORIGIN: "https://cafe.example", MONGODB_URI: PRODUCTION_DB })).usesTls, true);
+});
+
+test("production refuses a database connection with no username and password (least privilege)", () => {
+  refuses(testEnv({ NODE_ENV: "production", APP_ORIGIN: "https://cafe.example", MONGODB_URI: "mongodb://mongo:27017/?replicaSet=rs0" }), /username and password/);
 });
 
 test("error messages never contain secret values", () => {

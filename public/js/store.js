@@ -144,13 +144,13 @@
     users: function () { return copy(list("users")); },
     approvals: function () { return copy(list("approvals")); },
     recentAudit: function () { return copy(list("recentAudit")); },
-    settings: function () { return copy((data && data.settings) || {}); },
+    cafe: function () { return copy((data && data.cafe) || { name: "CafeMS" }); },
     alerts: function () { return copy(list("alerts")); },
     photoUrl: function (id) { return "/api/v1/menu/" + id + "/photo"; },
 
     // ---- server queries
     searchReservationsByPhone: async function (phone) {
-      const result = await Api.call("GET", "/reservations?phone=" + encodeURIComponent(phone));
+      const result = await Api.call("POST", "/reservations/search", { phone: phone });
       return normalize(result.reservations);
     },
     auditEntries: async function (severity) {
@@ -198,7 +198,10 @@
     setStatus: function (username, status) { return change("POST", "/users/" + encodeURIComponent(username) + "/status", { status: status }); },
     resetUser: function (username) { return change("POST", "/users/" + encodeURIComponent(username) + "/reset-link", {}); },
     unlockUser: function (username) { return change("POST", "/users/" + encodeURIComponent(username) + "/unlock", {}); },
-    setKitchenSim: function (enabled) { return change("PUT", "/settings", { kitchenSim: enabled }); }
+    saveCafe: function (details) { return change("PUT", "/settings/cafe", details); },
+    salesFor: function (date) { return Api.call("GET", "/reports/sales?date=" + encodeURIComponent(date)); },
+    billsFor: async function (date) { return normalize((await Api.call("GET", "/bills?date=" + encodeURIComponent(date))).bills); },
+    trend: async function () { return (await Api.call("GET", "/reports/trend")).days; }
   };
 
   window.Store = Store;

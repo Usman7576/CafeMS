@@ -1,13 +1,15 @@
 // Strict request schemas. Unknown fields and wrong types are refused, which also blocks NoSQL
 // operator injection. A message beginning with "!" is safe to show to the user.
 const { z } = require("zod");
-const { TABLE_NUMBERS } = require("./domain");
+const { TABLE_NUMBERS, isRealDate } = require("./domain");
 
 const text = (max, message) => z.string().trim().max(max, message);
 const noControl = (value) => value.replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, " ");
 const phoneDigits = (value) => value.replace(/[\s-]/g, "");
 const mobile = z.string().max(20).transform(phoneDigits).pipe(z.string().regex(/^03\d{9}$/, "!Enter the mobile number as 03XXXXXXXXX."));
 
+// A calendar date that really exists, so 2026-02-30 or 2026-99-99 is refused
+const isoDate = (message) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message).refine(isRealDate, message);
 const tableNo = z.number().int().refine((n) => TABLE_NUMBERS.includes(n), "!Choose a valid table.");
 const line = z.object({
   id: z.number().int().min(1),
@@ -61,18 +63,27 @@ module.exports = {
   reservation: z.object({
     name: text(60, "!Guest name must be 2-60 characters.").min(2, "!Guest name must be 2-60 characters.").transform(noControl),
     phone: mobile,
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "!Choose a valid reservation date."),
+    date: isoDate("!Choose a valid reservation date."),
     time: z.string().regex(/^\d{2}:\d{2}$/, "!Choose a valid reservation time."),
     party: z.number("!Party size must be a whole number from 1 to 20.").int("!Party size must be a whole number from 1 to 20.").min(1, "!Party size must be a whole number from 1 to 20.").max(20, "!Party size must be a whole number from 1 to 20."),
     notes: text(160, "!Notes must be 160 characters or fewer.").transform(noControl).optional().default("")
   }).strict(),
-  reservationStatus: z.object({ status: z.enum(["Confirmed", "Seated", "Completed", "Cancelled"]) }).strict(),
-  reservationQuery: z.object({
-    phone: mobile.optional(),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    status: z.enum(["Confirmed", "Seated", "Completed", "Cancelled"]).optional()
+  publicReservation: z.object({
+    name: text(60, "!Please enter your name (2-60 characters).").min(2, "!Please enter your name (2-60 characters).").transform(noControl),
+    phone: mobile,
+    date: isoDate("!Please choose a date."),
+    time: z.string().regex(/^\d{2}:\d{2}$/, "!Please choose a time."),
+    party: z.number("!Guests must be a whole number from 1 to 20.").int("!Guests must be a whole number from 1 to 20.").min(1, "!Guests must be a whole number from 1 to 20.").max(20, "!Guests must be a whole number from 1 to 20."),
+    notes: text(160, "!Notes must be 160 characters or fewer.").transform(noControl).optional().default(""),
+    website: z.string().max(200).optional().default("")
   }).strict(),
-  salesQuery: z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).strict(),
+  reservationStatus: z.object({ status: z.enum(["Requested", "Confirmed", "Seated", "Completed", "Cancelled"]) }).strict(),
+  reservationSearch: z.object({ phone: mobile }).strict(),
+  reservationQuery: z.object({
+    date: isoDate().optional(),
+    status: z.enum(["Requested", "Confirmed", "Seated", "Completed", "Cancelled"]).optional()
+  }).strict(),
+  salesQuery: z.object({ date: isoDate().optional() }).strict(),
   auditQuery: z.object({
     severity: z.enum(["info", "warning", "high"]).optional(),
     limit: z.coerce.number().int().min(1).max(200).optional().default(100),
@@ -80,5 +91,12 @@ module.exports = {
   }).strict(),
   userRole: z.object({ role: z.enum(["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]) }).strict(),
   userStatus: z.object({ status: z.enum(["Active", "Disabled"]) }).strict(),
-  settings: z.object({ kitchenSim: z.boolean() }).strict()
+  cafeDetails: z.object({
+    name: text(40, "!The cafe name must be 2-40 characters.").min(2, "!The cafe name must be 2-40 characters.").transform(noControl),
+    tagline: text(80, "!The tagline must be 80 characters or fewer.").transform(noControl),
+    about: text(300, "!The description must be 300 characters or fewer.").transform(noControl),
+    address: text(120, "!The address must be 120 characters or fewer.").transform(noControl),
+    phone: text(20, "!The phone number must be 20 characters or fewer.").regex(/^[0-9+\-\s]*$/, "!The phone number can use only digits, spaces, + and -.").transform(noControl),
+    hours: text(80, "!Opening hours must be 80 characters or fewer.").transform(noControl)
+  }).strict()
 };

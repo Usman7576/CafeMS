@@ -37,7 +37,7 @@ function testEnv(extra = {}) {
 
 function testConfig(limits = {}) {
   const config = loadConfig(testEnv());
-  return { ...config, limits: { ...config.limits, authPer15Minutes: 100000, apiPerMinute: 100000, ...limits } };
+  return { ...config, limits: { ...config.limits, authPer15Minutes: 100000, apiPerMinute: 100000, userPerMinute: 100000, sitePerMinute: 100000, ...limits } };
 }
 
 async function startDb() {

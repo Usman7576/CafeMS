@@ -5,26 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff sign in — Cafe Management System</title>
   <meta name="description" content="Staff sign in for the Cafe Management System.">
-  <meta name="theme-color" content="#3d2518">
+  <meta name="theme-color" content="#1d110b">
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/fonts.css?v=5.0">
-  <link rel="stylesheet" href="css/style.css?v=5.0">
+  <link rel="stylesheet" href="css/fonts.css?v=6.0">
+  <link rel="stylesheet" href="css/style.css?v=6.0">
 </head>
 <body>
   <div class="auth">
     <aside class="auth-aside">
-      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS<small>Cafe Management System</small></span></a>
+      <div class="coffee-scene auth-scene" data-coffee-scene><img class="scene-fallback" src="assets/cup.svg" alt="" width="320" height="280"></div>
+      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
       <div>
         <h2>Everything for your shift, in one place.</h2>
-        <p>Waiters, kitchen, cashiers, managers and admins each get a workspace built for their job, and nothing more.</p>
-        <ul class="auth-points">
-          <li><span class="icon-tile"><i data-icon="users" data-size="18"></i></span><span><b>Role-based access</b>The screens you see depend on the role your admin gave you.</span></li>
-          <li><span class="icon-tile"><i data-icon="clock" data-size="18"></i></span><span><b>Automatic sign-out</b>Idle sessions end after 5 minutes to protect shared devices.</span></li>
-          <li><span class="icon-tile"><i data-icon="shield" data-size="18"></i></span><span><b>Protected accounts</b>Every sign-in needs a password and an authenticator code.</span></li>
-        </ul>
+        <p>Orders, kitchen, billing and stock, with each role seeing only what it needs.</p>
       </div>
-      <p class="foot">© <span data-year></span> Cafe Management System · SSD Semester Project</p>
+      <p class="foot">© <span data-year></span> CafeMS</p>
     </aside>
 
     <main class="auth-main">
@@ -91,6 +87,7 @@
             <img class="mfa-qr" id="enrollQr" alt="QR code for adding CafeMS to your authenticator app">
             <p class="auth-note">Can't scan it? Enter this key in the app:</p>
             <code class="mfa-key" id="enrollKey"></code>
+            <button type="button" class="btn btn-secondary btn-sm mb-14" id="copyKey">Copy key</button>
             <form id="enrollForm" novalidate>
               <div class="field">
                 <label for="enrollCode">6-digit code from the app</label>
@@ -108,6 +105,7 @@
             <h1>Save your recovery codes</h1>
             <p class="sub">Each code works once if you lose your phone. They are shown only now, so store them somewhere safe.</p>
             <ul class="recovery-list" id="recoveryList"></ul>
+            <div id="recoveryActions"></div>
             <label class="recovery-confirm"><input type="checkbox" id="recoverySaved"> I have saved these codes</label>
             <button type="button" class="btn btn-dark btn-lg btn-block" id="recoveryDone" disabled>Continue to my workspace</button>
           </section>
@@ -132,8 +130,9 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=5.0"></script>
-  <script src="js/common.js?v=5.0"></script>
-  <script src="js/login.js?v=5.0"></script>
+  <script src="js/icons.js?v=6.0"></script>
+  <script src="js/common.js?v=6.0"></script>
+  <script src="js/login.js?v=6.0"></script>
+  <script type="module" src="js/coffee-scene.js?v=6.0"></script>
 </body>
 </html>

@@ -3,17 +3,23 @@
 const { AppError } = require("../lib/errors");
 const { randomToken } = require("../lib/crypto");
 const { recordEvent } = require("./auditLog");
+const { inTransaction } = require("../lib/tx");
 
 const MINUTE = 60 * 1000;
 
-// Each rule: which audit actions it counts, over how long, and how many trigger it for one person
+// Each rule: which audit actions it counts, over how long, and how many trigger it for one person, or
+// for one network address when groupBy is "ip". Counting by address catches password spraying, where
+// an attacker tries one password against many usernames so no single account looks unusual.
 const RULES = Object.freeze([
   { id: "failed-sign-ins", title: "Repeated failed sign-ins", actions: ["Sign-in failed", "MFA failed"], windowMs: 10 * MINUTE, threshold: 5, severity: "high" },
   { id: "access-denied", title: "Repeated access denials", actions: ["Access denied"], windowMs: 10 * MINUTE, threshold: 5, severity: "high" },
   { id: "bulk-export", title: "Unusual number of data exports", actions: ["Report exported", "Audit log exported"], windowMs: 60 * MINUTE, threshold: 3, severity: "high" },
   { id: "phone-views", title: "Many customer numbers viewed", actions: ["Customer phone viewed"], windowMs: 60 * MINUTE, threshold: 10, severity: "high" },
   { id: "refund-spike", title: "Unusual number of refunds", actions: ["Refund issued"], windowMs: 60 * MINUTE, threshold: 3, severity: "high" },
-  { id: "account-locked", title: "Account locked after failed attempts", actions: ["Account locked"], windowMs: 60 * MINUTE, threshold: 1, severity: "warning" }
+  { id: "account-locked", title: "Account locked after failed attempts", actions: ["Account locked"], windowMs: 60 * MINUTE, threshold: 1, severity: "warning" },
+  { id: "failed-sign-ins-address", title: "Many failed sign-ins from one network address", actions: ["Sign-in failed", "MFA failed"], windowMs: 10 * MINUTE, threshold: 10, severity: "high", groupBy: "ip" },
+  { id: "payment-conflict", title: "A bill may have been paid twice", actions: ["Payment conflict"], windowMs: 24 * 60 * MINUTE, threshold: 1, severity: "high" },
+  { id: "gateway-refused", title: "Refused payment gateway callbacks", actions: ["Gateway callback refused", "Gateway callback replayed"], windowMs: 60 * MINUTE, threshold: 3, severity: "high", groupBy: "ip" }
 ]);
 
 function createAlertService({ db, logger }) {
@@ -36,7 +42,7 @@ function createAlertService({ db, logger }) {
     for (const rule of RULES) {
       const groups = await db.collection("audit_events").aggregate([
         { $match: { action: { $in: rule.actions }, at: { $gte: new Date(now - rule.windowMs) } } },
-        { $group: { _id: "$actor", count: { $sum: 1 }, lastEventAt: { $max: "$at" } } },
+        { $group: { _id: rule.groupBy === "ip" ? "$ip" : "$actor", count: { $sum: 1 }, lastEventAt: { $max: "$at" } } },
         { $match: { count: { $gte: rule.threshold } } }
       ]).toArray();
       for (const group of groups) {
@@ -46,7 +52,7 @@ function createAlertService({ db, logger }) {
         if (previous && previous.acknowledgedAt >= group.lastEventAt) continue;
         await raise({
           key, rule: rule.id, title: rule.title, severity: rule.severity, count: group.count, lastEventAt: group.lastEventAt,
-          details: `${group.count} events for ${group._id} in the last ${Math.round(rule.windowMs / MINUTE)} minutes`
+          details: `${group.count} events ${rule.groupBy === "ip" ? "from address" : "for"} ${group._id || "unknown"} in the last ${Math.round(rule.windowMs / MINUTE)} minutes`
         });
       }
     }
@@ -57,9 +63,11 @@ function createAlertService({ db, logger }) {
 
   async function acknowledge(req, id) {
     const actor = req.auth.user;
-    const result = await alerts.findOneAndUpdate({ _id: id, status: "Open" }, { $set: { status: "Acknowledged", acknowledgedBy: actor.username, acknowledgedAt: new Date() } });
-    if (!result) throw new AppError(404, "not_found", "Alert not found.");
-    await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Alert acknowledged", details: result.title, severity: "warning" });
+    await inTransaction(db, async (session) => {
+      const result = await alerts.findOneAndUpdate({ _id: id, status: "Open" }, { $set: { status: "Acknowledged", acknowledgedBy: actor.username, acknowledgedAt: new Date() } }, { session });
+      if (!result) throw new AppError(404, "not_found", "Alert not found.");
+      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Alert acknowledged", details: result.title, severity: "warning" }, { session });
+    });
   }
 
   return { raise, evaluate, listOpen, acknowledge };

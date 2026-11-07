@@ -141,7 +141,7 @@
   ]);
 
   const footer = h("footer", { class: "app-footer" }, [
-    h("span", { text: "© " + new Date().getFullYear() + " Cafe Management System · SSD semester project" }),
+    h("span", { text: "© " + new Date().getFullYear() + " CafeMS" }),
     h("span", { text: "Every action is checked and recorded by the server" })
   ]);
 
@@ -172,6 +172,8 @@
   mainCol.appendChild(footer);
   document.body.appendChild(idleModal);
   document.body.appendChild(palette);
+  // Slow-moving coffee artwork behind the screens. It is decoration only and ignores the mouse.
+  document.body.insertBefore(h("div", { class: "bean-field", "aria-hidden": "true" }, ["b1", "b2", "b3", "b4", "b5", "cup"].map(function (c) { return h("span", { class: "bean-float " + c }); })), document.body.firstChild);
   if (!document.querySelector(".skip-link")) document.body.insertBefore(h("a", { href: "#main", class: "skip-link", text: "Skip to content" }), document.body.firstChild);
   document.documentElement.classList.remove("app-loading");
 
@@ -248,9 +250,13 @@
     if (session.role === "Manager") return Store.lowStock().length;
     return 0;
   }
+  function reservationRequests() {
+    return Store.reservations().filter(function (r) { return r.status === "Requested"; })
+      .map(function (r) { return { icon: "calendar", text: "Online booking " + r.id + " for " + r.date + " at " + r.time + " needs confirming", href: "reservations.html" }; });
+  }
   function renderNotifs() {
     const list = document.getElementById("notifList");
-    const items = notifications();
+    const items = reservationRequests().concat(notifications());
     document.getElementById("notifDot").textContent = items.length ? String(items.length) : "";
     document.getElementById("notifSub").textContent = items.length ? items.length + " need attention" : "You're all caught up";
     list.replaceChildren();

@@ -32,7 +32,6 @@ async function main() {
     await assertTransactionsAvailable(db);
     await ensureIndexes(db);
     await seedCatalog(db);
-    await db.collection("settings").updateOne({ _id: "app" }, { $setOnInsert: { kitchenSim: true } }, { upsert: true });
     const users = db.collection("users");
     const base = { failedAttempts: 0, lockedUntil: null, createdAt: new Date(), mfa: { enabled: false } };
 

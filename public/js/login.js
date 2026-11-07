@@ -102,6 +102,7 @@
         const result = await Api.call("POST", "/auth/mfa/enroll/confirm", { code: code }, { public: true });
         const list = el("recoveryList");
         result.recoveryCodes.forEach(function (c) { list.appendChild(CMS.h("li", { text: c })); });
+        el("recoveryActions").replaceChildren(CMS.codeActions(result.recoveryCodes));
         showStep("stepRecovery");
       } catch (error) {
         el("enrollCode").value = "";
@@ -111,6 +112,7 @@
     });
   });
 
+  el("copyKey").addEventListener("click", function () { CMS.copyText(el("enrollKey").textContent, "Key copied"); });
   el("recoverySaved").addEventListener("change", function (e) { el("recoveryDone").disabled = !e.target.checked; });
   el("recoveryDone").addEventListener("click", function () {
     busy(el("recoveryDone"), function () { return enterWorkspace().catch(function (error) { showAlert(errorText(error)); }); });

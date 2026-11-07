@@ -1,5 +1,4 @@
 // Background jobs. One failing job is logged and never stops the others or the server.
-const { tickKitchen } = require("./services/kitchenSimulator");
 const { verifyChain } = require("./services/auditLog");
 const { drainOutbox, releaseStuckMessages, createSimulatedNotifier } = require("./services/outbox");
 const { createAlertService } = require("./services/alerts");
@@ -26,7 +25,6 @@ function startWorkers({ config, db, logger }) {
   const context = { db, alerts, logger, notifier };
 
   const jobs = [
-    ["kitchen simulator", 2 * SECOND, () => tickKitchen(db)],
     ["notification queue", 10 * SECOND, async () => { await releaseStuckMessages(db); await drainOutbox(context); }],
     ["alert rules", MINUTE, () => alerts.evaluate()],
     ["audit verification", 15 * MINUTE, () => checkAuditChain(context)],

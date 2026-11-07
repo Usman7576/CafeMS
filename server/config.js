@@ -48,6 +48,10 @@ function loadConfig(env) {
   if (origin.origin !== s.APP_ORIGIN) throw new ConfigError("APP_ORIGIN must be an origin only, with no path or trailing slash.");
   const isProduction = s.NODE_ENV === "production";
   if (isProduction && origin.protocol !== "https:") throw new ConfigError("APP_ORIGIN must use https in production.");
+  // In production the app signs in to MongoDB with its own least-privilege account (server/lib/dbRoles.js)
+  if (isProduction && !/^mongodb(?:\+srv)?:\/\/[^@/\s]+:[^@/\s]+@/.test(s.MONGODB_URI)) {
+    throw new ConfigError("MONGODB_URI must include the app's database username and password in production.");
+  }
 
   const jwt = parseKeyring(env.JWT_KEYS, env.JWT_ACTIVE_KEY, "JWT_KEYS");
   const data = parseKeyring(env.DATA_KEYS, env.DATA_ACTIVE_KEY, "DATA_KEYS");
@@ -82,8 +86,14 @@ function loadConfig(env) {
     limits: Object.freeze({
       jsonBody: "100kb",
       photoBody: "2mb",
-      apiPerMinute: 300,
-      authPer15Minutes: 20
+      // Per network address. A cafe's staff often share one Wi-Fi address, so this is set well above
+      // what one person needs, and userPerMinute limits each signed-in person separately.
+      apiPerMinute: 1200,
+      userPerMinute: 240,
+      // Pages, assets and health checks, which are outside the API
+      sitePerMinute: 600,
+      authPer15Minutes: 20,
+      publicBookingsPerHour: 10
     }),
     auth: Object.freeze({
       maxFailedAttempts: 3,

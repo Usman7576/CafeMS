@@ -3,7 +3,6 @@ const assert = require("node:assert/strict");
 const crypto = require("crypto");
 const { startDb, buildApp, createUser, signIn } = require("./helpers");
 const { seedCatalog, MENU } = require("../scripts/seed-data");
-const { tickKitchen } = require("../server/services/kitchenSimulator");
 
 let ctx, db, app, config;
 before(async () => {
@@ -187,22 +186,6 @@ describe("kitchen", () => {
     assert.equal((await waiter.post(`${API}/orders/${order.id}/cancel`, {})).status, 409);
   });
 
-  test("the simulator is off by default and stands aside when kitchen staff are present", async () => {
-    const waiter = await as("Waiter");
-    const order = (await place(waiter, await freeTable(), [{ id: 1, qty: 1 }])).body;
-    await db.collection("orders").updateOne({ _id: order.id }, { $set: { updatedAt: new Date(Date.now() - 60000) } });
-
-    await db.collection("settings").deleteMany({});
-    assert.equal(await tickKitchen(db), 0);
-
-    await db.collection("settings").insertOne({ _id: "app", kitchenSim: true });
-    assert.equal(await tickKitchen(db), 0, "kitchen staff signed in earlier in this test run");
-
-    await db.collection("sessions").deleteMany({ role: "Kitchen" });
-    assert.ok((await tickKitchen(db)) >= 1);
-    assert.equal((await db.collection("orders").findOne({ _id: order.id })).status, "Preparing");
-    await db.collection("settings").deleteMany({});
-  });
 });
 
 describe("double submission and lost updates (findings 25, FMEA)", () => {

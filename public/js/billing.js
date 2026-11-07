@@ -116,7 +116,7 @@
     } else {
       payExtra = h("div", { class: "gateway-note", icon: "shield", iconSize: 18 }, [h("span", null, [
         h("b", { text: method === "Card" ? "Card payment via secure gateway. " : "Mobile wallet payment via secure gateway. " }),
-        "The customer pays on the terminal or their phone. Card and wallet details never touch this system and are never stored (SR-8)."
+        "The customer pays on the terminal or their phone. Card and wallet details never touch this system and are never stored."
       ])]);
     }
 
@@ -174,7 +174,7 @@
     const add = function () { Array.prototype.forEach.call(arguments, function (n) { if (n) r.appendChild(n); }); };
     const row = function (a, c, cls) { return h("div", { class: "r-row " + (cls || "") }, [h("span", { text: a }), h("span", { text: c })]); };
     add(
-      h("div", { class: "r-head" }, [h("div", { class: "r-logo" }, [App.I("coffee", 22)]), h("b", { text: "CafeMS" }), h("small", { text: "Cafe Management System" }), h("small", { text: "NTN 0000000-0 · GST registered" })]),
+      h("div", { class: "r-head" }, [h("div", { class: "r-logo" }, [App.I("coffee", 22)]), h("b", { text: Store.cafe().name }), Store.cafe().address ? h("small", { text: Store.cafe().address }) : null, Store.cafe().phone ? h("small", { text: Store.cafe().phone }) : null]),
       h("div", { class: "r-sep" }),
       row("Receipt", b.no), row("Date", CMS.dateTime(b.createdAt)), row("Table", String(b.table)), row("Cashier", Store.staffName(b.cashier)),
       b.phone ? row("Customer", b.phone) : null,
@@ -205,7 +205,8 @@
     body.replaceChildren();
     if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state pad-24", text: "No bills match." })])])); return; }
     rows.forEach(function (b) {
-      const actions = h("div", { class: "row-actions" }, [h("button", { class: "btn btn-ghost btn-sm", text: "Receipt", "aria-label": "Show receipt " + b.no, onclick: function () { showReceipt(b); } })]);
+      const actions = h("div", { class: "row-actions" });
+      if (b.status === "Paid" || b.status === "Refunded") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Receipt", "aria-label": "Show receipt " + b.no, onclick: function () { showReceipt(b); } }));
       if (b.phone && role === "Manager") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Number", "aria-label": "Show customer number for " + b.no, onclick: function () { CMS.showPhone(function () { return Store.billPhone(b.no); }); } }));
       if (b.status === "Pending Payment" || b.status === "Payment Failed") actions.appendChild(h("button", { class: "btn btn-secondary btn-sm", text: "Retry", "aria-label": "Retry payment for " + b.no, onclick: function (e) { retry(b, e.currentTarget); } }));
       if (b.status === "Paid" && !b.refundPending) actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { requestRefund(b); } }));

@@ -2,7 +2,7 @@
 // delete them. Even a fully compromised app cannot rewrite history with this account.
 const READ_WRITE = ["find", "insert", "update", "remove"];
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "menu", "inventory", "orders", "bills", "reservations", "tables",
-  "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications"];
+  "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks"];
 const ROLE = "cafemsApp";
 
 function appPrivileges(dbName) {

@@ -105,10 +105,18 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
   async function recordGatewayResult(req, no, result, actorName) {
     const actor = req.auth ? req.auth.user : { username: actorName, role: "" };
     let mismatch = null;
+    let conflict = null;
     return inTransaction(db, async (session) => {
       const bill = await bills.findOne({ _id: no }, { session });
       if (!bill) throw new AppError(404, "not_found", "Bill not found.");
-      if (!OPEN_FOR_PAYMENT.includes(bill.status)) return bill;
+      if (!OPEN_FOR_PAYMENT.includes(bill.status)) {
+        // An approval for a bill that was already settled some other way means the customer may have
+        // paid twice. The bill is left as it is, and a person must check and refund the extra payment.
+        if (result.status === "approved" && bill.gatewayRef !== result.gatewayRef) {
+          conflict = `${no} is already ${bill.status.toLowerCase()} (${bill.method}), but the gateway also approved Rs ${result.amount} (${result.gatewayRef})`;
+        }
+        return bill;
+      }
       if (result.amount !== bill.total) {
         mismatch = `${no}: expected Rs ${bill.total}, gateway reported Rs ${result.amount}`;
         throw new AppError(409, "amount_mismatch", "The gateway reported a different amount, so the payment was not accepted.");
@@ -125,7 +133,10 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       }, { session });
       if (status === "Paid" && bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
       return updated;
-    }).catch(async (error) => {
+    }).then(async (bill) => {
+      if (conflict) await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment conflict", details: conflict, severity: "high" });
+      return bill;
+    }, async (error) => {
       // Written after the rollback, because the record of a refused payment must survive it
       if (mismatch) await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment amount mismatch", details: mismatch, severity: "high" });
       throw error;
@@ -137,15 +148,29 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     const bill = await bills.findOne({ _id: no });
     if (!bill) throw new AppError(404, "not_found", "Bill not found.");
     if (bill.status !== "Pending Payment") return billView(bill);
+
+    // Only one charge may be in progress, so a double click or quick retry cannot charge twice
+    const claimed = await bills.findOneAndUpdate(
+      { _id: no, status: "Pending Payment", $or: [{ chargeStartedAt: null }, { chargeStartedAt: { $lt: new Date(Date.now() - config.gateway.timeoutMs * 2) } }] },
+      { $set: { chargeStartedAt: new Date() } }
+    );
+    if (!claimed) return billView(bill);
+    const release = () => bills.updateOne({ _id: no }, { $set: { chargeStartedAt: null } });
+
     let result;
     try {
       result = await withTimeout(gateway.charge({ reference: no, amount: bill.total, method: bill.method }), config.gateway.timeoutMs);
     } catch (error) {
+      await release();
       if (logger) logger.warn({ err: error, bill: no }, "Payment gateway unavailable");
       await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Payment pending", details: `${no}: the gateway did not answer`, severity: "warning" });
       return billView(await bills.findOne({ _id: no }));
     }
-    return billView(await recordGatewayResult(req, no, result));
+    try {
+      return billView(await recordGatewayResult(req, no, result));
+    } finally {
+      await release();
+    }
   }
 
   async function retryPayment(req, no, input) {
@@ -154,6 +179,11 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       const bill = await bills.findOne({ _id: no }, { session });
       if (!bill) throw new AppError(404, "not_found", "Bill not found.");
       if (!OPEN_FOR_PAYMENT.includes(bill.status)) throw new AppError(409, "not_open", `${no} is not waiting for payment.`);
+      // While a card or wallet charge is still waiting for the gateway, taking another payment could
+      // charge the customer twice
+      if (bill.chargeStartedAt && bill.chargeStartedAt.getTime() > Date.now() - config.gateway.timeoutMs * 2) {
+        throw new AppError(409, "charge_in_progress", `A payment for ${no} is still being processed. Wait a few seconds, then check the bill again.`);
+      }
       const method = input.method || bill.method;
       if (method === "Cash") {
         if (input.tendered === undefined || input.tendered < bill.total) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${bill.total.toLocaleString()}.`);
@@ -172,9 +202,11 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     return (await bills.find({ createdAt: { $gte: range.start, $lt: range.end } }).sort({ createdAt: -1 }).limit(1000).toArray()).map(billView);
   }
 
-  async function get(no) {
+  // todayOnly is for roles without report access: an older bill looks the same as one that does not exist
+  async function get(no, { todayOnly = false } = {}) {
     const bill = await bills.findOne({ _id: no });
-    if (!bill) throw new AppError(404, "not_found", "Bill not found.");
+    const today = dayRange(localDate());
+    if (!bill || (todayOnly && (bill.createdAt < today.start || bill.createdAt >= today.end))) throw new AppError(404, "not_found", "Bill not found.");
     return billView(bill);
   }
 
@@ -220,6 +252,19 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     return { status: 202, body: { approvalId, message: `Refunds over Rs ${config.refundApprovalLimit.toLocaleString()} need a second person to approve.` } };
   }
 
+  // Daily paid revenue, oldest first, for the reports trend chart
+  async function trend(days = 7) {
+    const first = dayRange(localDate(Date.now() - (days - 1) * 24 * 60 * 60 * 1000)).start;
+    const rows = await bills.find({ createdAt: { $gte: first }, status: "Paid" }, { projection: { createdAt: 1, total: 1 } }).limit(20000).toArray();
+    const totals = new Map();
+    for (let i = days - 1; i >= 0; i -= 1) totals.set(localDate(Date.now() - i * 24 * 60 * 60 * 1000), { revenue: 0, bills: 0 });
+    for (const b of rows) {
+      const day = totals.get(localDate(b.createdAt.getTime()));
+      if (day) { day.revenue += b.total; day.bills += 1; }
+    }
+    return [...totals].map(([date, day]) => ({ date, ...day }));
+  }
+
   async function salesReport(date) {
     const day = date || localDate();
     const range = dayRange(day);
@@ -254,7 +299,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     };
   }
 
-  return { openTables, pay, settle, retryPayment, recordGatewayResult, list, get, revealPhone, refund, applyRefund, salesReport };
+  return { openTables, pay, settle, retryPayment, recordGatewayResult, list, get, revealPhone, refund, applyRefund, salesReport, trend };
 }
 
 module.exports = { createBillingService };

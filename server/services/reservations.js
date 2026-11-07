@@ -3,10 +3,14 @@
 const { AppError } = require("../lib/errors");
 const { maskPhone, localDate, isRealDate } = require("../lib/domain");
 const { encrypt, decrypt, blindIndex } = require("../lib/crypto");
-const { nextSequence } = require("../lib/tx");
+const { nextSequence, inTransaction } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
+const { enqueue } = require("./outbox");
 
 const CLOSED = ["Completed", "Cancelled"];
+const ONLINE_DAYS_AHEAD = 60;
+// The staff screen shows bookings from this many days ago onwards; older ones are found by phone search
+const RECENT_DAYS = 30;
 
 function createReservationService({ config, db }) {
   const reservations = db.collection("reservations");
@@ -23,12 +27,20 @@ function createReservationService({ config, db }) {
     if (query.phone) filter.phoneIndex = blindIndex(query.phone, config.blindIndexKey);
     if (query.date) filter.date = query.date;
     if (query.status) filter.status = query.status;
+    // Without a filter, the list is recent and upcoming bookings, so old ones can never push new ones out
+    if (!query.phone && !query.date && !query.status) filter.date = { $gte: localDate(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000) };
     const rows = await reservations.find(filter).sort({ date: 1, time: 1 }).limit(500).toArray();
     return rows.map(view);
   }
 
-  async function create(req, input, session) {
-    const actor = req.auth.user;
+  async function get(id) {
+    const r = await reservations.findOne({ _id: id });
+    if (!r) throw new AppError(404, "not_found", "Reservation not found.");
+    return view(r);
+  }
+
+  async function create(req, input, session, online = false) {
+    const actor = online ? { username: "online", role: "" } : req.auth.user;
     if (!isRealDate(input.date)) throw new AppError(400, "invalid_input", "Choose a valid reservation date.");
     if (input.date < localDate()) throw new AppError(400, "invalid_input", "Reservations cannot be made for a past date.");
     const [hour, minute] = input.time.split(":").map(Number);
@@ -45,17 +57,31 @@ function createReservationService({ config, db }) {
       _id: id, nameEnc: encrypt(input.name, context("name", id), config.data), phoneEnc: encrypt(input.phone, context("phone", id), config.data),
       phoneIndex, phoneMask: maskPhone(input.phone), date: input.date, time: input.time, party: input.party,
       notesEnc: input.notes ? encrypt(input.notes, context("notes", id), config.data) : null,
-      status: "Confirmed", active: true, createdAt: new Date(), createdBy: actor.username
+      status: online ? "Requested" : "Confirmed", active: true, createdAt: new Date(), createdBy: actor.username
     };
     await reservations.insertOne(doc, { session });
-    await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Reservation created", details: `${id} · ${input.date} ${input.time}` }, { session });
+    await recordEvent(db, req, { actor: actor.username, role: actor.role, action: online ? "Online reservation requested" : "Reservation created", details: `${id} · ${input.date} ${input.time}` }, { session });
+    if (online) await enqueue(db, "reservation-request", { reservation: id }, session);
     return view(doc);
+  }
+
+  // A customer's request waits for staff to confirm it. A repeat of an existing booking is not an error
+  // to the customer, because saying so would reveal that someone with that number has booked.
+  async function createOnline(req, input) {
+    const latest = localDate(Date.now() + ONLINE_DAYS_AHEAD * 24 * 60 * 60 * 1000);
+    if (input.date > latest) throw new AppError(400, "invalid_input", `Online bookings can be made up to ${ONLINE_DAYS_AHEAD} days ahead. Please call us for later dates.`);
+    try {
+      await inTransaction(db, (session) => create(req, input, session, true));
+    } catch (error) {
+      if (error.code !== "duplicate" && error.code !== 11000) throw error;
+    }
   }
 
   async function setStatus(req, id, status, session) {
     const actor = req.auth.user;
     const current = await reservations.findOne({ _id: id }, { session });
     if (!current) throw new AppError(404, "not_found", "Reservation not found.");
+    if (current.erasedAt) throw new AppError(409, "erased", "The guest's details were erased, so this reservation can no longer be changed.");
     if (CLOSED.includes(current.status)) throw new AppError(409, "closed", "Closed reservations cannot be changed.");
     if (current.status === status) throw new AppError(409, "same_status", "Choose a different status.");
     const updated = await reservations.findOneAndUpdate(
@@ -75,7 +101,7 @@ function createReservationService({ config, db }) {
     return decrypt(r.phoneEnc, context("phone", id), config.data);
   }
 
-  return { list, create, setStatus, revealPhone };
+  return { list, get, create, createOnline, setStatus, revealPhone };
 }
 
 module.exports = { createReservationService };

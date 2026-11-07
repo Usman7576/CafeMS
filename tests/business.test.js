@@ -59,6 +59,7 @@ describe("every role against every route (RBAC matrix)", () => {
     ["post", "/approvals/aaaaaaaaaaaaaaaaaaaaaaaa/reject", ["Manager", "Admin"]],
     ["get", "/reservations", ["Waiter", "Manager"]],
     ["post", "/reservations", ["Waiter", "Manager"]],
+    ["post", "/reservations/search", ["Waiter", "Manager"]],
     ["post", "/reservations/R-1/status", ["Waiter", "Manager"]],
     ["get", "/reservations/R-1/phone", ["Manager", "Admin"]],
     ["get", "/reports/sales", ["Manager", "Admin"]],
@@ -72,8 +73,8 @@ describe("every role against every route (RBAC matrix)", () => {
     ["put", "/menu/999999/photo", ["Admin"]],
     ["post", "/bills/B-1/retry-payment", ["Cashier", "Manager"]],
     ["get", "/audit.csv", ["Admin"]],
-    ["get", "/settings", ["Admin"]],
-    ["put", "/settings", ["Admin"]],
+    ["put", "/settings/cafe", ["Admin"]],
+    ["get", "/reports/trend", ["Manager", "Admin"]],
     ["get", "/users", ["Admin"]],
     ["post", "/users/invitations", ["Admin"]],
     ["post", "/users/some.user/role", ["Admin"]],
@@ -100,11 +101,11 @@ describe("what each role receives (least privilege)", () => {
   const keysOf = async (role) => Object.keys((await clients[role].get(`${API}/snapshot`)).body).sort();
 
   test("the snapshot holds only that role's data", async () => {
-    assert.deepEqual(await keysOf("Kitchen"), ["constants", "tickets"]);
-    assert.deepEqual(await keysOf("Waiter"), ["constants", "menu", "orders", "reservations", "tables"]);
-    assert.deepEqual(await keysOf("Cashier"), ["bills", "constants", "openTables", "staffNames"]);
-    assert.deepEqual(await keysOf("Manager"), ["approvals", "bills", "constants", "inventory", "openTables", "reservations", "sales", "staffNames"]);
-    assert.deepEqual(await keysOf("Admin"), ["alerts", "approvals", "bills", "constants", "inventory", "menu", "openTables", "recentAudit", "sales", "settings", "staffNames", "users"]);
+    assert.deepEqual(await keysOf("Kitchen"), ["cafe", "constants", "tickets"]);
+    assert.deepEqual(await keysOf("Waiter"), ["cafe", "constants", "menu", "orders", "reservations", "tables"]);
+    assert.deepEqual(await keysOf("Cashier"), ["bills", "cafe", "constants", "openTables", "staffNames"]);
+    assert.deepEqual(await keysOf("Manager"), ["approvals", "bills", "cafe", "constants", "inventory", "openTables", "reservations", "sales", "staffNames"]);
+    assert.deepEqual(await keysOf("Admin"), ["alerts", "approvals", "bills", "cafe", "constants", "inventory", "menu", "openTables", "recentAudit", "sales", "staffNames", "users"]);
   });
 
   test("no response holds password hashes, MFA secrets or session data", async () => {
@@ -216,7 +217,7 @@ describe("reservations", () => {
   test("search works by exact phone number without decrypting everything", async () => {
     const other = "03457654321";
     const res = await post(clients.Waiter, booking({ phone: other }));
-    const found = (await clients.Waiter.get(`${API}/reservations?phone=${other}`)).body.reservations;
+    const found = (await clients.Waiter.post(`${API}/reservations/search`, { phone: other })).body.reservations;
     assert.deepEqual(found.map((r) => r.id), [res.body.id]);
   });
 
@@ -273,15 +274,17 @@ describe("audit log access", () => {
 });
 
 describe("settings (finding 16) and removed reset (finding 10)", () => {
-  test("only the allowed setting can be written; __proto__ and others are refused", async () => {
+  test("only the allowed cafe details can be written; __proto__ and others are refused", async () => {
     const admin = clients.Admin;
-    assert.equal((await admin.put(`${API}/settings`, { kitchenSim: true })).status, 200);
-    assert.equal((await admin.put(`${API}/settings`, { other: 1 })).status, 400);
-    assert.equal((await admin.put(`${API}/settings`, { kitchenSim: "yes" })).status, 400);
-    const res = await request(app).put(`${API}/settings`).set("Origin", "http://localhost:3000").set("Content-Type", "application/json").send('{"__proto__":{"polluted":true}}');
+    const details = { name: "Test Cafe", tagline: "Hello", about: "About us", address: "1 Main Road", phone: "0300-1234567", hours: "Daily" };
+    assert.equal((await admin.put(`${API}/settings/cafe`, details)).status, 200);
+    assert.equal((await admin.put(`${API}/settings/cafe`, { ...details, other: 1 })).status, 400);
+    assert.equal((await admin.put(`${API}/settings/cafe`, { ...details, name: { $ne: "" } })).status, 400);
+    assert.equal((await admin.put(`${API}/settings/cafe`, { ...details, phone: "<script>" })).status, 400);
+    const res = await request(app).put(`${API}/settings/cafe`).set("Origin", "http://localhost:3000").set("Content-Type", "application/json").send('{"__proto__":{"polluted":true}}');
     assert.equal(res.status, 401);
     assert.equal({}.polluted, undefined);
-    await admin.put(`${API}/settings`, { kitchenSim: false });
+    assert.ok(await db.collection("audit_events").findOne({ action: "Cafe details changed" }));
   });
 
   test("no route can wipe the data", async () => {

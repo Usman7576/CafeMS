@@ -93,13 +93,25 @@ describe("lockout (finding 12)", () => {
     assert.equal(res.status, 200);
   });
 
-  test("a successful sign-in resets the failure count", async () => {
+  test("a complete sign-in, password and code, resets the failure count", async () => {
     const user = await createUser(db, config);
     await fail(user.username, 2);
-    await browser(app).post(LOGIN, { username: user.username, password: user.password });
+    await signIn(app, db, user);
     await fail(user.username, 2);
     const stored = await db.collection("users").findOne({ username: user.username });
     assert.equal(stored.lockedUntil, null);
+  });
+
+  test("the right password alone does not reset the count, so authenticator codes cannot be guessed forever", async () => {
+    const user = await createUser(db, config);
+    for (const tries of [2, 1]) {
+      const client = browser(app);
+      assert.equal((await client.post(LOGIN, { username: user.username, password: user.password })).status, 200);
+      for (let i = 0; i < tries; i++) assert.equal((await client.post(VERIFY, { code: "000000" })).status, 401);
+    }
+    const stored = await db.collection("users").findOne({ username: user.username });
+    assert.ok(stored.lockedUntil > new Date());
+    assert.equal((await browser(app).post(LOGIN, { username: user.username, password: user.password })).status, 401);
   });
 
   test("wrong MFA codes also count towards the lock", async () => {

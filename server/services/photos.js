@@ -5,6 +5,7 @@ const path = require("path");
 const { randomToken } = require("../lib/crypto");
 const { AppError } = require("../lib/errors");
 const { recordEvent } = require("./auditLog");
+const { inTransaction } = require("../lib/tx");
 
 const SAFE_FILE = /^[A-Za-z0-9_-]{20,64}\.(?:png|jpg|webp)$/;
 const TYPES = Object.freeze({
@@ -37,9 +38,16 @@ function createPhotoService({ config, db }) {
     await fs.mkdir(config.uploadDir, { recursive: true });
     const name = `${randomToken(24)}.${type.ext}`;
     await fs.writeFile(filePath(name), body, { flag: "wx", mode: 0o640 });
-    await menu.updateOne({ _id: id }, { $set: { photo: { file: name, type: contentType } } });
+    try {
+      await inTransaction(db, async (session) => {
+        await menu.updateOne({ _id: id }, { $set: { photo: { file: name, type: contentType } } }, { session });
+        await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Menu photo changed", details: item.name, severity: "info" }, { session });
+      });
+    } catch (error) {
+      await remove(name);
+      throw error;
+    }
     await remove(item.photo && item.photo.file);
-    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Menu photo changed", details: item.name, severity: "info" });
   }
 
   async function read(id) {

@@ -43,7 +43,7 @@ const PAGES = Object.freeze({
   "/account.html": ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]
 });
 
-const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/setup.html", "/404.html"]);
+const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/setup.html", "/privacy.html", "/404.html"]);
 
 const HOME = Object.freeze({
   Waiter: "/dashboard.html",

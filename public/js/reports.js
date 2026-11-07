@@ -4,11 +4,40 @@
   if (!window.App) return;
   const h = CMS.h, canRefund = App.session.role === "Manager";
   const COLORS = { Cash: "#3d2518", Card: "#c47a2c", Wallet: "#1d7a4b" };
-  let refundNo = null;
+  let refundNo = null, pickedDate = null, pickedSales = null, pickedBills = [];
+  const salesData = function () { return pickedDate ? pickedSales : Store.salesToday(); };
+  const billsData = function () { return pickedDate ? pickedBills : Store.bills(); };
+  const todayValue = function () { const n = new Date(); return n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0"); };
+
+  async function pickDate(value) {
+    if (!value || value === todayValue()) {
+      pickedDate = null;
+    } else {
+      const loaded = await CMS.attempt(async function () { return [await Store.salesFor(value), await Store.billsFor(value)]; });
+      if (!loaded) return;
+      pickedDate = value; pickedSales = loaded[0]; pickedBills = loaded[1];
+    }
+    document.getElementById("reportDate").textContent = (pickedDate ? CMS.dateLong(new Date(pickedDate + "T12:00:00")) : CMS.dateLong(new Date())) + " · all figures in PKR";
+    document.getElementById("billsTitle").textContent = pickedDate ? "Bills on this day" : "Bills today";
+    render();
+  }
+
+  async function renderTrend() {
+    const days = await CMS.attempt(function () { return Store.trend(); });
+    if (!days) return;
+    CMS.barChart(document.getElementById("trendChart"), days.map(function (d) {
+      return { label: d.date.slice(5), value: d.revenue, highlight: d.date === todayValue(), title: d.date + " · " + CMS.money(d.revenue) + " · " + d.bills + " bills" };
+    }), { height: 200, label: "Paid revenue for the last 7 days" });
+  }
 
   App.ready(function () {
     document.getElementById("reportDate").textContent = CMS.dateLong(new Date()) + " · all figures in PKR";
     document.getElementById("exportCsv").addEventListener("click", exportCsv);
+    const pick = document.getElementById("reportPick");
+    pick.max = todayValue();
+    pick.value = todayValue();
+    pick.addEventListener("change", function () { pickDate(pick.value); });
+    renderTrend();
     document.getElementById("printReport").addEventListener("click", function () { window.print(); });
     document.getElementById("refundForm").addEventListener("submit", doRefund);
     render();
@@ -18,7 +47,7 @@
   });
 
   function render() {
-    const s = Store.salesToday();
+    const s = salesData();
     document.getElementById("rRevenue").textContent = CMS.money(s.revenue);
     document.getElementById("rBills").textContent = s.bills;
     document.getElementById("rAvg").textContent = CMS.money(s.avg);
@@ -53,7 +82,7 @@
   function renderBills() {
     const body = document.getElementById("billsBody");
     body.replaceChildren();
-    const bills = Store.bills();
+    const bills = billsData();
     if (!bills.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state pad-24", text: "No bills yet today." })])])); return; }
     bills.forEach(function (b) {
       const actions = h("div", { class: "row-actions" });
@@ -73,7 +102,7 @@
   }
 
   function openRefund(no) {
-    const b = Store.bill(no);
+    const b = billsData().find(function (x) { return x.no === no; });
     if (!b || b.status !== "Paid") { CMS.toast(no + " can't be refunded.", "err"); return; }
     refundNo = no;
     CMS.clearError(document.getElementById("refundErr"));
@@ -86,15 +115,17 @@
   async function doRefund(e) {
     e.preventDefault();
     const reason = document.getElementById("refundReason").value;
-    const result = await CMS.attempt(function () { return Store.refund(refundNo, reason); }, document.getElementById("refundErr"));
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.refund(refundNo, reason); }); }, document.getElementById("refundErr"));
     if (!result) return;
     CMS.closeModal("refundModal");
     CMS.toast(result.approvalId ? result.message : refundNo + " refunded and logged", result.approvalId ? "info" : "ok");
     if (location.hash) history.replaceState(null, "", location.pathname);
+    if (pickedDate) pickDate(pickedDate);
+    renderTrend();
   }
 
   async function exportCsv() {
-    const ok = await CMS.attempt(async function () { await Api.download("/reports/sales.csv", "sales-" + new Date().toISOString().slice(0, 10) + ".csv"); return true; });
+    const ok = await CMS.attempt(async function () { const day = pickedDate || todayValue(); await Api.download("/reports/sales.csv?date=" + encodeURIComponent(day), "sales-" + day + ".csv"); return true; });
     if (ok) CMS.toast("Sales report exported. This has been logged.", "ok");
   }
 })();

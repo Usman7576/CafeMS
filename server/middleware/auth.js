@@ -12,8 +12,9 @@ function guard(kind, fn) {
 
 const publicRoute = guard("public", function publicRoute(_req, _res, next) { next(); });
 
-function createAuthMiddleware(config, db, sessions) {
-  const requireAuth = guard("auth", async function requireAuth(req, _res, next) {
+// userLimiter, when given, limits each signed-in person separately from their network address
+function createAuthMiddleware(config, db, sessions, { userLimiter } = {}) {
+  const requireAuth = guard("auth", async function requireAuth(req, res, next) {
     try {
       const auth = await sessions.load(req);
       if (!auth) throw notSignedIn();
@@ -22,9 +23,10 @@ function createAuthMiddleware(config, db, sessions) {
         if (!token || !safeEqual(token, auth.session.csrfToken)) throw new AppError(403, "bad_csrf", "This request was blocked. Reload the page and try again.");
       }
       req.auth = auth;
-      next();
+      if (userLimiter) return userLimiter(req, res, next);
+      return next();
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 

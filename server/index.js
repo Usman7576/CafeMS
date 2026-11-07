@@ -5,6 +5,7 @@ const { createApp } = require("./app");
 const { createClient, ensureIndexes, assertTransactionsAvailable } = require("./db");
 const { startWorkers } = require("./workers");
 const { createLogger } = require("./lib/logger");
+const { createShutdown } = require("./lifecycle");
 
 async function start() {
   let config;
@@ -33,17 +34,7 @@ async function start() {
 
   const stopWorkers = startWorkers({ config, db, logger });
 
-  // Graceful shutdown: finish requests in progress, then close the database. A stuck request cannot block it.
-  let stopping = false;
-  const stop = () => {
-    if (stopping) return;
-    stopping = true;
-    logger.info("Shutting down");
-    stopWorkers();
-    setTimeout(() => process.exit(1), 10000).unref();
-    server.close(() => client.close().finally(() => process.exit(0)));
-    server.closeIdleConnections();
-  };
+  const stop = createShutdown({ server, client, stopWorkers, logger });
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
 }

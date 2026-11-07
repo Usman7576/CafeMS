@@ -73,7 +73,7 @@ describe("page guard", () => {
   });
 
   test("public pages and assets load without signing in", async () => {
-    for (const path of ["/", "/index.html", "/login.html", "/setup.html", "/css/style.css", "/js/login.js", "/assets/favicon.svg"]) {
+    for (const path of ["/", "/index.html", "/login.html", "/setup.html", "/privacy.html", "/css/style.css", "/js/login.js", "/assets/favicon.svg", "/assets/bean.svg", "/vendor/three.module.min.js", "/js/coffee-scene.js"]) {
       assert.equal((await request(app).get(path)).status, 200, path);
     }
   });
@@ -125,7 +125,7 @@ describe("security headers (finding 13)", () => {
     assert.match(csp, /require-trusted-types-for 'script'/);
   });
 
-  test("no page uses inline styles or third-party resources", () => {
+  test("no page uses inline styles or third-party resources (findings 21, 22)", () => {
     const fs = require("fs");
     const path = require("path");
     const dir = path.join(__dirname, "..", "public");
@@ -136,7 +136,7 @@ describe("security headers (finding 13)", () => {
     }
   });
 
-  test("no browser script writes HTML from strings or stores business data on the device", () => {
+  test("no browser script writes HTML from strings or stores business data on the device (findings 14, 20, 30)", () => {
     const fs = require("fs");
     const path = require("path");
     const dir = path.join(__dirname, "..", "public", "js");
@@ -145,12 +145,13 @@ describe("security headers (finding 13)", () => {
       for (const sink of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function"]) {
         assert.ok(!code.includes(sink), `${file} uses ${sink}`);
       }
-      // Only the landing page's theme preference is stored; common.js only deletes the old prototype data
-      if (file !== "home.js") assert.ok(!/localStorage\.(?:setItem|getItem)/.test(code), `${file} stores data on the device`);
+      // common.js only deletes the old prototype's stored data; nothing is stored or read back
+      assert.ok(!/localStorage\.(?:setItem|getItem)/.test(code), `${file} stores data on the device`);
+      assert.ok(!/addEventListener\(["']storage["']/.test(code), `${file} reacts to stored data from other tabs`);
     }
   });
 
-  test("fonts load from this server", async () => {
+  test("fonts load from this server (finding 21)", async () => {
     assert.equal((await request(app).get("/fonts/inter-latin-400-normal.woff2")).status, 200);
     assert.equal((await request(app).get("/css/fonts.css")).status, 200);
   });
@@ -242,5 +243,5 @@ test("every route has a guard, so none can be left open by accident (complete me
 
   // Public routes are an explicit, reviewed list
   const open = found.filter((r) => r.guards.includes("public")).map((r) => r.path).sort();
-  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/login", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/verify", "/payments/callback", "/setup"].sort());
+  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/info", "/login", "/menu", "/menu/:id/photo", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/verify", "/payments/callback", "/reservations", "/setup"].sort());
 });

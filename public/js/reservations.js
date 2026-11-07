@@ -2,7 +2,7 @@
   if (!window.App) return;
   const h = CMS.h, canReveal = App.session.role === "Manager";
   let query = "", date = "", status = "all", current = null, phoneResults = null;
-  const STATUS_CLASS = { Confirmed: "pill-preparing", Seated: "pill-ready", Completed: "pill-ready", Cancelled: "pill-cancelled" };
+  const STATUS_CLASS = { Requested: "pill-placed", Confirmed: "pill-preparing", Seated: "pill-ready", Completed: "pill-ready", Cancelled: "pill-cancelled" };
 
   App.ready(function () {
     document.getElementById("reservationSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); searchPhone(); render(); });
@@ -24,7 +24,7 @@
 
   function render() {
     const all = Store.reservations();
-    ["All", "Confirmed", "Seated", "Completed"].forEach(function (key) {
+    ["All", "Confirmed", "Seated", "Requested"].forEach(function (key) {
       const id = "r" + key;
       const el = document.getElementById(id);
       if (el) el.textContent = key === "All" ? all.length : all.filter(function (r) { return r.status === key; }).length;
@@ -63,7 +63,7 @@
       h("div", { class: "field" }, [h("label", { text: "Mobile number" }), h("p", { text: current.phone }), canReveal ? h("button", { class: "btn btn-ghost btn-sm", type: "button", text: "Show full number", onclick: function () { const id = current.id; CMS.showPhone(function () { return Store.reservationPhone(id); }); } }) : null]),
       h("div", { class: "field" }, [h("label", { text: "Created by" }), h("p", { text: current.createdBy })]),
       h("div", { class: "field span-2" }, [h("label", { text: "Notes" }), h("p", { text: current.notes || "No notes provided." })]),
-      h("div", { class: "field span-2" }, [h("label", { for: "detailStatus", text: "Update status" }), h("select", { class: "select", id: "detailStatus", disabled: current.status === "Completed" || current.status === "Cancelled" }, ["Confirmed", "Seated", "Completed", "Cancelled"].map(function (s) { return h("option", { value: s, text: s, selected: s === current.status }); }))])
+      h("div", { class: "field span-2" }, [h("label", { for: "detailStatus", text: "Update status" }), h("select", { class: "select", id: "detailStatus", disabled: current.status === "Completed" || current.status === "Cancelled" }, ["Requested", "Confirmed", "Seated", "Completed", "Cancelled"].map(function (s) { return h("option", { value: s, text: s, selected: s === current.status }); }))])
     ]));
     document.getElementById("saveReservationStatus").disabled = current.status === "Completed" || current.status === "Cancelled";
     CMS.openModal("reservationDetail");

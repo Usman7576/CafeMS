@@ -5,6 +5,7 @@ const { hashPassword, verifyPassword, dummyVerify, passwordProblems, MAX_LENGTH 
 const { AppError, invalidInput } = require("../lib/errors");
 const { publicRoute, validate } = require("../middleware/auth");
 const { recordEvent } = require("../services/auditLog");
+const { inTransaction } = require("../lib/tx");
 const { cookieOptions, PREAUTH_COOKIE } = require("../services/sessions");
 
 // One message for every sign-in failure, so it never reveals whether an account exists or is locked
@@ -31,7 +32,12 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   const tokens = db.collection("auth_tokens");
   const { requireAuth, requireStepUp } = middleware;
 
-  const audit = (req, event) => recordEvent(db, req, event);
+  // With a transaction, the entry commits or fails together with the change it records
+  const audit = (req, event, session) => recordEvent(db, req, event, session ? { session } : {});
+  const atomically = (work) => inTransaction(db, work);
+
+  // Hash once at start-up, so the first unknown-username sign-in is not slower than the rest
+  dummyVerify("warm-up").catch(() => {});
 
   async function recordFailure(req, user) {
     const updated = await users.findOneAndUpdate(
@@ -40,11 +46,14 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
       { returnDocument: "after" }
     );
     if (updated && updated.failedAttempts >= config.auth.maxFailedAttempts) {
-      await users.updateOne(
-        { username: user.username },
-        { $set: { lockedUntil: new Date(Date.now() + config.auth.lockMs), failedAttempts: 0 } }
-      );
-      await audit(req, { actor: user.username, role: user.role, action: "Account locked", details: `${config.auth.maxFailedAttempts} failed attempts`, severity: "high" });
+      await atomically(async (session) => {
+        await users.updateOne(
+          { username: user.username },
+          { $set: { lockedUntil: new Date(Date.now() + config.auth.lockMs), failedAttempts: 0 } },
+          { session }
+        );
+        await audit(req, { actor: user.username, role: user.role, action: "Account locked", details: `${config.auth.maxFailedAttempts} failed attempts`, severity: "high" }, session);
+      });
     }
   }
 
@@ -103,7 +112,8 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
         throw failed;
       }
 
-      await users.updateOne({ username }, { $set: { failedAttempts: 0, lockedUntil: null } });
+      // The failure count is cleared only after the second factor succeeds. Clearing it here would let
+      // someone who knows the password keep guessing authenticator codes without ever being locked out.
       const stage = user.mfa && user.mfa.enabled ? "mfa" : "enroll";
       await startChallenge(res, username, stage);
       res.json({ next: stage });
@@ -132,14 +142,18 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
         throw new AppError(401, "mfa_failed", CODE_FAILED);
       }
 
-      await challenges.deleteOne({ _id: challenge._id });
-      await users.updateOne({ username: user.username }, { $set: { failedAttempts: 0 } });
-      await sessions.create(user, req, res);
-      await audit(req, {
-        actor: user.username, role: user.role, action: "Signed in",
-        details: req.body.code ? "Password and authenticator code" : "Password and recovery code",
-        severity: req.body.code ? "info" : "high"
+      const token = await atomically(async (session) => {
+        await challenges.deleteOne({ _id: challenge._id }, { session });
+        await users.updateOne({ username: user.username }, { $set: { failedAttempts: 0, lockedUntil: null } }, { session });
+        const issued = await sessions.create(user, req, session);
+        await audit(req, {
+          actor: user.username, role: user.role, action: "Signed in",
+          details: req.body.code ? "Password and authenticator code" : "Password and recovery code",
+          severity: req.body.code ? "info" : "high"
+        }, session);
+        return issued;
       });
+      sessions.setCookie(res, token);
       res.json({ username: user.username, name: user.name, role: user.role });
     } catch (error) {
       next(error);
@@ -162,17 +176,26 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
     try {
       const challenge = await loadChallenge(req, "enroll");
       if (!challenge.pendingSecretEnc) throw invalidInput();
-      const recoveryCodes = await mfa.completeEnrolment(challenge.username, challenge.pendingSecretEnc, req.body.code);
-      if (!recoveryCodes) {
+      const current = await users.findOne({ username: challenge.username });
+      if (!current || current.status !== "Active" || !current.passwordHash) {
+        await challenges.deleteOne({ _id: challenge._id });
+        throw new AppError(401, "challenge_expired", "Your sign-in has expired. Please start again.");
+      }
+      const done = await atomically(async (session) => {
+        const recoveryCodes = await mfa.completeEnrolment(challenge.username, challenge.pendingSecretEnc, req.body.code, session);
+        if (!recoveryCodes) return null;
+        await challenges.deleteOne({ _id: challenge._id }, { session });
+        await users.updateOne({ username: current.username }, { $set: { failedAttempts: 0, lockedUntil: null } }, { session });
+        const token = await sessions.create(current, req, session);
+        await audit(req, { actor: current.username, role: current.role, action: "MFA enrolled", details: "Authenticator added", severity: "warning" }, session);
+        return { token, recoveryCodes };
+      });
+      if (!done) {
         await failChallenge(challenge);
         throw new AppError(401, "mfa_failed", CODE_FAILED);
       }
-      await challenges.deleteOne({ _id: challenge._id });
-      const user = await users.findOne({ username: challenge.username });
-      if (!user || user.status !== "Active") throw new AppError(401, "challenge_expired", "Your sign-in has expired. Please start again.");
-      await sessions.create(user, req, res);
-      await audit(req, { actor: user.username, role: user.role, action: "MFA enrolled", details: "Authenticator added", severity: "warning" });
-      res.json({ username: user.username, name: user.name, role: user.role, recoveryCodes });
+      sessions.setCookie(res, done.token);
+      res.json({ username: current.username, name: current.name, role: current.role, recoveryCodes: done.recoveryCodes });
     } catch (error) {
       next(error);
     }
@@ -192,15 +215,17 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
       if (problems.length) throw new AppError(400, "weak_password", problems.join(" "));
       const passwordHash = await hashPassword(req.body.password);
 
-      // Deleting the token first makes it single-use, even if two requests race
-      const claimed = await tokens.findOneAndDelete({ _id: tokenHash });
-      if (!claimed) throw failed;
-
-      await users.updateOne({ username: user.username }, {
-        $set: { passwordHash, status: "Active", passwordChangedAt: new Date(), failedAttempts: 0, lockedUntil: null, mfa: { enabled: false } }
+      await atomically(async (session) => {
+        // Deleting the token first makes it single-use, even if two requests race
+        const claimed = await tokens.findOneAndDelete({ _id: tokenHash }, { session });
+        if (!claimed) throw failed;
+        await users.updateOne({ username: user.username }, {
+          $set: { passwordHash, status: "Active", passwordChangedAt: new Date(), failedAttempts: 0, lockedUntil: null, mfa: { enabled: false } }
+        }, { session });
+        await sessions.revokeAll(user.username, session);
+        await challenges.deleteMany({ username: user.username }, { session });
+        await audit(req, { actor: user.username, role: user.role, action: "Password set", details: `Used ${record.purpose} link`, severity: "warning" }, session);
       });
-      await sessions.revokeAll(user.username);
-      await audit(req, { actor: user.username, role: user.role, action: "Password set", details: `Used ${record.purpose} link`, severity: "warning" });
       await startChallenge(res, user.username, "enroll");
       res.json({ next: "enroll" });
     } catch (error) {
@@ -224,8 +249,11 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   router.post("/logout", requireAuth, async (req, res, next) => {
     try {
       const { user, session } = req.auth;
+      await atomically(async (txn) => {
+        await sessions.revoke(session.jti, null, txn);
+        await audit(req, { actor: user.username, role: user.role, action: "Signed out", details: "User signed out" }, txn);
+      });
       await sessions.revoke(session.jti, res);
-      await audit(req, { actor: user.username, role: user.role, action: "Signed out", details: "User signed out" });
       res.status(204).end();
     } catch (error) {
       next(error);
@@ -240,7 +268,10 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
         await recordFailure(req, user);
         throw new AppError(401, "mfa_failed", CODE_FAILED);
       }
-      await db.collection("sessions").updateOne({ jti: session.jti }, { $set: { stepUpAt: new Date() } });
+      await atomically(async (txn) => {
+        await db.collection("sessions").updateOne({ jti: session.jti }, { $set: { stepUpAt: new Date() } }, { session: txn });
+        await audit(req, { actor: user.username, role: user.role, action: "Authenticator re-check passed", details: "For a sensitive action" }, txn);
+      });
       res.status(204).end();
     } catch (error) {
       next(error);
@@ -250,8 +281,11 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   router.post("/mfa/recovery-codes", requireAuth, requireStepUp, async (req, res, next) => {
     try {
       const { user } = req.auth;
-      const recoveryCodes = await mfa.replaceRecoveryCodes(user.username);
-      await audit(req, { actor: user.username, role: user.role, action: "Recovery codes replaced", details: "Old codes cancelled", severity: "warning" });
+      const recoveryCodes = await atomically(async (session) => {
+        const codes = await mfa.replaceRecoveryCodes(user.username, session);
+        await audit(req, { actor: user.username, role: user.role, action: "Recovery codes replaced", details: "Old codes cancelled", severity: "warning" }, session);
+        return codes;
+      });
       res.json({ recoveryCodes });
     } catch (error) {
       next(error);
@@ -268,9 +302,13 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
       }
       const problems = passwordProblems(req.body.newPassword, user.username);
       if (problems.length) throw new AppError(400, "weak_password", problems.join(" "));
-      await users.updateOne({ username: user.username }, { $set: { passwordHash: await hashPassword(req.body.newPassword), passwordChangedAt: new Date() } });
-      await db.collection("sessions").deleteMany({ username: user.username, jti: { $ne: session.jti } });
-      await audit(req, { actor: user.username, role: user.role, action: "Password changed", details: "Other sessions ended", severity: "warning" });
+      const passwordHash = await hashPassword(req.body.newPassword);
+      await atomically(async (txn) => {
+        await users.updateOne({ username: user.username }, { $set: { passwordHash, passwordChangedAt: new Date() } }, { session: txn });
+        await db.collection("sessions").deleteMany({ username: user.username, jti: { $ne: session.jti } }, { session: txn });
+        await challenges.deleteMany({ username: user.username }, { session: txn });
+        await audit(req, { actor: user.username, role: user.role, action: "Password changed", details: "Other sessions ended", severity: "warning" }, txn);
+      });
       res.status(204).end();
     } catch (error) {
       next(error);
@@ -280,7 +318,10 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   router.get("/sessions", requireAuth, async (req, res, next) => {
     try {
       const { user, session } = req.auth;
-      const list = await db.collection("sessions").find({ username: user.username }).sort({ lastSeenAt: -1 }).toArray();
+      const all = await db.collection("sessions").find({ username: user.username }).sort({ lastSeenAt: -1 }).toArray();
+      const list = all.filter((s) => sessions.isLive(s));
+      const dead = all.filter((s) => !sessions.isLive(s)).map((s) => s.jti);
+      if (dead.length) await db.collection("sessions").deleteMany({ jti: { $in: dead } });
       res.json({
         sessions: list.map((s) => ({ id: s.sid, createdAt: s.createdAt, lastSeenAt: s.lastSeenAt, ip: s.ip, userAgent: s.userAgent, current: s.jti === session.jti }))
       });
@@ -293,9 +334,11 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   router.delete("/sessions/:sid", requireAuth, validate(sidSchema, "params"), async (req, res, next) => {
     try {
       const { user } = req.auth;
-      const result = await db.collection("sessions").deleteOne({ sid: req.validParams.sid, username: user.username });
-      if (!result.deletedCount) throw new AppError(404, "not_found", "That session no longer exists.");
-      await audit(req, { actor: user.username, role: user.role, action: "Session revoked", details: "Revoked from device list", severity: "warning" });
+      await atomically(async (session) => {
+        const result = await db.collection("sessions").deleteOne({ sid: req.validParams.sid, username: user.username }, { session });
+        if (!result.deletedCount) throw new AppError(404, "not_found", "That session no longer exists.");
+        await audit(req, { actor: user.username, role: user.role, action: "Session revoked", details: "Revoked from device list", severity: "warning" }, session);
+      });
       res.status(204).end();
     } catch (error) {
       next(error);

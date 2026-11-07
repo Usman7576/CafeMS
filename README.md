@@ -1,4 +1,4 @@
-# Cafe Management System (CMS): MongoDB-backed prototype
+# CafeMS: a secure website and management system for cafes
 
 A secure, web-based Cafe Management System built as the semester project for **Secure Software Development (SSD)**.
 The prototype covers the full service loop across all five staff roles. A waiter takes an order, the kitchen prepares it, the cashier bills it, and it all appears in the manager's reports and the admin's tamper-evident audit log.

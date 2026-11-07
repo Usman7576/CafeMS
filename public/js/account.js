@@ -50,6 +50,7 @@
       const list = document.getElementById("recoveryList");
       list.replaceChildren.apply(list, result.recoveryCodes.map(function (c) { return h("li", { text: c }); }));
       list.hidden = false;
+      document.getElementById("recoveryActions").replaceChildren(CMS.codeActions(result.recoveryCodes));
       CMS.toast("Save these codes now. They are shown only once.", "info");
       loadStatus();
     });

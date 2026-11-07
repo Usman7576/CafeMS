@@ -5,3 +5,4 @@ uploads/
 backups/
 node_modules/
 .seed-credentials.txt
+.mongo-keyfile

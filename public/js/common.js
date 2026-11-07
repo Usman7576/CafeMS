@@ -203,7 +203,7 @@
     const s = Session.get();
     const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
     if (document.querySelector(".site-nav") && s && HOME[s.role]) {
-      document.querySelectorAll('a[href="login.html"]:not(.demo-card)').forEach(function (a) {
+      document.querySelectorAll('a[href="login.html"]').forEach(function (a) {
         a.setAttribute("href", HOME[s.role]);
         a.childNodes.forEach(function (n) {
           if (n.nodeType === 3 && n.textContent.trim() === "Staff sign in") n.textContent = "Open my workspace";
@@ -297,9 +297,46 @@
       ])
     ]);
     document.body.appendChild(backdrop);
-    copyBtn.addEventListener("click", function () { navigator.clipboard.writeText(input.value).then(function () { toast("Link copied", "ok"); }); });
+    copyBtn.addEventListener("click", function () { copyText(input.value, "Link copied"); });
     closeBtn.addEventListener("click", function () { closeModal(id); backdrop.remove(); });
     openModal(id);
+  }
+
+  function copyText(text, doneMessage) {
+    // Some browsers block the modern clipboard, so an older method is tried before giving up
+    const fallback = function () {
+      const area = h("textarea", { class: "sr-only", readonly: true, "aria-hidden": "true" });
+      const previous = document.activeElement;
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      let copied = false;
+      try { copied = document.execCommand("copy"); } catch (e) { copied = false; }
+      area.remove();
+      if (previous && previous.focus) previous.focus();
+      if (copied) toast(doneMessage, "ok");
+      else toast("Your browser blocked copying. Select the text and copy it by hand.", "err");
+    };
+    if (!navigator.clipboard) { fallback(); return; }
+    navigator.clipboard.writeText(text).then(function () { toast(doneMessage, "ok"); }, fallback);
+  }
+
+  // Copy and Download buttons for recovery codes. The file is made here in the browser; nothing is sent anywhere.
+  function codeActions(codes) {
+    const save = function () {
+      const content = ["CafeMS recovery codes", "Saved " + new Date().toLocaleString(), "Each code works once. Keep this file private.", ""].concat(codes).join("\r\n") + "\r\n";
+      const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+      const a = h("a", { href: url, download: "cafems-recovery-codes.txt" });
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      toast("Recovery codes downloaded", "ok");
+    };
+    return h("div", { class: "code-actions" }, [
+      h("button", { class: "btn btn-secondary btn-sm", type: "button", icon: "clipboard", iconSize: 15, text: "Copy codes", onclick: function () { copyText(codes.join("\n"), "Recovery codes copied"); } }),
+      h("button", { class: "btn btn-secondary btn-sm", type: "button", icon: "file", iconSize: 15, text: "Download codes", onclick: save })
+    ]);
   }
 
   // Shared list of requests waiting for a second person (Manager and Admin screens)
@@ -424,7 +461,7 @@
   window.CMS = {
     h: h, money: money, timeAgo: timeAgo, clock: clock, dateLong: dateLong, dateTime: dateTime, compact: compact, qty: qty,
     toast: toast, openModal: openModal, closeModal: closeModal, confirm: confirmDialog,
-    attempt: attempt, clearError: clearError, busy: busy, withStepUp: withStepUp, showLink: showLink, renderApprovals: renderApprovals, showPhone: showPhone,
+    attempt: attempt, clearError: clearError, busy: busy, withStepUp: withStepUp, showLink: showLink, copyText: copyText, codeActions: codeActions, renderApprovals: renderApprovals, showPhone: showPhone,
     barChart: barChart, hBars: hBars, donut: donut
   };
   window.Session = Session;

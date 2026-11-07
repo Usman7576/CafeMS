@@ -61,18 +61,19 @@ function createMfaService(config, db) {
     });
   }
 
-  async function replaceRecoveryCodes(username) {
+  async function replaceRecoveryCodes(username, session) {
     const codes = generateRecoveryCodes();
-    await users.updateOne({ username }, { $set: { "mfa.recoveryHashes": codes.map(hashToken) } });
+    await users.updateOne({ username }, { $set: { "mfa.recoveryHashes": codes.map(hashToken) } }, { session });
     return codes;
   }
 
   // Confirms the first code against the pending secret, then switches MFA on
-  async function completeEnrolment(username, secretEnc, code) {
+  async function completeEnrolment(username, secretEnc, code, session) {
     const delta = checkDelta(code, secretEnc, username);
     if (delta === null) return null;
     const codes = generateRecoveryCodes();
-    await users.updateOne({ username }, {
+    // The condition means an old enrolment can never replace an authenticator that is already set up
+    const result = await users.updateOne({ username, "mfa.enabled": { $ne: true } }, {
       $set: {
         mfa: {
           enabled: true,
@@ -82,8 +83,8 @@ function createMfaService(config, db) {
           enrolledAt: new Date()
         }
       }
-    });
-    return codes;
+    }, { session });
+    return result.modifiedCount === 1 ? codes : null;
   }
 
   return { beginEnrolment, verifyCode, verifyRecoveryCode, completeEnrolment, replaceRecoveryCodes };

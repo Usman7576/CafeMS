@@ -170,6 +170,7 @@ describe("payment gateway (soft dependency)", () => {
     assert.equal((await manager.get(`${API}/reports/sales`)).body.revenue, before);
     assert.ok(await db.collection("audit_events").findOne({ action: "Payment pending", details: new RegExp(res.body.no) }));
 
+    await stepUp(manager);
     assert.equal((await manager.post(`${API}/bills/${res.body.no}/refund`, { reason: "Wrong item" }, key())).body.error.code, "not_paid");
     const retried = await cashier.post(`${API}/bills/${res.body.no}/retry-payment`, {});
     assert.equal(retried.body.status, "Paid");

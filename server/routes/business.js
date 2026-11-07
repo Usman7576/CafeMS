@@ -16,7 +16,7 @@ const params = (schema) => validate(schema, "params");
 function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
   const router = express.Router();
   const { requireAuth, requirePermission, requireStepUp } = middleware;
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe } = services;
   const allow = (permission) => [requireAuth, requirePermission(permission)];
 
   const tx = (work) => wrap(async (req, res) => res.json(await inTransaction(db, (session) => work(req, session))));
@@ -100,9 +100,12 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.get("/bills", ...allow("billing.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => {
     res.json({ bills: await billing.list(can(req.auth.user.role, "reports.read") ? req.validQuery : {}) });
   }));
-  router.get("/bills/:no", ...allow("billing.read"), params(schemas.params.billNo), wrap(async (req, res) => res.json(await billing.get(req.validParams.no))));
+  router.get("/bills/:no", ...allow("billing.read"), params(schemas.params.billNo), wrap(async (req, res) => {
+    res.json(await billing.get(req.validParams.no, { todayOnly: !can(req.auth.user.role, "reports.read") }));
+  }));
   router.get("/bills/:no/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.billNo), wrap(async (req, res) => res.json({ phone: await billing.revealPhone(req, req.validParams.no) })));
-  router.post("/bills/:no/refund", ...allow("billing.refund"), params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
+  // Money leaves the business, so the manager confirms an authenticator code first
+  router.post("/bills/:no/refund", ...allow("billing.refund"), requireStepUp, params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
     const outcome = await idempotentTransaction(db, req, (session) => billing.refund(req, req.validParams.no, req.body.reason, session));
     res.status(outcome.status).json(outcome.body);
   }));
@@ -117,13 +120,22 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
 
   // ---------- Reservations ----------
   router.get("/reservations", ...allow("reservations.write"), validate(schemas.reservationQuery, "query"), wrap(async (req, res) => res.json({ reservations: await reservations.list(req.validQuery) })));
-  router.post("/reservations", ...allow("reservations.write"), validate(schemas.reservation), once((req, session) => reservations.create(req, req.body, session), 201));
+  // Only the ID is kept for repeat requests, so guest details are never stored unencrypted
+  router.post("/reservations", ...allow("reservations.write"), validate(schemas.reservation), wrap(async (req, res) => {
+    const outcome = await idempotentTransaction(db, req, async (session) => ({ status: 201, body: { id: (await reservations.create(req, req.body, session)).id } }));
+    res.status(outcome.status).json(await reservations.get(outcome.body.id));
+  }));
+  // A POST, because a phone number in a URL would end up in access logs and browser history
+  router.post("/reservations/search", ...allow("reservations.write"), validate(schemas.reservationSearch), wrap(async (req, res) => {
+    res.json({ reservations: await reservations.list({ phone: req.body.phone }) });
+  }));
   router.post("/reservations/:id/status", ...allow("reservations.write"), params(schemas.params.reservationId), validate(schemas.reservationStatus),
     tx((req, session) => reservations.setStatus(req, req.validParams.id, req.body.status, session)));
   router.get("/reservations/:id/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.reservationId), wrap(async (req, res) => res.json({ phone: await reservations.revealPhone(req, req.validParams.id) })));
 
   // ---------- Reports and exports: limited and recorded, because bulk export is how insiders take data ----------
   router.get("/reports/sales", ...allow("reports.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => res.json(await billing.salesReport(req.validQuery.date))));
+  router.get("/reports/trend", ...allow("reports.read"), wrap(async (_req, res) => res.json({ days: await billing.trend(7) })));
   router.get("/reports/sales.csv", ...allow("reports.read"), personalLimiter("export", 10), validate(schemas.salesQuery, "query"), wrap(async (req, res) => {
     const bills = await billing.list(req.validQuery);
     const rows = [["Bill", "Time", "Table", "Method", "Subtotal", "Discount", "Tax", "Total", "Status"]]
@@ -157,16 +169,8 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     res.attachment("audit.csv").type("text/csv").send(toCsv(rows));
   }));
 
-  // ---------- Settings: an allow-list, so no other key can ever be written ----------
-  router.get("/settings", ...allow("settings.write"), wrap(async (_req, res) => {
-    const doc = await db.collection("settings").findOne({ _id: "app" });
-    res.json({ kitchenSim: Boolean(doc && doc.kitchenSim) });
-  }));
-  router.put("/settings", ...allow("settings.write"), validate(schemas.settings), wrap(async (req, res) => {
-    await db.collection("settings").updateOne({ _id: "app" }, { $set: { kitchenSim: req.body.kitchenSim } }, { upsert: true });
-    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Setting changed", details: `kitchenSim = ${req.body.kitchenSim}` });
-    res.json({ kitchenSim: req.body.kitchenSim });
-  }));
+  // ---------- Cafe details: an allow-list, so no other key can ever be written ----------
+  router.put("/settings/cafe", ...allow("settings.write"), validate(schemas.cafeDetails), wrap(async (req, res) => res.json(await cafe.save(req, req.body))));
 
   // ---------- Snapshot: one role-filtered read for the screens. Each role gets only its own data. ----------
   router.get("/snapshot", requireAuth, wrap(async (req, res) => {
@@ -193,7 +197,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     if (allowed("billing.read")) add("staffNames", async () => Object.fromEntries((await db.collection("users").find({}, { projection: { username: 1, name: 1 } }).toArray()).map((u) => [u.username, u.name])));
     if (allowed("audit.read")) add("recentAudit", () => auditRows({ limit: 20 }));
     if (allowed("alerts.manage")) add("alerts", () => alerts.listOpen());
-    if (allowed("settings.write")) add("settings", async () => ({ kitchenSim: Boolean((await db.collection("settings").findOne({ _id: "app" }) || {}).kitchenSim) }));
+    add("cafe", () => cafe.get());
     await Promise.all(parts);
     res.json(snapshot);
   }));

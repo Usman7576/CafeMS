@@ -93,22 +93,33 @@
     }
   }
 
+  // Filled once only, so a background refresh never overwrites what the Admin is typing
+  let settingsReady = false;
   function renderSettings() {
+    if (settingsReady) return;
+    settingsReady = true;
     const panel = document.getElementById("settingsPanel");
     panel.hidden = false;
-    const body = document.getElementById("settingsBody");
-    body.replaceChildren();
-    const st = Store.settings();
-    const sw = h("input", { type: "checkbox", class: "switch", id: "simToggle" });
-    sw.checked = !!st.kitchenSim;
-    sw.addEventListener("change", async function () {
-      const enabled = sw.checked;
-      const ok = await CMS.attempt(function () { return Store.setKitchenSim(enabled); });
-      if (ok) CMS.toast("Kitchen simulation " + (enabled ? "on" : "off"), "ok"); else sw.checked = !enabled;
+    const cafe = Store.cafe();
+    const field = function (key, label, max, type) {
+      const input = h(type || "input", { class: type === "textarea" ? "textarea" : "input", id: "cafe-" + key, maxlength: String(max), autocomplete: "off" });
+      input.value = cafe[key] || "";
+      return h("div", { class: "field" }, [h("label", { for: "cafe-" + key, text: label }), input]);
+    };
+    const err = h("div", { class: "alert alert-error", role: "alert" });
+    const save = h("button", { class: "btn btn-primary", type: "submit", text: "Save details" });
+    const form = h("form", { class: "cafe-form" }, [
+      err, field("name", "Cafe name", 40), field("tagline", "Tagline", 80), field("about", "Short description", 300, "textarea"),
+      field("address", "Address", 120), field("phone", "Phone", 20), field("hours", "Opening hours", 80), save
+    ]);
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      CMS.clearError(err);
+      const details = {};
+      ["name", "tagline", "about", "address", "phone", "hours"].forEach(function (k) { details[k] = document.getElementById("cafe-" + k).value; });
+      const ok = await CMS.busy(save, function () { return CMS.attempt(function () { return Store.saveCafe(details); }, err); });
+      if (ok) CMS.toast("Cafe details saved", "ok");
     });
-    body.appendChild(h("label", { class: "setting", for: "simToggle" }, [
-      h("div", null, [h("b", { text: "Kitchen auto-simulation" }), h("small", { text: "Moves new orders to Preparing (10 s) and Ready (20 s) while no kitchen staff are signed in. It pauses automatically when a kitchen user is working." })]),
-      sw
-    ]));
+    document.getElementById("settingsBody").replaceChildren(form);
   }
 })();

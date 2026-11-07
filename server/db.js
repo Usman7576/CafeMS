@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
@@ -47,6 +47,7 @@ async function ensureIndexes(db) {
   await db.collection("reservations").createIndex({ phoneIndex: 1, date: 1, time: 1 }, { unique: true, partialFilterExpression: { active: true } });
   await db.collection("approvals").createIndex({ status: 1, createdAt: -1 });
   await db.collection("idempotency").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await db.collection("gateway_callbacks").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 }
 
 module.exports = { createClient, ensureIndexes, assertTransactionsAvailable };

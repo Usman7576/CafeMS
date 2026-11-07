@@ -133,6 +133,7 @@ describe("customer phone numbers (finding 9)", () => {
     assert.ok(!JSON.stringify((await cashier.get(`${API}/bills`)).body).includes(PHONE));
     assert.ok(!JSON.stringify((await cashier.get(`${API}/bills/${bill.no}`)).body).includes(PHONE));
     const manager = await as("Manager");
+    await stepUp(manager);
     assert.ok(!JSON.stringify((await manager.get(`${API}/snapshot`)).body).includes(PHONE));
     const idempotency = await db.collection("idempotency").find().toArray();
     assert.ok(!JSON.stringify(idempotency).includes(PHONE));
@@ -142,6 +143,7 @@ describe("customer phone numbers (finding 9)", () => {
     const { cashier, bill } = await billWithPhone();
     assert.equal((await cashier.get(`${API}/bills/${bill.no}/phone`)).status, 403);
     const manager = await as("Manager");
+    await stepUp(manager);
     assert.equal((await manager.get(`${API}/bills/${bill.no}/phone`)).body.phone, PHONE);
     const event = await db.collection("audit_events").findOne({ actor: manager.user.username, action: "Customer phone viewed" });
     assert.equal(event.details, bill.no);
@@ -150,6 +152,7 @@ describe("customer phone numbers (finding 9)", () => {
   test("the data cannot be read after being moved to another record", async () => {
     const { bill } = await billWithPhone();
     const manager = await as("Manager");
+    await stepUp(manager);
     const stored = await db.collection("bills").findOne({ _id: bill.no });
     const other = await db.collection("bills").findOne({ _id: { $ne: bill.no }, status: "Paid" });
     await db.collection("bills").updateOne({ _id: other._id }, { $set: { phoneEnc: stored.phoneEnc } });
@@ -184,6 +187,7 @@ describe("refunds and separation of privilege", () => {
   test("a small refund works once, and needs a real reason", async () => {
     const { bill } = await paidBill();
     const manager = await as("Manager");
+    await stepUp(manager);
     assert.equal((await manager.post(REFUND(bill.no), { reason: "x" }, key())).status, 400);
     const res = await manager.post(REFUND(bill.no), { reason: "Wrong item" }, key());
     assert.equal(res.body.status, "Refunded");
@@ -195,6 +199,7 @@ describe("refunds and separation of privilege", () => {
     const { bill } = await paidBill(LARGE);
     assert.ok(bill.total > 5000);
     const manager = await as("Manager");
+    await stepUp(manager);
     const requested = await manager.post(REFUND(bill.no), { reason: "Party cancelled" }, key());
     assert.equal(requested.status, 202);
     assert.equal((await db.collection("bills").findOne({ _id: bill.no })).status, "Paid");
@@ -217,6 +222,7 @@ describe("refunds and separation of privilege", () => {
   test("a rejected refund leaves the bill paid and open to a new request", async () => {
     const { bill } = await paidBill(LARGE);
     const manager = await as("Manager");
+    await stepUp(manager);
     const { approvalId } = (await manager.post(REFUND(bill.no), { reason: "Party cancelled" }, key())).body;
     const second = await as("Manager");
     await stepUp(second);
@@ -229,6 +235,7 @@ describe("refunds and separation of privilege", () => {
   test("an expired approval cannot be used, and other roles cannot decide", async () => {
     const { bill } = await paidBill(LARGE);
     const manager = await as("Manager");
+    await stepUp(manager);
     const { approvalId } = (await manager.post(REFUND(bill.no), { reason: "Party cancelled" }, key())).body;
     const cashier = await as("Cashier");
     assert.equal((await cashier.post(`${API}/approvals/${approvalId}/approve`, {})).status, 403);
@@ -256,6 +263,7 @@ describe("reports", () => {
     await db.collection("bills").deleteMany({});
     const cashier = await as("Cashier");
     const manager = await as("Manager");
+    await stepUp(manager);
     let { table } = await servedTable([{ id: 1, qty: 1 }]);
     const a = (await pay(cashier, table)).body;
     ({ table } = await servedTable([{ id: 2, qty: 1 }]));

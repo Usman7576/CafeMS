@@ -2,11 +2,13 @@
 const { randomToken, hashToken } = require("../lib/crypto");
 const { AppError } = require("../lib/errors");
 const { recordEvent } = require("./auditLog");
+const { inTransaction } = require("../lib/tx");
 
 function createUserService({ config, db, approvals }) {
   const users = db.collection("users");
   const sessions = db.collection("sessions");
   const tokens = db.collection("auth_tokens");
+  const challenges = db.collection("auth_challenges");
 
   // An allow-list of fields, so hashes and MFA secrets can never reach a response
   const view = (u) => ({
@@ -52,6 +54,7 @@ function createUserService({ config, db, approvals }) {
       // Old credentials stop working at once, so a stolen password or phone is useless after a reset
       await users.updateOne({ username: target.username }, { $set: { mfa: { enabled: false }, failedAttempts: 0, lockedUntil: null }, $unset: { passwordHash: "" } }, { session });
       await sessions.deleteMany({ username: target.username }, { session });
+      await challenges.deleteMany({ username: target.username }, { session });
       await event("Account reset", `Password and MFA reset for ${target.username}`);
       return issueLink(target.username, "reset", actor.username, session);
     }
@@ -67,7 +70,11 @@ function createUserService({ config, db, approvals }) {
     if (change.action === "status") {
       if (change.status === "Disabled") await guardLastAdmin(target, session);
       await users.updateOne({ username: target.username }, { $set: { status: change.status } }, { session });
-      if (change.status === "Disabled") await sessions.deleteMany({ username: target.username }, { session });
+      if (change.status === "Disabled") {
+        await sessions.deleteMany({ username: target.username }, { session });
+        await challenges.deleteMany({ username: target.username }, { session });
+        await tokens.deleteMany({ username: target.username }, { session });
+      }
       await event(change.status === "Disabled" ? "Account disabled" : "Account enabled", `${target.username} (${target.role})`);
       return { username: target.username, status: change.status };
     }
@@ -88,9 +95,11 @@ function createUserService({ config, db, approvals }) {
 
   async function unlock(req, username) {
     await assertNotSelf(req, username);
-    const result = await users.updateOne({ username }, { $set: { failedAttempts: 0, lockedUntil: null } });
-    if (!result.matchedCount) throw new AppError(404, "not_found", "User not found.");
-    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Account unlocked", details: username, severity: "warning" });
+    await inTransaction(db, async (session) => {
+      const result = await users.updateOne({ username }, { $set: { failedAttempts: 0, lockedUntil: null } }, { session });
+      if (!result.matchedCount) throw new AppError(404, "not_found", "User not found.");
+      await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Account unlocked", details: username, severity: "warning" }, { session });
+    });
   }
 
   return { list, execute, request, assertNotSelf, unlock };

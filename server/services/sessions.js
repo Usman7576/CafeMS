@@ -42,7 +42,9 @@ function createSessionService(config, db) {
     }
   }
 
-  async function create(user, req, res) {
+  // Saves the session record (inside the caller's transaction, when one is given) and returns the
+  // signed token. The cookie is set only after the transaction commits, by setCookie.
+  async function create(user, req, txn) {
     const now = Date.now();
     const jti = crypto.randomUUID();
     await sessions.insertOne({
@@ -57,10 +59,19 @@ function createSessionService(config, db) {
       stepUpAt: null,
       ip: clean(req.ip),
       userAgent: clean(req.get("user-agent"))
-    });
-    await users.updateOne({ username: user.username }, { $set: { lastLogin: new Date(now) } });
-    res.cookie(SESSION_COOKIE, sign(user, jti), cookieOptions(config.auth.sessionAbsoluteMs));
+    }, { session: txn });
+    await users.updateOne({ username: user.username }, { $set: { lastLogin: new Date(now) } }, { session: txn });
+    return sign(user, jti);
+  }
+
+  function setCookie(res, token) {
+    res.cookie(SESSION_COOKIE, token, cookieOptions(config.auth.sessionAbsoluteMs));
     res.clearCookie(PREAUTH_COOKIE, cookieOptions());
+  }
+
+  // A session that has timed out is no longer signed in, so it is removed rather than listed
+  function isLive(session, now = Date.now()) {
+    return now - session.lastSeenAt.getTime() <= config.auth.sessionIdleMs && now <= session.absoluteExpiresAt.getTime();
   }
 
   // Returns { user, session } only if every check passes; any failure means "not signed in".
@@ -74,9 +85,7 @@ function createSessionService(config, db) {
     if (!session || session.username !== payload.sub) return null;
 
     const now = Date.now();
-    const idle = now - session.lastSeenAt.getTime() > config.auth.sessionIdleMs;
-    const expired = now > session.absoluteExpiresAt.getTime();
-    if (idle || expired) {
+    if (!isLive(session, now)) {
       await sessions.deleteOne({ jti: session.jti });
       return null;
     }
@@ -96,12 +105,12 @@ function createSessionService(config, db) {
     return { user, session };
   }
 
-  async function revoke(jti, res) {
-    await sessions.deleteOne({ jti });
+  async function revoke(jti, res, txn) {
+    await sessions.deleteOne({ jti }, { session: txn });
     if (res) res.clearCookie(SESSION_COOKIE, cookieOptions());
   }
 
-  return { create, load, revoke, revokeAll: (username) => sessions.deleteMany({ username }) };
+  return { create, setCookie, isLive, load, revoke, revokeAll: (username, txn) => sessions.deleteMany({ username }, { session: txn }) };
 }
 
 module.exports = { createSessionService, cookieOptions, SESSION_COOKIE, PREAUTH_COOKIE };

@@ -1,20 +1,37 @@
 # Development database: a single-node replica set, which MongoDB needs for transactions.
-# It listens on this computer only. Phase 6 adds the app, TLS, authentication and a private network.
+# It listens on this computer only and requires a login. The administrator account is used only by
+# "npm run db:setup"; the app signs in with its own least-privilege account.
+# First run: npm run setup:env, then docker compose up -d --wait, then npm run db:setup.
+# Phase 6 adds the app, TLS and a private network.
 services:
   mongo:
     image: mongo:7
-    command: ["--replSet", "rs0", "--bind_ip_all"]
+    # A replica set with access control needs a shared key file, which MongoDB accepts only when
+    # it is readable by its own user alone
+    entrypoint:
+      - bash
+      - -c
+      - install -m 400 -o mongodb -g mongodb /run/secrets/mongo_keyfile /data/keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /data/keyfile
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Run npm run setup:env first}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Run npm run setup:env first}
+    secrets:
+      - mongo_keyfile
     ports:
       - "127.0.0.1:27018:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
       test: >
-        mongosh --quiet --eval
+        mongosh --quiet -u "$${MONGO_INITDB_ROOT_USERNAME}" -p "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval
         "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }).ok }"
       interval: 5s
       timeout: 10s
       retries: 20
+
+secrets:
+  mongo_keyfile:
+    file: ./.mongo-keyfile
 
 volumes:
   mongo-data:
