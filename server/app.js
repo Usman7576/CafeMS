@@ -23,6 +23,7 @@ const { createAlertService } = require("./services/alerts");
 const { createCustomerService } = require("./services/customers");
 const { createPhotoService } = require("./services/photos");
 const { createCafeService } = require("./services/cafe");
+const { createRiskService } = require("./services/riskRegister");
 const { createPublicRouter } = require("./routes/public");
 const { createSimulatedGateway, verifyCallback } = require("./services/gateway");
 const { bindAudit, recordEvent: audit } = require("./services/auditLog");
@@ -61,7 +62,8 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const customers = createCustomerService({ config, db });
   const photos = createPhotoService({ config, db });
   const cafe = createCafeService({ db });
-  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe };
+  const risk = createRiskService();
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, risk };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),

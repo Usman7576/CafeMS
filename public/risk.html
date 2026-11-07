@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Risk register — Cafe Management System</title>
+  <meta name="theme-color" content="#1d110b">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=6.0">
+  <link rel="stylesheet" href="css/style.css?v=6.1">
+</head>
+<body data-page="risk">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Risk register</h2><p id="riskSub">Component exposure (WSES), failure modes (FMEA) and how a failure spreads between services.</p></div>
+      <button class="btn btn-secondary" id="riskCsv" type="button"><i data-icon="file" data-size="16"></i>Export CSV</button>
+    </div>
+    <div class="alert alert-error" id="riskErr" role="alert"></div>
+
+    <section class="panel">
+      <div class="panel-head"><div><h3>Component exposure (WSES)</h3><p id="wsesHow"></p></div></div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Component</th><th class="num">Before</th><th class="num">Now</th><th class="hide-md">Ratings now (access · data · incidents · complexity)</th></tr></thead>
+          <tbody id="wsesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h3>Failure modes (FMEA)</h3><p>RPN = Severity × Occurrence × Detection, each rated 1 to 10. Sorted by today's RPN.</p></div></div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>ID</th><th>Failure</th><th class="num">Before</th><th class="num">Now</th><th class="hide-md">Corrective action</th></tr></thead>
+          <tbody id="fmeaBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="dash-grid">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Dependency matrix</h3><p>Rows call columns. 2 hard sync · 1 soft sync · 1A soft async</p></div></div>
+        <div class="table-wrap flush">
+          <table class="data-table dep-matrix" id="depMatrix"></table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h3>If a service fails</h3><p>What stops, what carries on degraded, what is delayed</p></div></div>
+        <ul class="ready-list" id="impactList"></ul>
+      </section>
+    </div>
+  </main>
+  <script src="js/icons.js?v=6.0"></script>
+  <script src="js/common.js?v=6.0"></script>
+  <script src="js/store.js?v=6.1"></script>
+  <script src="js/app.js?v=6.1"></script>
+  <script src="js/risk.js?v=6.1"></script>
+</body>
+</html>

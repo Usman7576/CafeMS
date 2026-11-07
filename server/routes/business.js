@@ -16,7 +16,7 @@ const params = (schema) => validate(schema, "params");
 function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
   const router = express.Router();
   const { requireAuth, requirePermission, requireStepUp } = middleware;
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, risk } = services;
   const allow = (permission) => [requireAuth, requirePermission(permission)];
 
   const tx = (work) => wrap(async (req, res) => res.json(await inTransaction(db, (session) => work(req, session))));
@@ -167,6 +167,14 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     const rows = [["Time", "User", "Role", "Action", "Details", "Severity", "IP"]].concat(entries.map((e) => [e.at.toISOString(), e.actor, e.role, e.action, e.details, e.severity, e.ip]));
     await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Audit log exported", details: `${entries.length} entries`, severity: "warning" });
     res.attachment("audit.csv").type("text/csv").send(toCsv(rows));
+  }));
+
+  // ---------- Risk register: WSES, FMEA and the dependency matrix ----------
+  router.get("/risk", ...allow("risk.read"), wrap(async (_req, res) => res.json(risk.get())));
+  router.get("/risk.csv", ...allow("risk.read"), personalLimiter("export", 10), wrap(async (req, res) => {
+    const rows = risk.csvRows();
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Report exported", details: `Risk register CSV · ${rows.length - 1} rows`, severity: "warning" });
+    res.attachment("risk-register.csv").type("text/csv").send(toCsv(rows));
   }));
 
   // ---------- Cafe details: an allow-list, so no other key can ever be written ----------

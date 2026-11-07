@@ -201,7 +201,8 @@
     saveCafe: function (details) { return change("PUT", "/settings/cafe", details); },
     salesFor: function (date) { return Api.call("GET", "/reports/sales?date=" + encodeURIComponent(date)); },
     billsFor: async function (date) { return normalize((await Api.call("GET", "/bills?date=" + encodeURIComponent(date))).bills); },
-    trend: async function () { return (await Api.call("GET", "/reports/trend")).days; }
+    trend: async function () { return (await Api.call("GET", "/reports/trend")).days; },
+    risk: function () { return Api.call("GET", "/risk"); }
   };
 
   window.Store = Store;

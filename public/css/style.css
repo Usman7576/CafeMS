@@ -970,3 +970,12 @@ h1, h2, h3 { letter-spacing: -0.02em; }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 @media print { .bean-field { display: none; } .panel, .kpi { box-shadow: none; backdrop-filter: none; } }
+
+/* Risk register */
+.block { display: block; margin-top: 2px; }
+.dep-matrix th, .dep-matrix td { text-align: center; }
+.dep-matrix tbody th { text-align: left; }
+.dep-matrix td.dep-0 { color: var(--muted); opacity: .55; }
+.dep-matrix td.dep-2 { background: var(--danger-50); color: var(--danger); font-weight: 700; }
+.dep-matrix td.dep-1 { background: var(--warn-50); color: var(--warn); font-weight: 700; }
+.dep-matrix td.dep-1a { background: var(--info-50); color: var(--info); font-weight: 700; }

@@ -16,6 +16,7 @@
     users:     { title: "Staff & roles",   roles: ["Admin"] },
     audit:     { title: "Audit log",       roles: ["Admin"] },
     security:  { title: "Security",        roles: ["Admin"] },
+    risk:      { title: "Risk register",   roles: ["Admin"] },
     account:   { title: "My account",      roles: ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"] }
   };
   const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
@@ -44,7 +45,8 @@
       { page: "users", href: "users.html", icon: "users", label: "Staff & roles" },
       { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" },
       { page: "audit", href: "audit.html", icon: "file", label: "Audit log" },
-      { page: "security", href: "security.html", icon: "shield", label: "Security" }
+      { page: "security", href: "security.html", icon: "shield", label: "Security" },
+      { page: "risk", href: "risk.html", icon: "alert", label: "Risk register" }
     ]
   };
   const ACCESS = {

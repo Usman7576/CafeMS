@@ -73,6 +73,8 @@ describe("every role against every route (RBAC matrix)", () => {
     ["put", "/menu/999999/photo", ["Admin"]],
     ["post", "/bills/B-1/retry-payment", ["Cashier", "Manager"]],
     ["get", "/audit.csv", ["Admin"]],
+    ["get", "/risk", ["Admin"]],
+    ["get", "/risk.csv", ["Admin"]],
     ["put", "/settings/cafe", ["Admin"]],
     ["get", "/reports/trend", ["Manager", "Admin"]],
     ["get", "/users", ["Admin"]],

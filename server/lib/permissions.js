@@ -40,6 +40,7 @@ const PAGES = Object.freeze({
   "/users.html": ["Admin"],
   "/audit.html": ["Admin"],
   "/security.html": ["Admin"],
+  "/risk.html": ["Admin"],
   "/account.html": ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]
 });
 

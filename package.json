@@ -10,6 +10,8 @@
     "test": "node --test --test-concurrency=2 \"tests/**/*.test.js\"",
     "setup:env": "node scripts/setup-env.js",
     "db:setup": "node scripts/db-setup.js",
+    "deps:report": "node scripts/dependency-report.js",
+    "trace": "node scripts/check-traceability.js",
     "seed:dev": "node scripts/seed-dev.js",
     "vendor": "node -e \"require('fs').copyFileSync('node_modules/three/build/three.module.min.js','public/vendor/three.module.min.js')\"",
     "backup": "node scripts/backup.js",
