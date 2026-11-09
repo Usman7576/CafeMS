@@ -43,7 +43,9 @@ async function main() {
   await ensureIndexes(db);
   await ensureAuditIndexes(db);
 
-  const config = loadConfig(testEnv({ NODE_ENV: "test", TRUST_PROXY: "1" }));
+  // Both app processes share one set of keys, as they do through deploy/.env in production
+  const env = testEnv({ NODE_ENV: "test", TRUST_PROXY: "1" });
+  const config = loadConfig(env);
   const app = createApp({ config, db, logger: createLogger(config) });
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -122,7 +124,7 @@ async function main() {
 
   // The attack runs on its own thread, as a real attacker's traffic comes from outside: generating it
   // must not compete with the server for the server's own thread
-  const publicServer = new Worker(__filename, { workerData: { role: "public", uri: replSet.getUri() } });
+  const publicServer = new Worker(__filename, { workerData: { role: "public", uri: replSet.getUri(), env } });
   const publicPort = await new Promise((resolve, reject) => { publicServer.once("message", resolve); publicServer.once("error", reject); });
   const attacker = new Worker(__filename, { workerData: { role: "attack", base: `http://127.0.0.1:${publicPort}`, origin: config.appOrigin, concurrency: ATTACK_CONCURRENCY, attackers: ATTACKERS } });
   const messages = [];
@@ -216,9 +218,9 @@ function runAttacker({ base, origin, concurrency, attackers }) {
 }
 
 // Runs on its own thread: the app process that serves everyone without a staff session
-async function runPublicServer({ uri }) {
+async function runPublicServer({ uri, env }) {
   const client = await MongoClient.connect(uri);
-  const config = loadConfig(testEnv({ NODE_ENV: "test", TRUST_PROXY: "1" }));
+  const config = loadConfig(env);
   const app = createApp({ config, db: client.db("cafems_load"), logger: createLogger(config) });
   const server = http.createServer(app);
   server.listen(0, "127.0.0.1", () => parentPort.postMessage(server.address().port));
