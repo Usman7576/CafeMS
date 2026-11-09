@@ -2,7 +2,7 @@
 
 **The biggest threats to CafeMS come from insiders and from stolen staff passwords, not from outside attackers breaking in.** Staff already hold accounts, handle money and see customer details, so the strongest controls are on refunds, exports and customer numbers.
 
-This model follows the Week 4 six-step process, then applies all four methodologies from the course: STRIDE, PASTA, OCTAVE and VAST. Threat IDs (T-01 to T-22) and requirement IDs (SR-01 to SR-27) are those in [TRACEABILITY.md](TRACEABILITY.md).
+This model follows the Week 4 six-step process, then applies all four methodologies from the course: STRIDE, PASTA, OCTAVE and VAST. Threat IDs (T-01 to T-22) and requirement IDs (SR-01 to SR-28) are those in [TRACEABILITY.md](TRACEABILITY.md).
 
 ## The system
 
@@ -45,7 +45,7 @@ These are the six attacker types from the Attackers deck, judged for a cafe.
 | **Insider** | Money, revenge or carelessness | Highest: staff already have access | Least privilege, masked numbers, second person for large refunds, export limits, signed audit log, alerts |
 | **Cybercriminal** | Money and data | High: takes over accounts, reads customer data, skims cards | MFA, lockout, strict CSP with no third-party scripts, no card data stored, encrypted backups |
 | **Script kiddie** | Fun, bragging rights | Medium: ready-made password-guessing and flooding tools | Rate limits, lockout, security headers, generic errors |
-| **Hacktivist** | A cause | Low: defacement or flooding of the public page | Only listed files are served, strict CSP, rate limits; a read-only container in Phase 6 |
+| **Hacktivist** | A cause | Low: defacement or flooding of the public page | Only listed files are served, strict CSP, rate limits, a read-only container |
 | **Nation-state** | Strategic interest | Very low, except a poisoned software update | Locked dependencies, `npm audit`, self-hosted libraries, signed audit log |
 | **Cyber terrorist** | Fear and disruption | Very low: a cafe is not critical infrastructure | Recorded as an accepted risk |
 
@@ -77,7 +77,7 @@ The audit of the prototype found 33 findings, and the review of Phases 1 to 4 fo
 | Weakness | Why it remains | Compensating control |
 | --- | --- | --- |
 | A shared cafe device keeps a session for up to 5 idle minutes | A shorter limit would sign staff out mid-order | Sign-out on the device, session list with revoke |
-| Rate limits are kept in the server's memory | One server instance is enough for a cafe | Phase 6 runs one app container; recorded for scaling |
+| Rate limits are kept in the server's memory | One server instance is enough for a cafe | The stack runs one app container; a shared store is needed before adding more |
 | Payment gateway and SMS are simulated | A real one needs a merchant account | Interfaces are signed and timed out as a real one would be |
 | A Manager can refund up to Rs 5,000 alone | A second person for every refund would stall service | Refund-spike alert, audit log, fresh code for every refund |
 
@@ -95,7 +95,7 @@ Likelihood and impact come from the two scoring methods in the course; [RISK-AND
 
 ## Step 5: Develop mitigations
 
-Each threat is met by at least one of the 27 requirements. The controls are layered (defence in depth), so no single failure exposes an asset. For example, customer numbers are protected by:
+Each threat is met by at least one of the 28 requirements. The controls are layered (defence in depth), so no single failure exposes an asset. For example, customer numbers are protected by:
 
 1. The permission table, which keeps waiters away from full numbers.
 2. Masking in every response.
@@ -110,7 +110,8 @@ Each threat is met by at least one of the 27 requirements. The controls are laye
 | 300+ automated tests, including attack tests | Each control works and the old attack fails | `tests/`, run by `npm test` |
 | Traceability check | No requirement has lost its code or its tests | `npm run trace -- --check` |
 | Failure injection | Stopped database, gateway timeout, failed messages, blocked audit writes, edited audit rows | `tests/resilience.test.js`, `tests/hardening.test.js` |
-| Static and dynamic scanners | ESLint, Semgrep, CodeQL, OWASP ZAP and Trivy | Phase 6 |
+| Static and dynamic scanners | ESLint, Semgrep, CodeQL, gitleaks, OWASP ZAP and Trivy | [SCAN-RESULTS.md](SCAN-RESULTS.md), and CI on every push |
+| Load test | Staff keep working during a flood | [LOAD-TEST.md](LOAD-TEST.md) |
 | Manual testing with Burp Suite | What the scanners miss | Phase 7 script, run by the student |
 
 ## PASTA: the card payment flow, all seven stages

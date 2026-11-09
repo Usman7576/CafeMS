@@ -1,6 +1,6 @@
 # Security requirements
 
-CafeMS has 27 security requirements: 19 functional, 4 non-functional and 4 regulatory. Each one is written to be testable, traces to a threat or a regulation, and is proved by at least one automated test. The full links are in [TRACEABILITY.md](TRACEABILITY.md), which `npm run trace` checks and regenerates.
+CafeMS has 28 security requirements: 19 functional, 5 non-functional and 4 regulatory. Each one is written to be testable, traces to a threat or a regulation, and is proved by at least one automated test. The full links are in [TRACEABILITY.md](TRACEABILITY.md), which `npm run trace` checks and regenerates.
 
 This document follows the Week 4 process: define requirements early, involve stakeholders, cover all three types, use use and misuse cases, prioritise by risk, document clearly with traceability, and keep reviewing.
 
@@ -18,7 +18,7 @@ This document follows the Week 4 process: define requirements early, involve sta
 
 **Functional** requirements say what security behaviour the system provides, for example "The system shall require a TOTP authenticator code for every staff sign-in" (SR-01).
 
-**Non-functional** requirements describe qualities under pressure: availability under a request flood (SR-20), resilience when the payment gateway is down (SR-21), recoverability (SR-22) and usability during a busy shift (SR-23).
+**Non-functional** requirements describe qualities under pressure: availability under a request flood (SR-20), resilience when the payment gateway is down (SR-21), recoverability (SR-22), usability during a busy shift (SR-23) and a hardened deployment (SR-28).
 
 **Regulatory** requirements come from law and industry standards: the right to erasure (SR-24), storage limitation (SR-25), keeping card data out of scope (SR-26) and breach notification within 72 hours (SR-27).
 
@@ -51,6 +51,7 @@ This document follows the Week 4 process: define requirements early, involve sta
 | SR-25 | Regulatory | Medium | 90-day retention, data minimisation and a privacy notice |
 | SR-26 | Regulatory | High | No card or wallet details ever received or stored |
 | SR-27 | Regulatory | Medium | Breaches detectable and reportable within 72 hours; no secrets in logs |
+| SR-28 | Non-functional | High | Production runs over HTTPS as an unprivileged, read-only container; only the proxy is reachable from outside |
 
 ## Use and misuse cases
 
@@ -74,6 +75,7 @@ Requirements are reviewed whenever the design changes, and each review is dated:
 
 | Date | Review | Outcome |
 | --- | --- | --- |
+| 2026-11-09 | Phase 6: scanners, deployment and load test | SR-28 added; findings fixed and recorded in SCAN-RESULTS.md |
 | 2026-11-07 | Phase 5: requirements written down with traceability | 27 requirements, all linked to code and tests |
 | 2026-11-06 | Fixes from the Phase 1 to 4 review | 16 findings fixed, each with a test |
 | 2026-11-04 | Review of Phases 1 to 4 against the plan | 16 problems found by testing |

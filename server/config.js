@@ -93,7 +93,8 @@ function loadConfig(env) {
       // Pages, assets and health checks, which are outside the API
       sitePerMinute: 600,
       authPer15Minutes: 20,
-      publicBookingsPerHour: 10
+      publicBookingsPerHour: 10,
+      publicReadsPerMinute: 120
     }),
     auth: Object.freeze({
       maxFailedAttempts: 3,

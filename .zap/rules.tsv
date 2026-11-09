@@ -1,0 +1,5 @@
+10027	IGNORE	(False positive: ordinary code comments that contain words such as from)
+10049	IGNORE	(Intended: pages revalidate with ETag, API responses are no-store)
+10109	IGNORE	(Informational: notes that the site uses JavaScript)
+10111	IGNORE	(Informational: notes that a sign-in form exists)
+10202	IGNORE	(False positive: a native form post returns 404; real requests use fetch with the X-CSRF-Token header and an Origin check)

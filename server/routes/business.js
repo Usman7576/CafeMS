@@ -16,7 +16,12 @@ const params = (schema) => validate(schema, "params");
 function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
   const router = express.Router();
   const { requireAuth, requirePermission, requireStepUp } = middleware;
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, risk } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, risk, publicCache } = services;
+  // Any successful staff change clears the public website's short cache, so an edit shows at once
+  router.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
+    next();
+  });
   const allow = (permission) => [requireAuth, requirePermission(permission)];
 
   const tx = (work) => wrap(async (req, res) => res.json(await inTransaction(db, (session) => work(req, session))));

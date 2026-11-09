@@ -2,6 +2,8 @@
 const crypto = require("crypto");
 
 const IV_BYTES = 12;
+// The full 16-byte GCM tag is required; a shortened tag would make forgeries far easier
+const TAG_BYTES = 16;
 
 function randomToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -22,7 +24,7 @@ function safeEqual(a, b) {
 // to another field or user fails to decrypt.
 function encrypt(plaintext, context, keyring) {
   const iv = crypto.randomBytes(IV_BYTES);
-  const cipher = crypto.createCipheriv("aes-256-gcm", keyring.keys.get(keyring.activeId), iv);
+  const cipher = crypto.createCipheriv("aes-256-gcm", keyring.keys.get(keyring.activeId), iv, { authTagLength: TAG_BYTES });
   cipher.setAAD(Buffer.from(context));
   const body = Buffer.concat([cipher.update(String(plaintext), "utf8"), cipher.final()]);
   return ["v1", keyring.activeId, iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), body.toString("base64url")].join(".");
@@ -32,7 +34,7 @@ function decrypt(value, context, keyring) {
   const [version, keyId, iv, tag, body] = String(value).split(".");
   const key = keyring.keys.get(keyId);
   if (version !== "v1" || !key) throw new Error("Unknown encrypted value format.");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"), { authTagLength: TAG_BYTES });
   decipher.setAAD(Buffer.from(context));
   decipher.setAuthTag(Buffer.from(tag, "base64url"));
   return Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]).toString("utf8");

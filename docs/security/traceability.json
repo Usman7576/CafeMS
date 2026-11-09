@@ -1,70 +1,834 @@
 {
   "about": "Source of truth for the traceability matrix (Week 4: every requirement traces to a threat, business need or regulation, to the code that meets it, and to the test that proves it). npm run trace checks every link and rewrites TRACEABILITY.md; a test fails if any link is broken or the file is out of date.",
   "threats": [
-    { "id": "T-01", "stride": "Spoofing", "component": "Sign-in", "threat": "Guessing or reusing a staff password to sign in as that person", "attacker": "Script kiddie, cybercriminal" },
-    { "id": "T-02", "stride": "Spoofing", "component": "Sessions", "threat": "Forging, stealing or replaying a session cookie", "attacker": "Cybercriminal" },
-    { "id": "T-03", "stride": "Repudiation", "component": "Audit log", "threat": "A member of staff denies a refund, discount or price change", "attacker": "Insider" },
-    { "id": "T-04", "stride": "Elevation of Privilege", "component": "Staff administration", "threat": "A user gives themself or a friend a higher role", "attacker": "Insider" },
-    { "id": "T-05", "stride": "Tampering", "component": "Orders and billing API", "threat": "Changing prices, totals or quantities in a request", "attacker": "Insider, cybercriminal" },
-    { "id": "T-06", "stride": "Information Disclosure", "component": "Orders and bills API", "threat": "Changing an ID in a request to read another person's order or bill", "attacker": "Insider" },
-    { "id": "T-07", "stride": "Elevation of Privilege", "component": "Business API", "threat": "A waiter or kitchen user calls cashier, manager or admin routes directly", "attacker": "Insider" },
-    { "id": "T-08", "stride": "Tampering", "component": "Browser", "threat": "Another website makes a signed-in member of staff submit a change (CSRF)", "attacker": "Cybercriminal" },
-    { "id": "T-09", "stride": "Spoofing", "component": "Payment callback", "threat": "A forged or copied gateway callback marks an unpaid bill as paid", "attacker": "Cybercriminal" },
-    { "id": "T-10", "stride": "Tampering", "component": "Billing", "threat": "A double click or a slow gateway charges a customer twice", "attacker": "None (failure), or a dishonest insider" },
-    { "id": "T-11", "stride": "Elevation of Privilege", "component": "Refunds", "threat": "One person issues a large refund to themself or an accomplice", "attacker": "Insider" },
-    { "id": "T-12", "stride": "Information Disclosure", "component": "Customer data", "threat": "Customer names and numbers read from the screens, database or a backup", "attacker": "Insider, cybercriminal" },
-    { "id": "T-13", "stride": "Denial of Service", "component": "Public website", "threat": "Flooding the booking form or the API to block customers and staff", "attacker": "Script kiddie, hacktivist" },
-    { "id": "T-14", "stride": "Tampering", "component": "Public website and staff screens", "threat": "Script typed into a name or note runs in another person's browser (XSS)", "attacker": "Cybercriminal" },
-    { "id": "T-15", "stride": "Tampering", "component": "Audit log", "threat": "Editing, deleting or re-hashing audit entries to hide misuse", "attacker": "Insider, cybercriminal" },
-    { "id": "T-16", "stride": "Elevation of Privilege", "component": "Menu photo upload", "threat": "Uploading a script or HTML file disguised as a photo", "attacker": "Cybercriminal" },
-    { "id": "T-17", "stride": "Elevation of Privilege", "component": "Database", "threat": "A compromised app account rewrites history or reads other databases", "attacker": "Cybercriminal, nation-state" },
-    { "id": "T-18", "stride": "Information Disclosure", "component": "Errors and logs", "threat": "Stack traces, secrets or passwords leak through errors or log files", "attacker": "Cybercriminal" },
-    { "id": "T-19", "stride": "Information Disclosure", "component": "Reports", "threat": "An insider exports data in bulk before leaving", "attacker": "Insider" },
-    { "id": "T-20", "stride": "Denial of Service", "component": "Payment gateway and notifications", "threat": "An outside service is slow or down and blocks the till", "attacker": "None (failure)" },
-    { "id": "T-21", "stride": "Tampering", "component": "Configuration", "threat": "The server starts with a missing or weak key, or without database credentials", "attacker": "None (human error)" },
-    { "id": "T-22", "stride": "Denial of Service", "component": "Database", "threat": "Data lost to disk failure, ransomware or a mistaken delete", "attacker": "Cybercriminal, or failure" }
+    {
+      "id": "T-01",
+      "stride": "Spoofing",
+      "component": "Sign-in",
+      "threat": "Guessing or reusing a staff password to sign in as that person",
+      "attacker": "Script kiddie, cybercriminal"
+    },
+    {
+      "id": "T-02",
+      "stride": "Spoofing",
+      "component": "Sessions",
+      "threat": "Forging, stealing or replaying a session cookie",
+      "attacker": "Cybercriminal"
+    },
+    {
+      "id": "T-03",
+      "stride": "Repudiation",
+      "component": "Audit log",
+      "threat": "A member of staff denies a refund, discount or price change",
+      "attacker": "Insider"
+    },
+    {
+      "id": "T-04",
+      "stride": "Elevation of Privilege",
+      "component": "Staff administration",
+      "threat": "A user gives themself or a friend a higher role",
+      "attacker": "Insider"
+    },
+    {
+      "id": "T-05",
+      "stride": "Tampering",
+      "component": "Orders and billing API",
+      "threat": "Changing prices, totals or quantities in a request",
+      "attacker": "Insider, cybercriminal"
+    },
+    {
+      "id": "T-06",
+      "stride": "Information Disclosure",
+      "component": "Orders and bills API",
+      "threat": "Changing an ID in a request to read another person's order or bill",
+      "attacker": "Insider"
+    },
+    {
+      "id": "T-07",
+      "stride": "Elevation of Privilege",
+      "component": "Business API",
+      "threat": "A waiter or kitchen user calls cashier, manager or admin routes directly",
+      "attacker": "Insider"
+    },
+    {
+      "id": "T-08",
+      "stride": "Tampering",
+      "component": "Browser",
+      "threat": "Another website makes a signed-in member of staff submit a change (CSRF)",
+      "attacker": "Cybercriminal"
+    },
+    {
+      "id": "T-09",
+      "stride": "Spoofing",
+      "component": "Payment callback",
+      "threat": "A forged or copied gateway callback marks an unpaid bill as paid",
+      "attacker": "Cybercriminal"
+    },
+    {
+      "id": "T-10",
+      "stride": "Tampering",
+      "component": "Billing",
+      "threat": "A double click or a slow gateway charges a customer twice",
+      "attacker": "None (failure), or a dishonest insider"
+    },
+    {
+      "id": "T-11",
+      "stride": "Elevation of Privilege",
+      "component": "Refunds",
+      "threat": "One person issues a large refund to themself or an accomplice",
+      "attacker": "Insider"
+    },
+    {
+      "id": "T-12",
+      "stride": "Information Disclosure",
+      "component": "Customer data",
+      "threat": "Customer names and numbers read from the screens, database or a backup",
+      "attacker": "Insider, cybercriminal"
+    },
+    {
+      "id": "T-13",
+      "stride": "Denial of Service",
+      "component": "Public website",
+      "threat": "Flooding the booking form or the API to block customers and staff",
+      "attacker": "Script kiddie, hacktivist"
+    },
+    {
+      "id": "T-14",
+      "stride": "Tampering",
+      "component": "Public website and staff screens",
+      "threat": "Script typed into a name or note runs in another person's browser (XSS)",
+      "attacker": "Cybercriminal"
+    },
+    {
+      "id": "T-15",
+      "stride": "Tampering",
+      "component": "Audit log",
+      "threat": "Editing, deleting or re-hashing audit entries to hide misuse",
+      "attacker": "Insider, cybercriminal"
+    },
+    {
+      "id": "T-16",
+      "stride": "Elevation of Privilege",
+      "component": "Menu photo upload",
+      "threat": "Uploading a script or HTML file disguised as a photo",
+      "attacker": "Cybercriminal"
+    },
+    {
+      "id": "T-17",
+      "stride": "Elevation of Privilege",
+      "component": "Database",
+      "threat": "A compromised app account rewrites history or reads other databases",
+      "attacker": "Cybercriminal, nation-state"
+    },
+    {
+      "id": "T-18",
+      "stride": "Information Disclosure",
+      "component": "Errors and logs",
+      "threat": "Stack traces, secrets or passwords leak through errors or log files",
+      "attacker": "Cybercriminal"
+    },
+    {
+      "id": "T-19",
+      "stride": "Information Disclosure",
+      "component": "Reports",
+      "threat": "An insider exports data in bulk before leaving",
+      "attacker": "Insider"
+    },
+    {
+      "id": "T-20",
+      "stride": "Denial of Service",
+      "component": "Payment gateway and notifications",
+      "threat": "An outside service is slow or down and blocks the till",
+      "attacker": "None (failure)"
+    },
+    {
+      "id": "T-21",
+      "stride": "Tampering",
+      "component": "Configuration",
+      "threat": "The server starts with a missing or weak key, or without database credentials",
+      "attacker": "None (human error)"
+    },
+    {
+      "id": "T-22",
+      "stride": "Denial of Service",
+      "component": "Database",
+      "threat": "Data lost to disk failure, ransomware or a mistaken delete",
+      "attacker": "Cybercriminal, or failure"
+    }
   ],
   "requirements": [
-    { "id": "SR-01", "type": "Functional", "priority": "High", "text": "The system shall require a TOTP authenticator code for every staff sign-in, with single-use recovery codes.", "threats": ["T-01"], "code": ["server/services/mfa.js", "server/routes/auth.js"], "tests": ["a correct password alone gives no session (MFA is mandatory)", "a code cannot be used twice", "a recovery code works exactly once"] },
-    { "id": "SR-02", "type": "Functional", "priority": "High", "text": "The system shall store passwords only as Argon2id hashes and refuse passwords under 12 characters, without mixed character types, or built on a common word.", "threats": ["T-01"], "code": ["server/lib/passwords.js"], "tests": ["passwords are stored only as Argon2id hashes", "a common word dressed up with capitals, digits and symbols does not pass", "the server refuses one when a person changes their password"] },
-    { "id": "SR-03", "type": "Functional", "priority": "High", "text": "The system shall lock an account for 15 minutes after 3 failed passwords or authenticator codes, counted on the server.", "threats": ["T-01"], "code": ["server/routes/auth.js"], "tests": ["3 failures lock the account, and the right password is then refused", "wrong MFA codes also count towards the lock", "the right password alone does not reset the count, so authenticator codes cannot be guessed forever", "a new browser cannot reset the lock"] },
-    { "id": "SR-04", "type": "Functional", "priority": "High", "text": "Sessions shall be a signed HttpOnly __Host- cookie backed by a server record, ending after 5 idle minutes or 8 hours, and revocable at once.", "threats": ["T-02"], "code": ["server/services/sessions.js", "server/middleware/auth.js"], "tests": ["forged tokens are refused: alg none, wrong key, no server record", "5 idle minutes end the session", "the 8-hour limit applies however active the session is", "sign-out ends the session on the server, so a copied cookie stops working"] },
-    { "id": "SR-05", "type": "Functional", "priority": "High", "text": "Every route shall check the caller's role against one permission table, and anything not listed shall be denied.", "threats": ["T-07", "T-04"], "code": ["server/lib/permissions.js", "server/middleware/auth.js", "server/routes/business.js"], "tests": ["every role against every route (RBAC matrix)", "every route has a guard, so none can be left open by accident (complete mediation)", "nobody can change their own role or status"] },
-    { "id": "SR-06", "type": "Functional", "priority": "High", "text": "A waiter shall see and change only their own orders, and a cashier only today's bills.", "threats": ["T-06"], "code": ["server/services/orders.js", "server/services/billing.js"], "tests": ["one waiter cannot see or change another waiter's order", "a cashier cannot open a past day's bill by its number; a manager can"] },
-    { "id": "SR-07", "type": "Functional", "priority": "High", "text": "The server shall calculate every price and total from stored data and refuse requests with unknown fields, wrong types or operator objects.", "threats": ["T-05"], "code": ["server/lib/schemas.js", "server/services/billing.js", "server/lib/domain.js"], "tests": ["the total is calculated on the server; the browser cannot set it (Rs 2,500 to 250)", "NoSQL operator objects are refused", "negative, zero, fractional, huge and non-numeric quantities are refused"] },
-    { "id": "SR-08", "type": "Functional", "priority": "High", "text": "Every change shall carry the session's CSRF token and come from the cafe's own origin.", "threats": ["T-08"], "code": ["server/middleware/security.js", "server/middleware/auth.js"], "tests": ["a signed-in change needs the CSRF token", "requests from another site, or with no Origin, are blocked"] },
-    { "id": "SR-09", "type": "Functional", "priority": "High", "text": "Pages shall run under a strict Content Security Policy with Trusted Types, and the browser code shall never build HTML from strings.", "threats": ["T-14"], "code": ["server/middleware/security.js", "public/js/common.js"], "tests": ["the CSP has no exceptions: no inline styles, no third-party hosts, Trusted Types required", "script text in a name is stored as plain text, and shown as plain text", "no browser script writes HTML from strings or stores business data on the device (findings 14, 20, 30)"] },
-    { "id": "SR-10", "type": "Functional", "priority": "High", "text": "Refunds over Rs 5,000 and any change affecting an Admin shall need a second person, and sensitive actions a fresh authenticator code.", "threats": ["T-11", "T-04"], "code": ["server/services/approvals.js", "server/services/billing.js", "server/services/users.js"], "tests": ["a large refund waits for a different person with a fresh code", "one Admin alone cannot create another Admin; a second Admin must approve", "need a fresh authenticator code as well as the Manager role", "the target of a request cannot approve it"] },
-    { "id": "SR-11", "type": "Functional", "priority": "High", "text": "Every security-relevant action shall be written to a signed, hash-chained audit log in the same transaction, with the actor taken from the session.", "threats": ["T-03", "T-15"], "code": ["server/services/auditLog.js", "server/lib/tx.js"], "tests": ["detects a recalculated hash, because the attacker cannot sign it", "if the audit entry fails, the action it describes does not happen", "the recorded waiter is always the signed-in person", "an action that cannot be recorded does not happen (fail-secure audit)"] },
-    { "id": "SR-12", "type": "Functional", "priority": "High", "text": "Customer names, numbers and notes shall be encrypted at rest with AES-256-GCM, masked for roles that do not need them, and each full view logged.", "threats": ["T-12"], "code": ["server/lib/crypto.js", "server/services/reservations.js", "server/services/billing.js"], "tests": ["name, phone and notes are encrypted at rest", "only a Manager or Admin can see the full number, and it is logged", "waiters see a masked phone; only a Manager or Admin can reveal it, with a log entry (finding 32)"] },
-    { "id": "SR-13", "type": "Functional", "priority": "Medium", "text": "Uploaded photos shall be checked by their file signature, limited to 2 MB, given random names and stored outside the web root.", "threats": ["T-16"], "code": ["server/services/photos.js", "server/config.js"], "tests": ["scripts, SVG, HTML and disguised files are refused and recorded", "a file over 2 MB is refused", "uploads cannot be stored inside the web root"] },
-    { "id": "SR-14", "type": "Functional", "priority": "High", "text": "Orders, payments and refunds shall run once per idempotency key, in transactions, with version checks against lost updates.", "threats": ["T-10", "T-05"], "code": ["server/lib/tx.js", "server/services/orders.js"], "tests": ["a double click creates one order and takes stock once", "double-clicking Pay with one key charges one bill", "an edit from an out-of-date screen is refused rather than overwriting"] },
-    { "id": "SR-15", "type": "Functional", "priority": "High", "text": "Gateway callbacks shall be HMAC-signed, recent, single-use and checked against the stored amount, and no second payment shall start while a charge is in progress.", "threats": ["T-09", "T-10"], "code": ["server/services/gateway.js", "server/services/billing.js", "server/app.js"], "tests": ["forged, old, wrong-amount and malformed callbacks are refused", "a copied gateway callback is accepted only once", "no second payment is taken while a card charge is still waiting for the gateway", "a late approval for a bill already paid another way is recorded and raises an alert"] },
-    { "id": "SR-16", "type": "Functional", "priority": "Medium", "text": "The system shall raise de-duplicated alerts for failed sign-ins per person and per address, denials, bulk exports, number views, refund spikes and payment conflicts.", "threats": ["T-01", "T-19", "T-11"], "code": ["server/services/alerts.js", "server/workers.js"], "tests": ["failed sign-ins, denials, exports, number views and refunds each raise an alert", "one password tried against many usernames from one address raises an alert (password spraying)", "a flood updates one alert instead of creating many"] },
-    { "id": "SR-17", "type": "Functional", "priority": "High", "text": "The app shall use a least-privilege database account that cannot change or delete audit entries, and production shall refuse to start without database credentials.", "threats": ["T-17", "T-15"], "code": ["server/lib/dbRoles.js", "scripts/db-setup.js", "server/config.js"], "tests": ["the app account can add audit entries but cannot change or delete them", "production refuses a database connection with no username and password (least privilege)"] },
-    { "id": "SR-18", "type": "Functional", "priority": "High", "text": "The server shall refuse to start with missing or weak secrets, and errors shall show a generic message with a reference only.", "threats": ["T-21", "T-18"], "code": ["server/config.js", "server/app.js"], "tests": ["refuses to start without secrets", "refuses weak or wrongly sized keys", "broken JSON gives a clean error with no stack trace", "sign-in fails closed and reveals nothing"] },
-    { "id": "SR-19", "type": "Functional", "priority": "Medium", "text": "Exports shall be limited per person and recorded, and CSV cells shall never run as spreadsheet formulas.", "threats": ["T-19"], "code": ["server/routes/business.js", "server/lib/csv.js"], "tests": ["exports are logged, limited per person, and safe to open in a spreadsheet", "CSV cells that a spreadsheet would run as formulas are neutralised"] },
-    { "id": "SR-20", "type": "Non-functional", "priority": "High", "text": "Under a request flood the system shall keep serving other users: limits per address, per person and for pages, body-size limits and request timeouts.", "threats": ["T-13"], "code": ["server/app.js", "server/middleware/security.js", "server/config.js", "server/index.js"], "tests": ["the general API rate limit applies", "each signed-in person has a limit, so one person cannot use up a shared cafe address", "pages and health checks are limited too", "oversized bodies are refused", "one address can send only a limited number of requests"], "note": "The response-time measurement under attack (the Week 4 example of no more than 10% degradation) is the Phase 6 load test." },
-    { "id": "SR-21", "type": "Non-functional", "priority": "Medium", "text": "A slow or failed payment gateway or message provider shall not stop the till: payments fall back to Pending Payment and messages are queued with retries.", "threats": ["T-20"], "code": ["server/services/gateway.js", "server/services/outbox.js", "server/services/billing.js"], "tests": ["a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged", "failures retry with growing gaps, then raise one Admin alert", "a gateway crash is treated the same as a timeout"] },
-    { "id": "SR-22", "type": "Non-functional", "priority": "Medium", "text": "Data shall be recoverable from an encrypted, checksummed backup, and the server shall shut down without cutting off requests in progress.", "threats": ["T-22"], "code": ["server/lib/backup.js", "scripts/backup.js", "scripts/restore.js", "server/lifecycle.js"], "tests": ["a restore brings back every record, and the audit chain still verifies", "an altered file or the wrong key is refused", "a request in progress finishes, then the database closes and the process exits cleanly"] },
-    { "id": "SR-23", "type": "Non-functional", "priority": "Low", "text": "Security shall not get in the way of a busy shift: staff stay signed in while working, but automatic screen refreshes never keep an idle session open.", "threats": ["T-02"], "code": ["server/services/sessions.js", "public/js/store.js"], "tests": ["background refreshes do not keep an idle session alive"] },
-    { "id": "SR-24", "type": "Regulatory", "priority": "High", "text": "A customer's personal data shall be erasable on request, keeping only the bill totals needed for tax records (right to erasure).", "threats": ["T-12"], "source": "GDPR Article 17 right to erasure; Pakistan Personal Data Protection Bill", "code": ["server/services/customers.js"], "tests": ["erasing removes the person but keeps the bill totals, and needs a fresh code"] },
-    { "id": "SR-25", "type": "Regulatory", "priority": "Medium", "text": "Personal data shall be kept no longer than 90 days, collected only as needed, and explained in a privacy notice.", "threats": ["T-12"], "source": "GDPR Article 5 storage limitation and data minimisation", "code": ["server/services/customers.js", "server/workers.js", "public/privacy.html"], "tests": ["retention removes personal data after 90 days, and keeps recent data", "the privacy notice tells customers what the security log keeps"] },
-    { "id": "SR-26", "type": "Regulatory", "priority": "High", "text": "No card or wallet details shall ever be received or stored, keeping the cafe outside card-data audit scope.", "threats": ["T-12"], "source": "PCI DSS scope reduction", "code": ["server/services/gateway.js", "server/lib/schemas.js"], "tests": ["approved card payment is paid, with no card details anywhere"] },
-    { "id": "SR-27", "type": "Regulatory", "priority": "Medium", "text": "A breach shall be detectable and reportable within 72 hours: tamper checks raise alerts, and logs hold no passwords, tokens or codes.", "threats": ["T-15", "T-18"], "source": "GDPR Article 33 breach notification within 72 hours", "code": ["server/workers.js", "server/lib/logger.js"], "tests": ["the Admin screen can verify, and a broken chain raises an alert", "logs hold no cookies, tokens, passwords or codes"], "note": "The step-by-step breach runbook is INCIDENT-RESPONSE.md, written in Phase 7." }
+    {
+      "id": "SR-01",
+      "type": "Functional",
+      "priority": "High",
+      "text": "The system shall require a TOTP authenticator code for every staff sign-in, with single-use recovery codes.",
+      "threats": [
+        "T-01"
+      ],
+      "code": [
+        "server/services/mfa.js",
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "a correct password alone gives no session (MFA is mandatory)",
+        "a code cannot be used twice",
+        "a recovery code works exactly once"
+      ]
+    },
+    {
+      "id": "SR-02",
+      "type": "Functional",
+      "priority": "High",
+      "text": "The system shall store passwords only as Argon2id hashes and refuse passwords under 12 characters, without mixed character types, or built on a common word.",
+      "threats": [
+        "T-01"
+      ],
+      "code": [
+        "server/lib/passwords.js"
+      ],
+      "tests": [
+        "passwords are stored only as Argon2id hashes",
+        "a common word dressed up with capitals, digits and symbols does not pass",
+        "the server refuses one when a person changes their password"
+      ]
+    },
+    {
+      "id": "SR-03",
+      "type": "Functional",
+      "priority": "High",
+      "text": "The system shall lock an account for 15 minutes after 3 failed passwords or authenticator codes, counted on the server.",
+      "threats": [
+        "T-01"
+      ],
+      "code": [
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "3 failures lock the account, and the right password is then refused",
+        "wrong MFA codes also count towards the lock",
+        "the right password alone does not reset the count, so authenticator codes cannot be guessed forever",
+        "a new browser cannot reset the lock"
+      ]
+    },
+    {
+      "id": "SR-04",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Sessions shall be a signed HttpOnly __Host- cookie backed by a server record, ending after 5 idle minutes or 8 hours, and revocable at once.",
+      "threats": [
+        "T-02"
+      ],
+      "code": [
+        "server/services/sessions.js",
+        "server/middleware/auth.js"
+      ],
+      "tests": [
+        "forged tokens are refused: alg none, wrong key, no server record",
+        "5 idle minutes end the session",
+        "the 8-hour limit applies however active the session is",
+        "sign-out ends the session on the server, so a copied cookie stops working"
+      ]
+    },
+    {
+      "id": "SR-05",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Every route shall check the caller's role against one permission table, and anything not listed shall be denied.",
+      "threats": [
+        "T-07",
+        "T-04"
+      ],
+      "code": [
+        "server/lib/permissions.js",
+        "server/middleware/auth.js",
+        "server/routes/business.js"
+      ],
+      "tests": [
+        "every role against every route (RBAC matrix)",
+        "every route has a guard, so none can be left open by accident (complete mediation)",
+        "nobody can change their own role or status"
+      ]
+    },
+    {
+      "id": "SR-06",
+      "type": "Functional",
+      "priority": "High",
+      "text": "A waiter shall see and change only their own orders, and a cashier only today's bills.",
+      "threats": [
+        "T-06"
+      ],
+      "code": [
+        "server/services/orders.js",
+        "server/services/billing.js"
+      ],
+      "tests": [
+        "one waiter cannot see or change another waiter's order",
+        "a cashier cannot open a past day's bill by its number; a manager can"
+      ]
+    },
+    {
+      "id": "SR-07",
+      "type": "Functional",
+      "priority": "High",
+      "text": "The server shall calculate every price and total from stored data and refuse requests with unknown fields, wrong types or operator objects.",
+      "threats": [
+        "T-05"
+      ],
+      "code": [
+        "server/lib/schemas.js",
+        "server/services/billing.js",
+        "server/lib/domain.js"
+      ],
+      "tests": [
+        "the total is calculated on the server; the browser cannot set it (Rs 2,500 to 250)",
+        "NoSQL operator objects are refused",
+        "negative, zero, fractional, huge and non-numeric quantities are refused"
+      ]
+    },
+    {
+      "id": "SR-08",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Every change shall carry the session's CSRF token and come from the cafe's own origin.",
+      "threats": [
+        "T-08"
+      ],
+      "code": [
+        "server/middleware/security.js",
+        "server/middleware/auth.js"
+      ],
+      "tests": [
+        "a signed-in change needs the CSRF token",
+        "requests from another site, or with no Origin, are blocked"
+      ]
+    },
+    {
+      "id": "SR-09",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Pages shall run under a strict Content Security Policy with Trusted Types, and the browser code shall never build HTML from strings.",
+      "threats": [
+        "T-14"
+      ],
+      "code": [
+        "server/middleware/security.js",
+        "public/js/common.js"
+      ],
+      "tests": [
+        "the CSP has no exceptions: no inline styles, no third-party hosts, Trusted Types required",
+        "script text in a name is stored as plain text, and shown as plain text",
+        "no browser script writes HTML from strings or stores business data on the device (findings 14, 20, 30)",
+        "every form posts, so a password or number can never end up in a URL or access log"
+      ]
+    },
+    {
+      "id": "SR-10",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Refunds over Rs 5,000 and any change affecting an Admin shall need a second person, and sensitive actions a fresh authenticator code.",
+      "threats": [
+        "T-11",
+        "T-04"
+      ],
+      "code": [
+        "server/services/approvals.js",
+        "server/services/billing.js",
+        "server/services/users.js"
+      ],
+      "tests": [
+        "a large refund waits for a different person with a fresh code",
+        "one Admin alone cannot create another Admin; a second Admin must approve",
+        "need a fresh authenticator code as well as the Manager role",
+        "the target of a request cannot approve it"
+      ]
+    },
+    {
+      "id": "SR-11",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Every security-relevant action shall be written to a signed, hash-chained audit log in the same transaction, with the actor taken from the session.",
+      "threats": [
+        "T-03",
+        "T-15"
+      ],
+      "code": [
+        "server/services/auditLog.js",
+        "server/lib/tx.js"
+      ],
+      "tests": [
+        "detects a recalculated hash, because the attacker cannot sign it",
+        "if the audit entry fails, the action it describes does not happen",
+        "the recorded waiter is always the signed-in person",
+        "an action that cannot be recorded does not happen (fail-secure audit)"
+      ]
+    },
+    {
+      "id": "SR-12",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Customer names, numbers and notes shall be encrypted at rest with AES-256-GCM, masked for roles that do not need them, and each full view logged.",
+      "threats": [
+        "T-12"
+      ],
+      "code": [
+        "server/lib/crypto.js",
+        "server/services/reservations.js",
+        "server/services/billing.js"
+      ],
+      "tests": [
+        "name, phone and notes are encrypted at rest",
+        "only a Manager or Admin can see the full number, and it is logged",
+        "waiters see a masked phone; only a Manager or Admin can reveal it, with a log entry (finding 32)",
+        "a shortened GCM authentication tag is refused, so forged values cannot be accepted"
+      ]
+    },
+    {
+      "id": "SR-13",
+      "type": "Functional",
+      "priority": "Medium",
+      "text": "Uploaded photos shall be checked by their file signature, limited to 2 MB, given random names and stored outside the web root.",
+      "threats": [
+        "T-16"
+      ],
+      "code": [
+        "server/services/photos.js",
+        "server/config.js"
+      ],
+      "tests": [
+        "scripts, SVG, HTML and disguised files are refused and recorded",
+        "a file over 2 MB is refused",
+        "uploads cannot be stored inside the web root"
+      ]
+    },
+    {
+      "id": "SR-14",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Orders, payments and refunds shall run once per idempotency key, in transactions, with version checks against lost updates.",
+      "threats": [
+        "T-10",
+        "T-05"
+      ],
+      "code": [
+        "server/lib/tx.js",
+        "server/services/orders.js"
+      ],
+      "tests": [
+        "a double click creates one order and takes stock once",
+        "double-clicking Pay with one key charges one bill",
+        "an edit from an out-of-date screen is refused rather than overwriting"
+      ]
+    },
+    {
+      "id": "SR-15",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Gateway callbacks shall be HMAC-signed, recent, single-use and checked against the stored amount, and no second payment shall start while a charge is in progress.",
+      "threats": [
+        "T-09",
+        "T-10"
+      ],
+      "code": [
+        "server/services/gateway.js",
+        "server/services/billing.js",
+        "server/app.js"
+      ],
+      "tests": [
+        "forged, old, wrong-amount and malformed callbacks are refused",
+        "a copied gateway callback is accepted only once",
+        "no second payment is taken while a card charge is still waiting for the gateway",
+        "a late approval for a bill already paid another way is recorded and raises an alert"
+      ]
+    },
+    {
+      "id": "SR-16",
+      "type": "Functional",
+      "priority": "Medium",
+      "text": "The system shall raise de-duplicated alerts for failed sign-ins per person and per address, denials, bulk exports, number views, refund spikes and payment conflicts.",
+      "threats": [
+        "T-01",
+        "T-19",
+        "T-11"
+      ],
+      "code": [
+        "server/services/alerts.js",
+        "server/workers.js"
+      ],
+      "tests": [
+        "failed sign-ins, denials, exports, number views and refunds each raise an alert",
+        "one password tried against many usernames from one address raises an alert (password spraying)",
+        "a flood updates one alert instead of creating many"
+      ]
+    },
+    {
+      "id": "SR-17",
+      "type": "Functional",
+      "priority": "High",
+      "text": "The app shall use a least-privilege database account that cannot change or delete audit entries, and production shall refuse to start without database credentials.",
+      "threats": [
+        "T-17",
+        "T-15"
+      ],
+      "code": [
+        "server/lib/dbRoles.js",
+        "scripts/db-setup.js",
+        "server/config.js"
+      ],
+      "tests": [
+        "the app account can add audit entries but cannot change or delete them",
+        "production refuses a database connection with no username and password (least privilege)"
+      ]
+    },
+    {
+      "id": "SR-18",
+      "type": "Functional",
+      "priority": "High",
+      "text": "The server shall refuse to start with missing or weak secrets, and errors shall show a generic message with a reference only.",
+      "threats": [
+        "T-21",
+        "T-18"
+      ],
+      "code": [
+        "server/config.js",
+        "server/app.js"
+      ],
+      "tests": [
+        "refuses to start without secrets",
+        "refuses weak or wrongly sized keys",
+        "broken JSON gives a clean error with no stack trace",
+        "sign-in fails closed and reveals nothing"
+      ]
+    },
+    {
+      "id": "SR-19",
+      "type": "Functional",
+      "priority": "Medium",
+      "text": "Exports shall be limited per person and recorded, and CSV cells shall never run as spreadsheet formulas.",
+      "threats": [
+        "T-19"
+      ],
+      "code": [
+        "server/routes/business.js",
+        "server/lib/csv.js"
+      ],
+      "tests": [
+        "exports are logged, limited per person, and safe to open in a spreadsheet",
+        "CSV cells that a spreadsheet would run as formulas are neutralised"
+      ]
+    },
+    {
+      "id": "SR-20",
+      "type": "Non-functional",
+      "priority": "High",
+      "text": "Under a request flood the system shall keep serving other users: limits per address, per person and for pages, body-size limits and request timeouts.",
+      "threats": [
+        "T-13"
+      ],
+      "code": [
+        "server/app.js",
+        "server/middleware/security.js",
+        "server/config.js",
+        "server/index.js",
+        "server/services/publicCache.js",
+        "scripts/load-test.js"
+      ],
+      "tests": [
+        "the general API rate limit applies",
+        "each signed-in person has a limit, so one person cannot use up a shared cafe address",
+        "pages and health checks are limited too",
+        "oversized bodies are refused",
+        "one address can send only a limited number of requests",
+        "one address can read the public API only a limited number of times"
+      ],
+      "note": "Measured under a simulated flood in LOAD-TEST.md: no staff request failed, but response times do not meet the Week 4 example of no more than 10% slower."
+    },
+    {
+      "id": "SR-21",
+      "type": "Non-functional",
+      "priority": "Medium",
+      "text": "A slow or failed payment gateway or message provider shall not stop the till: payments fall back to Pending Payment and messages are queued with retries.",
+      "threats": [
+        "T-20"
+      ],
+      "code": [
+        "server/services/gateway.js",
+        "server/services/outbox.js",
+        "server/services/billing.js"
+      ],
+      "tests": [
+        "a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged",
+        "failures retry with growing gaps, then raise one Admin alert",
+        "a gateway crash is treated the same as a timeout"
+      ]
+    },
+    {
+      "id": "SR-22",
+      "type": "Non-functional",
+      "priority": "Medium",
+      "text": "Data shall be recoverable from an encrypted, checksummed backup, and the server shall shut down without cutting off requests in progress.",
+      "threats": [
+        "T-22"
+      ],
+      "code": [
+        "server/lib/backup.js",
+        "scripts/backup.js",
+        "scripts/restore.js",
+        "server/lifecycle.js",
+        "deploy/docker-compose.yml"
+      ],
+      "tests": [
+        "a restore brings back every record, and the audit chain still verifies",
+        "an altered file or the wrong key is refused",
+        "a request in progress finishes, then the database closes and the process exits cleanly"
+      ]
+    },
+    {
+      "id": "SR-23",
+      "type": "Non-functional",
+      "priority": "Low",
+      "text": "Security shall not get in the way of a busy shift: staff stay signed in while working, but automatic screen refreshes never keep an idle session open.",
+      "threats": [
+        "T-02"
+      ],
+      "code": [
+        "server/services/sessions.js",
+        "public/js/store.js"
+      ],
+      "tests": [
+        "background refreshes do not keep an idle session alive"
+      ]
+    },
+    {
+      "id": "SR-28",
+      "type": "Non-functional",
+      "priority": "High",
+      "text": "Production shall run over HTTPS as an unprivileged, read-only container from a pinned minimal image, with only the proxy reachable from outside and the database on a private network.",
+      "threats": [
+        "T-21",
+        "T-17"
+      ],
+      "code": [
+        "Dockerfile",
+        "deploy/docker-compose.yml",
+        "deploy/Caddyfile",
+        ".github/workflows/ci.yml"
+      ],
+      "tests": [
+        "runs on a pinned, minimal base as an unprivileged user",
+        "every service is read-only, drops all capabilities and cannot gain privileges",
+        "only Caddy is reachable from outside, and the database network has no route out",
+        "the app never receives the database administrator password or the backup key",
+        "every action is pinned to a commit, and the default token is read-only",
+        "refuses once an Admin exists, so it cannot get round the second-Admin rule"
+      ]
+    },
+    {
+      "id": "SR-24",
+      "type": "Regulatory",
+      "priority": "High",
+      "text": "A customer's personal data shall be erasable on request, keeping only the bill totals needed for tax records (right to erasure).",
+      "threats": [
+        "T-12"
+      ],
+      "source": "GDPR Article 17 right to erasure; Pakistan Personal Data Protection Bill",
+      "code": [
+        "server/services/customers.js"
+      ],
+      "tests": [
+        "erasing removes the person but keeps the bill totals, and needs a fresh code"
+      ]
+    },
+    {
+      "id": "SR-25",
+      "type": "Regulatory",
+      "priority": "Medium",
+      "text": "Personal data shall be kept no longer than 90 days, collected only as needed, and explained in a privacy notice.",
+      "threats": [
+        "T-12"
+      ],
+      "source": "GDPR Article 5 storage limitation and data minimisation",
+      "code": [
+        "server/services/customers.js",
+        "server/workers.js",
+        "public/privacy.html"
+      ],
+      "tests": [
+        "retention removes personal data after 90 days, and keeps recent data",
+        "the privacy notice tells customers what the security log keeps"
+      ]
+    },
+    {
+      "id": "SR-26",
+      "type": "Regulatory",
+      "priority": "High",
+      "text": "No card or wallet details shall ever be received or stored, keeping the cafe outside card-data audit scope.",
+      "threats": [
+        "T-12"
+      ],
+      "source": "PCI DSS scope reduction",
+      "code": [
+        "server/services/gateway.js",
+        "server/lib/schemas.js"
+      ],
+      "tests": [
+        "approved card payment is paid, with no card details anywhere"
+      ]
+    },
+    {
+      "id": "SR-27",
+      "type": "Regulatory",
+      "priority": "Medium",
+      "text": "A breach shall be detectable and reportable within 72 hours: tamper checks raise alerts, and logs hold no passwords, tokens or codes.",
+      "threats": [
+        "T-15",
+        "T-18"
+      ],
+      "source": "GDPR Article 33 breach notification within 72 hours",
+      "code": [
+        "server/workers.js",
+        "server/lib/logger.js"
+      ],
+      "tests": [
+        "the Admin screen can verify, and a broken chain raises an alert",
+        "logs hold no cookies, tokens, passwords or codes"
+      ],
+      "note": "The step-by-step breach runbook is INCIDENT-RESPONSE.md, written in Phase 7."
+    }
   ],
   "misuseCases": [
-    { "id": "MC-01", "module": "Sign-in", "useCase": "A waiter signs in with password and authenticator code.", "misuseCase": "An attacker with a leaked password tries authenticator codes until one works.", "response": "Three wrong codes lock the account for 15 minutes, and repeated failures raise an alert.", "requirement": "SR-03", "tests": ["the right password alone does not reset the count, so authenticator codes cannot be guessed forever"] },
-    { "id": "MC-02", "module": "Orders", "useCase": "A waiter edits their own order before the kitchen starts it.", "misuseCase": "A waiter changes the order ID to edit another waiter's order.", "response": "The order looks the same as one that does not exist (404).", "requirement": "SR-06", "tests": ["one waiter cannot see or change another waiter's order"] },
-    { "id": "MC-03", "module": "Billing", "useCase": "A cashier takes payment for a served table.", "misuseCase": "The cashier sends a lower total from the browser console.", "response": "The server ignores client totals and refuses the extra field.", "requirement": "SR-07", "tests": ["a price or total sent by the browser is refused"] },
-    { "id": "MC-04", "module": "Refunds", "useCase": "A manager refunds a wrong item.", "misuseCase": "A manager refunds a large bill to an accomplice.", "response": "Over Rs 5,000 a different person must approve with a fresh code; refund spikes raise an alert.", "requirement": "SR-10", "tests": ["a large refund waits for a different person with a fresh code"] },
-    { "id": "MC-05", "module": "Kitchen", "useCase": "The kitchen moves an order to Preparing and Ready.", "misuseCase": "A kitchen user tries to read prices or take a payment.", "response": "The kitchen receives no prices, and payment routes refuse the role.", "requirement": "SR-05", "tests": ["the kitchen sees no prices or staff details, and follows the status order", "a waiter and the kitchen cannot take payment (finding 7)"] },
-    { "id": "MC-06", "module": "Public booking", "useCase": "A customer requests a table online.", "misuseCase": "A bot floods the form, or someone checks whether a number has booked.", "response": "A limit per address and a hidden field stop bots; the answer is the same either way.", "requirement": "SR-20", "tests": ["a bot that fills the hidden field is told it worked, but nothing is saved", "a repeat gets the same answer, so it cannot reveal who has booked"] },
-    { "id": "MC-07", "module": "Reservations", "useCase": "A waiter looks up a booking by phone number.", "misuseCase": "A waiter collects customers' full phone numbers.", "response": "Waiters see masked numbers; full numbers need a Manager or Admin and are logged.", "requirement": "SR-12", "tests": ["waiters see a masked phone; only a Manager or Admin can reveal it, with a log entry (finding 32)"] },
-    { "id": "MC-08", "module": "Menu", "useCase": "An Admin uploads a photo of a dish.", "misuseCase": "An attacker uploads an HTML or script file named as a picture.", "response": "The file signature is checked, and the upload refused and recorded.", "requirement": "SR-13", "tests": ["scripts, SVG, HTML and disguised files are refused and recorded"] },
-    { "id": "MC-09", "module": "Staff administration", "useCase": "An Admin invites a new waiter.", "misuseCase": "One Admin secretly creates a second Admin account.", "response": "Any change affecting an Admin waits for a second Admin.", "requirement": "SR-10", "tests": ["one Admin alone cannot create another Admin; a second Admin must approve"] },
-    { "id": "MC-10", "module": "Audit log", "useCase": "An Admin reviews who changed a price.", "misuseCase": "Someone with database access edits an entry to hide a refund.", "response": "The chain check finds the change and raises an alert; the app account cannot edit entries.", "requirement": "SR-11", "tests": ["detects edited details, a changed actor and a changed time"] },
-    { "id": "MC-11", "module": "Reports", "useCase": "A manager exports today's sales.", "misuseCase": "A departing manager exports data again and again.", "response": "Exports are limited per person, recorded and alerted.", "requirement": "SR-19", "tests": ["exports are logged, limited per person, and safe to open in a spreadsheet"] },
-    { "id": "MC-12", "module": "Payments", "useCase": "The gateway confirms a card payment.", "misuseCase": "An attacker replays a captured approval callback.", "response": "Each signed callback is accepted once; a copy is refused and logged.", "requirement": "SR-15", "tests": ["a copied gateway callback is accepted only once"] }
+    {
+      "id": "MC-01",
+      "module": "Sign-in",
+      "useCase": "A waiter signs in with password and authenticator code.",
+      "misuseCase": "An attacker with a leaked password tries authenticator codes until one works.",
+      "response": "Three wrong codes lock the account for 15 minutes, and repeated failures raise an alert.",
+      "requirement": "SR-03",
+      "tests": [
+        "the right password alone does not reset the count, so authenticator codes cannot be guessed forever"
+      ]
+    },
+    {
+      "id": "MC-02",
+      "module": "Orders",
+      "useCase": "A waiter edits their own order before the kitchen starts it.",
+      "misuseCase": "A waiter changes the order ID to edit another waiter's order.",
+      "response": "The order looks the same as one that does not exist (404).",
+      "requirement": "SR-06",
+      "tests": [
+        "one waiter cannot see or change another waiter's order"
+      ]
+    },
+    {
+      "id": "MC-03",
+      "module": "Billing",
+      "useCase": "A cashier takes payment for a served table.",
+      "misuseCase": "The cashier sends a lower total from the browser console.",
+      "response": "The server ignores client totals and refuses the extra field.",
+      "requirement": "SR-07",
+      "tests": [
+        "a price or total sent by the browser is refused"
+      ]
+    },
+    {
+      "id": "MC-04",
+      "module": "Refunds",
+      "useCase": "A manager refunds a wrong item.",
+      "misuseCase": "A manager refunds a large bill to an accomplice.",
+      "response": "Over Rs 5,000 a different person must approve with a fresh code; refund spikes raise an alert.",
+      "requirement": "SR-10",
+      "tests": [
+        "a large refund waits for a different person with a fresh code"
+      ]
+    },
+    {
+      "id": "MC-05",
+      "module": "Kitchen",
+      "useCase": "The kitchen moves an order to Preparing and Ready.",
+      "misuseCase": "A kitchen user tries to read prices or take a payment.",
+      "response": "The kitchen receives no prices, and payment routes refuse the role.",
+      "requirement": "SR-05",
+      "tests": [
+        "the kitchen sees no prices or staff details, and follows the status order",
+        "a waiter and the kitchen cannot take payment (finding 7)"
+      ]
+    },
+    {
+      "id": "MC-06",
+      "module": "Public booking",
+      "useCase": "A customer requests a table online.",
+      "misuseCase": "A bot floods the form, or someone checks whether a number has booked.",
+      "response": "A limit per address and a hidden field stop bots; the answer is the same either way.",
+      "requirement": "SR-20",
+      "tests": [
+        "a bot that fills the hidden field is told it worked, but nothing is saved",
+        "a repeat gets the same answer, so it cannot reveal who has booked"
+      ]
+    },
+    {
+      "id": "MC-07",
+      "module": "Reservations",
+      "useCase": "A waiter looks up a booking by phone number.",
+      "misuseCase": "A waiter collects customers' full phone numbers.",
+      "response": "Waiters see masked numbers; full numbers need a Manager or Admin and are logged.",
+      "requirement": "SR-12",
+      "tests": [
+        "waiters see a masked phone; only a Manager or Admin can reveal it, with a log entry (finding 32)"
+      ]
+    },
+    {
+      "id": "MC-08",
+      "module": "Menu",
+      "useCase": "An Admin uploads a photo of a dish.",
+      "misuseCase": "An attacker uploads an HTML or script file named as a picture.",
+      "response": "The file signature is checked, and the upload refused and recorded.",
+      "requirement": "SR-13",
+      "tests": [
+        "scripts, SVG, HTML and disguised files are refused and recorded"
+      ]
+    },
+    {
+      "id": "MC-09",
+      "module": "Staff administration",
+      "useCase": "An Admin invites a new waiter.",
+      "misuseCase": "One Admin secretly creates a second Admin account.",
+      "response": "Any change affecting an Admin waits for a second Admin.",
+      "requirement": "SR-10",
+      "tests": [
+        "one Admin alone cannot create another Admin; a second Admin must approve"
+      ]
+    },
+    {
+      "id": "MC-10",
+      "module": "Audit log",
+      "useCase": "An Admin reviews who changed a price.",
+      "misuseCase": "Someone with database access edits an entry to hide a refund.",
+      "response": "The chain check finds the change and raises an alert; the app account cannot edit entries.",
+      "requirement": "SR-11",
+      "tests": [
+        "detects edited details, a changed actor and a changed time"
+      ]
+    },
+    {
+      "id": "MC-11",
+      "module": "Reports",
+      "useCase": "A manager exports today's sales.",
+      "misuseCase": "A departing manager exports data again and again.",
+      "response": "Exports are limited per person, recorded and alerted.",
+      "requirement": "SR-19",
+      "tests": [
+        "exports are logged, limited per person, and safe to open in a spreadsheet"
+      ]
+    },
+    {
+      "id": "MC-12",
+      "module": "Payments",
+      "useCase": "The gateway confirms a card payment.",
+      "misuseCase": "An attacker replays a captured approval callback.",
+      "response": "Each signed callback is accepted once; a copy is refused and logged.",
+      "requirement": "SR-15",
+      "tests": [
+        "a copied gateway callback is accepted only once"
+      ]
+    }
   ]
 }

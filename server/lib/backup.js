@@ -1,3 +1,6 @@
+/* eslint-disable security/detect-non-literal-fs-filename -- backup and restore paths come from the
+   operator's command line and the configured upload folder, never from a web request; restored file
+   names are reduced to their base name. */
 // Encrypted backups. A backup is compressed, then encrypted with AES-256-GCM, and its SHA-256 is kept
 // in a manifest. A stolen backup is unreadable, and a damaged or altered one is refused before restore.
 const crypto = require("crypto");
@@ -18,15 +21,15 @@ function parseBackupKey(value) {
 }
 
 async function readUploads(uploadDir) {
-  const files = {};
+  const files = Object.create(null);
   const names = await fs.readdir(uploadDir).catch(() => []);
   for (const name of names) files[name] = (await fs.readFile(path.join(uploadDir, name))).toString("base64");
   return files;
 }
 
 async function createBackup({ db, key, directory, uploadDir }) {
-  const collections = {};
-  const counts = {};
+  const collections = Object.create(null);
+  const counts = Object.create(null);
   for (const { name } of await db.listCollections({}, { nameOnly: true }).toArray()) {
     collections[name] = await db.collection(name).find().toArray();
     counts[name] = collections[name].length;
@@ -35,7 +38,7 @@ async function createBackup({ db, key, directory, uploadDir }) {
   const plain = Buffer.from(BSON.EJSON.stringify({ createdAt, collections, uploads: uploadDir ? await readUploads(uploadDir) : {} }, { relaxed: false }));
 
   const iv = crypto.randomBytes(IV_BYTES);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv, { authTagLength: TAG_BYTES });
   cipher.setAAD(MAGIC);
   const body = Buffer.concat([cipher.update(zlib.gzipSync(plain)), cipher.final()]);
   const file = Buffer.concat([MAGIC, iv, cipher.getAuthTag(), body]);
@@ -56,7 +59,7 @@ async function readBackup(backupPath, key) {
 
   const iv = file.subarray(MAGIC.length, MAGIC.length + IV_BYTES);
   const tag = file.subarray(MAGIC.length + IV_BYTES, MAGIC.length + IV_BYTES + TAG_BYTES);
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv, { authTagLength: TAG_BYTES });
   decipher.setAAD(MAGIC);
   decipher.setAuthTag(tag);
   let compressed;

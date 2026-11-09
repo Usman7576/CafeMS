@@ -24,6 +24,7 @@ const { createCustomerService } = require("./services/customers");
 const { createPhotoService } = require("./services/photos");
 const { createCafeService } = require("./services/cafe");
 const { createRiskService } = require("./services/riskRegister");
+const { createPublicCache } = require("./services/publicCache");
 const { createPublicRouter } = require("./routes/public");
 const { createSimulatedGateway, verifyCallback } = require("./services/gateway");
 const { bindAudit, recordEvent: audit } = require("./services/auditLog");
@@ -32,7 +33,10 @@ const { hashToken } = require("./lib/crypto");
 
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 // Only these asset folders are served. Everything else not listed as a page is a 404 (default deny).
-const ASSET_PATH = /^\/(?:css|js|assets|fonts|vendor)\/[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9]+)+$/;
+// One flat character class with a length cap, so the pattern cannot backtrack badly (no ReDoS);
+// ".." is refused separately.
+const ASSET_PATH = /^\/(?:css|js|assets|fonts|vendor)\/[A-Za-z0-9][A-Za-z0-9_.-]{0,100}$/;
+const isAsset = (p) => ASSET_PATH.test(p) && !p.includes("..");
 
 function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const app = express();
@@ -63,7 +67,8 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const photos = createPhotoService({ config, db });
   const cafe = createCafeService({ db });
   const risk = createRiskService();
-  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, risk };
+  const publicCache = createPublicCache();
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, risk, publicCache };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),
@@ -159,7 +164,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
       if (req.method !== "GET" && req.method !== "HEAD") return next(new AppError(404, "not_found", "Not found."));
       const roles = Object.hasOwn(PAGES, req.path) ? PAGES[req.path] : null;
       if (!roles) {
-        return PUBLIC_PAGES.includes(req.path) || ASSET_PATH.test(req.path)
+        return PUBLIC_PAGES.includes(req.path) || isAsset(req.path)
           ? next()
           : next(new AppError(404, "not_found", "Not found."));
       }
@@ -184,7 +189,6 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   app.use((_req, _res, next) => next(new AppError(404, "not_found", "Not found.")));
 
   // ---------- Errors: full detail in the log, generic message to the user ----------
-  // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, _next) => {
     let error = err;
     if (!(err instanceof AppError)) {

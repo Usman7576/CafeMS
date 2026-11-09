@@ -1,0 +1,61 @@
+# Security scan results
+
+**On 9 November 2026 every scan of CafeMS's own code and image passed, after fixing what they found.** The only open findings are in the official Caddy and MongoDB images, where the publishers have not yet released fixes. CI repeats these scans on every push and weekly. CodeQL runs only on GitHub, so its first result comes from the first CI run.
+
+| Tool | What it checks | Result | Blocks CI |
+| --- | --- | --- | --- |
+| ESLint with security rules | Code quality and risky patterns | 0 problems | Yes |
+| `npm audit` | Known vulnerable packages | 0 vulnerabilities | Yes |
+| Semgrep (6 rule packs) | Static analysis of 148 files | 0 findings | Yes |
+| gitleaks | Secrets in every commit | 0 leaks, 1 reviewed false positive | Yes |
+| Trivy, project | Packages, Dockerfile, secrets | 0 HIGH or CRITICAL | Yes |
+| Trivy, app image | Everything in the shipped image | 0 HIGH or CRITICAL | Yes |
+| Trivy, Caddy and MongoDB images | Third-party images | Open findings, below | No, reported |
+| OWASP ZAP baseline | The running app, from outside | 0 failures, 0 warnings, 63 rules passed | Yes |
+| actionlint | CI workflow files | 0 problems | No, run by hand |
+| Tests with coverage | Every control | All pass; 97% of lines | Yes |
+| Recovery drill | Back up, destroy, restore, compare | Data, photo and counts restored | Yes |
+| Load test | Staff requests during a flood | No staff request failed ([details](LOAD-TEST.md)) | No, reported |
+
+## What the scans found, and what was done
+
+| Found by | Finding | Outcome |
+| --- | --- | --- |
+| Semgrep | AES-GCM decryption did not fix the tag length, so a shortened tag could be accepted | Fixed: the full 16-byte tag is required, with a test |
+| ZAP | With no JavaScript, the sign-in form would put the password in the URL | Fixed: every form uses POST, with a test |
+| ZAP | `Cross-Origin-Embedder-Policy` header missing | Fixed |
+| Header check | `X-Frame-Options` disagreed with the CSP | Fixed: both now refuse framing |
+| ESLint | Asset path pattern could backtrack badly | Rewritten with no nested repetition |
+| ESLint | A category named `__proto__` was mishandled in reports | Fixed: uses a Map |
+| Trivy | The Node base image carried dozens of HIGH findings and a bundled npm | Fixed: moved to a distroless image, with no shell or npm |
+| Load test | Public menu requests could flood the database | Fixed: 5-second cache and a tighter per-address limit |
+| Recovery drill | Upload and backup folders were not writable in the new image | Fixed, and photo upload added to the end-to-end check |
+
+## Accepted, with reasons
+
+These are recorded so that the exceptions are visible and can be reviewed.
+
+| Tool and rule | Reason |
+| --- | --- |
+| gitleaks, `tests/config.test.js` in commit aae2d37 | A fake value decoding to "secret-value-that-must-not-leak". The test now builds it at run time |
+| ESLint `detect-object-injection` (off) | Flags every `obj[key]`. All 31 server and script uses were reviewed; each is a fixed key, a number or guarded by `Object.hasOwn` |
+| ESLint `detect-non-literal-fs-filename` | Each server use has a written reason in the code; paths never come from a request |
+| ZAP 10027, suspicious comments | Matches ordinary comments containing words such as "from" |
+| ZAP 10049, storable content | Intended: pages revalidate with ETag, and API responses are `no-store` |
+| ZAP 10109 and 10111 | Informational: the site uses JavaScript, and it has a sign-in form |
+| ZAP 10202, no CSRF token in forms | A native form post returns 404; real requests use `fetch` with the CSRF header and an Origin check |
+
+## Open findings in third-party images
+
+No fixed image existed on 9 November 2026. Dependabot proposes new digests as soon as the publishers release them.
+
+| Image | Finding | Why the risk is low here |
+| --- | --- | --- |
+| Caddy 2.11.9 | CVE-2026-78661, `golang.org/x/net/html` denial of service | That library parses HTML, used by a Caddy feature this setup does not enable |
+| MongoDB 7 | `golang.org/x/net` in `mongodump` and similar tools | Those tools are never run in this stack |
+| MongoDB 7 | Go runtime findings in `gosu` | Used only for a moment at start-up to drop privileges; it handles no network traffic |
+| MongoDB 7 | `apt` and `js-yaml` in the shell tooling | Not reachable: the container has no route to the internet and no published port |
+
+## How the scans were run
+
+Each tool ran from the same image digest that CI uses, against the code in this repository and a local copy of the production stack. Manual testing with Burp Suite is planned for Phase 7.

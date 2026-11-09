@@ -1,0 +1,28 @@
+# Caddy terminates TLS and forwards to the app on the private network.
+# With a real domain, Caddy gets and renews a Let's Encrypt certificate automatically.
+# With DOMAIN=localhost it uses its own local certificate authority, for testing.
+{
+	# No admin API on the network
+	admin off
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The app sets its own strict security headers (CSP, HSTS, framing, referrer); Caddy only hides
+	# what server software is in use
+	header -Server
+
+	request_body {
+		max_size 3MB
+	}
+
+	reverse_proxy app:3000 {
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

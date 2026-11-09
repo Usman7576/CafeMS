@@ -38,7 +38,7 @@ test("TRACEABILITY.md is up to date with traceability.json", () => {
 test("links between the security documents point at files that exist", () => {
   for (const file of fs.readdirSync(DOCS).filter((f) => f.endsWith(".md"))) {
     const text = fs.readFileSync(path.join(DOCS, file), "utf8");
-    for (const m of text.matchAll(/\]\(([A-Za-z0-9_-]+\.md)(?:#[^)]*)?\)/g)) {
+    for (const m of text.matchAll(/\]\(([\w-]+\.md)[#)]/g)) {
       assert.ok(fs.existsSync(path.join(DOCS, m[1])), `${file} links to missing ${m[1]}`);
     }
   }

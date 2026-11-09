@@ -1,0 +1,19 @@
+# Nothing secret or unneeded goes into the image
+.env
+.env.*
+!.env.example
+.mongo-keyfile
+.seed-credentials.txt
+deploy/.env
+deploy/.mongo-keyfile
+.git
+.github
+.claude
+node_modules
+backups
+uploads
+coverage
+tests
+submission
+*.md
+!docs/security/*.md

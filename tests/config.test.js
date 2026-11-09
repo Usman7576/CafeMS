@@ -52,6 +52,7 @@ test("production refuses a database connection with no username and password (le
 });
 
 test("error messages never contain secret values", () => {
-  const secret = "c2VjcmV0LXZhbHVlLXRoYXQtbXVzdC1ub3QtbGVhaw";
+  // Made at run time, so no secret-looking value is stored in the repository
+  const secret = Buffer.from("secret-value-that-must-not-leak").toString("base64");
   assert.throws(() => loadConfig(testEnv({ JWT_KEYS: `k1:${secret}` })), (e) => !e.message.includes(secret));
 });

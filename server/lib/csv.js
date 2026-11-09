@@ -6,7 +6,8 @@ function csvCell(value) {
 }
 
 function toCsv(rows) {
-  return `﻿${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+  // The byte-order mark makes spreadsheets read the file as UTF-8
+  return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
 }
 
 module.exports = { toCsv };

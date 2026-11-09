@@ -174,8 +174,8 @@
   const Session = {
     KEY: "cms_session",
     get: function () { try { return JSON.parse(sessionStorage.getItem(this.KEY)); } catch (e) { return null; } },
-    set: function (d) { try { sessionStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) {} },
-    clear: function () { try { sessionStorage.removeItem(this.KEY); } catch (e) {} },
+    set: function (d) { try { sessionStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { /* storage unavailable: names are simply not shown */ } },
+    clear: function () { try { sessionStorage.removeItem(this.KEY); } catch (e) { /* storage unavailable: nothing to clear */ } },
     flash: function (msg) {
       try {
         if (msg === undefined) { const m = sessionStorage.getItem("cms_flash"); sessionStorage.removeItem("cms_flash"); return m; }

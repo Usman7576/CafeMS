@@ -1,0 +1,161 @@
+# CafeMS production stack: Caddy (TLS) -> app -> MongoDB replica set.
+#
+#   npm run setup:env -- --production --domain cafe.example.com
+#   docker compose -f deploy/docker-compose.yml up -d --build --wait
+#
+# Only Caddy is reachable from outside. The database sits on an internal network with no route out,
+# requires a login, and the app signs in with a least-privilege account created by the one-off db-init
+# service. The administrator password is given to the database and db-init only, never to the app.
+# Every container drops all Linux capabilities, cannot gain new privileges, and runs with a read-only
+# file system except for its data volumes.
+
+name: cafems-prod
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+x-app-keys: &app-keys
+  JWT_KEYS: ${JWT_KEYS:?Run npm run setup:env -- --production}
+  JWT_ACTIVE_KEY: ${JWT_ACTIVE_KEY}
+  DATA_KEYS: ${DATA_KEYS:?}
+  DATA_ACTIVE_KEY: ${DATA_ACTIVE_KEY}
+  BLIND_INDEX_KEY: ${BLIND_INDEX_KEY:?}
+  AUDIT_KEYS: ${AUDIT_KEYS:?}
+  AUDIT_ACTIVE_KEY: ${AUDIT_ACTIVE_KEY}
+  GATEWAY_SECRET: ${GATEWAY_SECRET:?}
+
+services:
+  mongo:
+    <<: *hardening
+    image: mongo:7@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
+    # MongoDB needs to change ownership of the key file once, so it keeps those two capabilities
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+    entrypoint:
+      - bash
+      - -c
+      - install -m 400 -o mongodb -g mongodb /run/secrets/mongo_keyfile /tmp/keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/keyfile
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+    secrets: [mongo_keyfile]
+    tmpfs: [/tmp]
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    networks: [backend]
+    healthcheck:
+      test: >
+        mongosh --quiet -u "$${MONGO_INITDB_ROOT_USERNAME}" -p "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval
+        "try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }) }; if (!db.hello().isWritablePrimary) quit(1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+
+  # One-off: creates the app's least-privilege database account, then exits
+  db-init:
+    <<: *hardening
+    build: { context: .., dockerfile: Dockerfile }
+    image: cafems-app:latest
+    restart: "no"
+    command: ["scripts/db-setup.js"]
+    environment:
+      MONGODB_HOST: mongo:27017
+      MONGODB_DB: ${MONGODB_DB:-cafems}
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGODB_APP_USERNAME: ${MONGODB_APP_USERNAME:?}
+      MONGODB_APP_PASSWORD: ${MONGODB_APP_PASSWORD:?}
+    depends_on:
+      mongo: { condition: service_healthy }
+    networks: [backend]
+
+  app:
+    <<: *hardening
+    image: cafems-app:latest
+    build: { context: .., dockerfile: Dockerfile }
+    environment:
+      <<: *app-keys
+      NODE_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:?}
+      # One proxy (Caddy) sits in front, so the client address comes from its X-Forwarded-For header
+      TRUST_PROXY: "1"
+      MONGODB_DB: ${MONGODB_DB:-cafems}
+      MONGODB_URI: mongodb://${MONGODB_APP_USERNAME}:${MONGODB_APP_PASSWORD}@mongo:27017/${MONGODB_DB:-cafems}?replicaSet=rs0&authSource=${MONGODB_DB:-cafems}
+    tmpfs: [/tmp]
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    networks: [backend, frontend]
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "1.0" }
+
+  caddy:
+    <<: *hardening
+    image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs: [/tmp]
+    environment:
+      DOMAIN: ${DOMAIN:?}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app: { condition: service_healthy }
+    networks: [frontend]
+
+  # Tools, run on demand. See docs/DEPLOYMENT.md for the backup schedule and the restore steps.
+  backup: &backup-tool
+    <<: *hardening
+    image: cafems-app:latest
+    profiles: [tools]
+    restart: "no"
+    command: ["scripts/backup.js", "/backups"]
+    environment:
+      <<: *app-keys
+      NODE_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:?}
+      BACKUP_KEY: ${BACKUP_KEY:?}
+      MONGODB_DB: ${MONGODB_DB:-cafems}
+      MONGODB_URI: mongodb://${MONGODB_APP_USERNAME}:${MONGODB_APP_PASSWORD}@mongo:27017/${MONGODB_DB:-cafems}?replicaSet=rs0&authSource=${MONGODB_DB:-cafems}
+    tmpfs: [/tmp]
+    volumes:
+      - uploads:/data/uploads
+      - backups:/backups
+    networks: [backend]
+
+  # Usage: docker compose -f deploy/docker-compose.yml run --rm restore /backups/<file>.bak cafems
+  restore:
+    <<: *backup-tool
+    entrypoint: ["/nodejs/bin/node", "scripts/restore.js"]
+    command: []
+
+secrets:
+  mongo_keyfile:
+    file: ./.mongo-keyfile
+
+networks:
+  # No route to the internet: only the app can reach the database
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  mongo-data:
+  mongo-config:
+  uploads:
+  backups:
+  caddy-data:
+  caddy-config:

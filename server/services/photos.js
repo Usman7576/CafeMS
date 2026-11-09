@@ -35,8 +35,12 @@ function createPhotoService({ config, db }) {
     const item = await menu.findOne({ _id: id });
     if (!item) throw new AppError(404, "not_found", "Item not found.");
 
+    // The folder is fixed by configuration (and must be outside public/); the name is random and
+    // checked against SAFE_FILE by filePath, so neither can come from the request.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     await fs.mkdir(config.uploadDir, { recursive: true });
     const name = `${randomToken(24)}.${type.ext}`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     await fs.writeFile(filePath(name), body, { flag: "wx", mode: 0o640 });
     try {
       await inTransaction(db, async (session) => {

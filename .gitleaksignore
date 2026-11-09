@@ -1,0 +1,4 @@
+# gitleaks findings reviewed and accepted. Each line is one finding in one commit, so anything new still fails.
+# A fake value in a test that checks error messages never repeat secrets; it decodes to
+# "secret-value-that-must-not-leak". The test now builds it at run time.
+aae2d37e35f7a315ba8a6145af13e2bc5f3421c3:tests/config.test.js:generic-api-key:40

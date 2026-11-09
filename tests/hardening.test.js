@@ -310,6 +310,36 @@ describe("project files", () => {
   });
 });
 
+describe("browser hardening found by the ZAP scan", () => {
+  test("every form posts, so a password or number can never end up in a URL or access log", () => {
+    const dir = path.join(__dirname, "..", "public");
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".html"))) {
+      for (const form of fs.readFileSync(path.join(dir, file), "utf8").match(/<form [^>]*>/g) || []) {
+        assert.match(form, /method="post"/, `${file}: ${form}`);
+      }
+    }
+  });
+
+  test("a form that posts without JavaScript reaches nothing, and pages cannot be framed or embed other sites", async () => {
+    assert.equal((await browser(app).post("/login.html", { username: "a", password: "b" })).status, 404);
+    const page = await browser(app).get("/login.html");
+    assert.equal(page.headers["x-frame-options"], "DENY");
+    assert.equal(page.headers["cross-origin-embedder-policy"], "require-corp");
+    assert.match(page.headers["content-security-policy"], /frame-ancestors 'none'/);
+  });
+});
+
+describe("encryption", () => {
+  test("a shortened GCM authentication tag is refused, so forged values cannot be accepted", () => {
+    const { encrypt, decrypt } = require("../server/lib/crypto");
+    const value = encrypt("03001234567", "test:1", config.data);
+    assert.equal(decrypt(value, "test:1", config.data), "03001234567");
+    const parts = value.split(".");
+    parts[3] = Buffer.from(parts[3], "base64url").subarray(0, 4).toString("base64url");
+    assert.throws(() => decrypt(parts.join("."), "test:1", config.data));
+  });
+});
+
 describe("graceful shutdown", () => {
   test("a request in progress finishes, then the database closes and the process exits cleanly", async () => {
     let finish;

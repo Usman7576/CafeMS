@@ -15,7 +15,10 @@
     "seed:dev": "node scripts/seed-dev.js",
     "vendor": "node -e \"require('fs').copyFileSync('node_modules/three/build/three.module.min.js','public/vendor/three.module.min.js')\"",
     "backup": "node scripts/backup.js",
-    "restore": "node scripts/restore.js"
+    "restore": "node scripts/restore.js",
+    "lint": "eslint .",
+    "test:coverage": "node --test --test-concurrency=2 --experimental-test-coverage --test-coverage-include=\"server/**\" --test-coverage-lines=90 --test-coverage-branches=85 --test-coverage-functions=90 \"tests/**/*.test.js\"",
+    "load-test": "node scripts/load-test.js"
   },
   "engines": {
     "node": ">=20"
@@ -36,6 +39,10 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-security": "^4.2.1",
+    "globals": "^17.14.0",
     "mongodb-memory-server": "^10.4.3",
     "supertest": "^7.3.1",
     "three": "^0.170.0"

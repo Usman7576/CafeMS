@@ -19,7 +19,7 @@
       <div class="stack">
         <section class="panel">
           <div class="panel-head"><div><h3>Change password</h3><p>Your other devices are signed out when it changes.</p></div></div>
-          <form class="panel-body" id="passwordForm" novalidate>
+          <form method="post" class="panel-body" id="passwordForm" novalidate>
             <div class="alert alert-error" id="passwordErr" role="alert"></div>
             <div class="field"><label for="currentPassword">Current password</label><input class="input" type="password" id="currentPassword" autocomplete="current-password" maxlength="128" required></div>
             <div class="field"><label for="newPassword">New password</label><input class="input" type="password" id="newPassword" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">

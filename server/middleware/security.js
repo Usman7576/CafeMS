@@ -25,9 +25,13 @@ function securityHeaders(config) {
       }
     },
     strictTransportSecurity: config.usesTls ? { maxAge: 31536000, includeSubDomains: true } : false,
+    // Matches the CSP's frame-ancestors 'none' for older browsers that only read this header
+    frameguard: { action: "deny" },
     referrerPolicy: { policy: "no-referrer" },
     crossOriginResourcePolicy: { policy: "same-origin" },
-    crossOriginOpenerPolicy: { policy: "same-origin" }
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    // Everything the pages load is self-hosted, so nothing from another site can be embedded
+    crossOriginEmbedderPolicy: { policy: "require-corp" }
   });
 }
 

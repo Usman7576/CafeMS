@@ -8,7 +8,9 @@ const dependencies = require("../lib/dependencies");
 
 const DOCS = path.join(__dirname, "..", "..", "docs", "security");
 
+// Only called with the two fixed file names below
 function loadJson(name) {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
   return JSON.parse(fs.readFileSync(path.join(DOCS, name), "utf8"));
 }
 

@@ -10,15 +10,19 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 
 function createPublicRouter({ config, services }) {
   const router = express.Router();
-  const { catalog, cafe, photos, reservations } = services;
+  const { catalog, cafe, photos, reservations, publicCache } = services;
   const bookingLimiter = limiter(60 * 60 * 1000, config.limits.publicBookingsPerHour, "Too many booking requests. Please try again later or call us.");
+  // A visitor reads the menu and details once per visit, so this is far below the general API limit
+  const readLimiter = limiter(60 * 1000, config.limits.publicReadsPerMinute, "Too many requests. Please wait a moment.");
+  router.use(readLimiter);
   const ACCEPTED = { ok: true, message: "Thank you. We've received your request and will confirm your table soon." };
 
-  router.get("/info", publicRoute, wrap(async (_req, res) => res.json(await cafe.get())));
+  router.get("/info", publicRoute, wrap(async (_req, res) => res.json(await publicCache.get("info", () => cafe.get()))));
 
   router.get("/menu", publicRoute, wrap(async (_req, res) => {
-    const items = await catalog.listForSale();
-    res.json({ items: items.map((m) => ({ id: m.id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: m.hasPhoto, available: m.available })) });
+    res.json(await publicCache.get("menu", async () => ({
+      items: (await catalog.listForSale()).map((m) => ({ id: m.id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: m.hasPhoto, available: m.available }))
+    })));
   }));
 
   router.get("/menu/:id/photo", publicRoute, validate(schemas.params.numericId, "params"), wrap(async (req, res) => {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staff & roles — Cafe Management System</title>
+  <title>Staff &amp; roles — Cafe Management System</title>
   <meta name="theme-color" content="#1d110b">
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -36,7 +36,7 @@
   </main>
 
   <div class="modal-backdrop" id="userModal" role="dialog" aria-modal="true" aria-labelledby="userTitle">
-    <form class="modal" id="userForm" novalidate>
+    <form method="post" class="modal" id="userForm" novalidate>
       <div class="modal-head"><div class="icon-tile"><i data-icon="users" data-size="20"></i></div><div><h3 id="userTitle">Add staff member</h3><p>You'll get a one-time link to give them. They set their own password and authenticator.</p></div></div>
       <div class="modal-body">
         <div class="alert alert-error" id="userErr" role="alert"></div>
@@ -48,7 +48,7 @@
     </form>
   </div>
   <div class="modal-backdrop" id="roleModal" role="dialog" aria-modal="true" aria-labelledby="roleTitle">
-    <form class="modal" id="roleForm" novalidate>
+    <form method="post" class="modal" id="roleForm" novalidate>
       <div class="modal-head"><div class="icon-tile warn"><i data-icon="key" data-size="20"></i></div><div><h3 id="roleTitle">Change role</h3><p id="roleSub"></p></div></div>
       <div class="modal-body">
         <div class="alert alert-error" id="roleErr" role="alert"></div>

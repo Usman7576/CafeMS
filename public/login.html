@@ -37,7 +37,7 @@
           <section class="auth-step" id="stepPassword">
             <h1>Staff sign in</h1>
             <p class="sub">Welcome back. Enter your staff credentials to open your workspace.</p>
-            <form id="loginForm" novalidate>
+            <form method="post" id="loginForm" novalidate>
               <div class="field">
                 <label for="username">Username</label>
                 <div class="input-wrap">
@@ -67,7 +67,7 @@
           <section class="auth-step" id="stepMfa" hidden>
             <h1>Enter your code</h1>
             <p class="sub" id="mfaHint">Open your authenticator app and enter the 6-digit code for CafeMS.</p>
-            <form id="mfaForm" novalidate>
+            <form method="post" id="mfaForm" novalidate>
               <div class="field">
                 <label for="mfaCode" id="mfaLabel">Authenticator code</label>
                 <div class="input-wrap">
@@ -88,7 +88,7 @@
             <p class="auth-note">Can't scan it? Enter this key in the app:</p>
             <code class="mfa-key" id="enrollKey"></code>
             <button type="button" class="btn btn-secondary btn-sm mb-14" id="copyKey">Copy key</button>
-            <form id="enrollForm" novalidate>
+            <form method="post" id="enrollForm" novalidate>
               <div class="field">
                 <label for="enrollCode">6-digit code from the app</label>
                 <div class="input-wrap">

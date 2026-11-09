@@ -273,7 +273,8 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     const refunded = rows.filter((b) => b.status === "Refunded");
     const byHour = new Array(24).fill(0);
     const byMethod = { Cash: 0, Card: 0, Wallet: 0 };
-    const byCat = {};
+    // A Map, so a category an Admin names "__proto__" or "constructor" is counted like any other
+    const byCat = new Map();
     const items = new Map();
     let qty = 0;
     for (const b of paid) {
@@ -282,7 +283,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       for (const l of b.lines) {
         qty += l.qty;
         const cat = l.cat || "Other";
-        byCat[cat] = (byCat[cat] || 0) + l.price * l.qty;
+        byCat.set(cat, (byCat.get(cat) || 0) + l.price * l.qty);
         const entry = items.get(l.name) || { name: l.name, qty: 0, revenue: 0 };
         entry.qty += l.qty;
         entry.revenue += l.price * l.qty;
@@ -295,7 +296,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       refunds: refunded.length, refundAmount: refunded.reduce((s, b) => s + b.total, 0),
       unpaid: rows.filter((b) => OPEN_FOR_PAYMENT.includes(b.status)).length,
       discounts: paid.reduce((s, b) => s + b.discount, 0), tax: paid.reduce((s, b) => s + b.tax, 0),
-      byHour, byMethod, byCat, top: [...items.values()].sort((a, b) => b.qty - a.qty).slice(0, 6)
+      byHour, byMethod, byCat: Object.fromEntries(byCat), top: [...items.values()].sort((a, b) => b.qty - a.qty).slice(0, 6)
     };
   }
 

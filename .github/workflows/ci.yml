@@ -1,0 +1,172 @@
+# Every push and pull request runs lint, tests, dependency and secret scans, static analysis, the
+# container scan and a dynamic scan of the running production stack. Any failure fails the check.
+# Actions are pinned to full commit hashes and scanner images to digests, so a changed upstream tag
+# cannot change what runs here. Dependabot proposes updates to the pins.
+name: CI
+
+on:
+  push:
+    branches: [main, security-hardening]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so a newly published vulnerability is noticed even when nothing changes here
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, tests and dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install exactly the locked packages
+        run: npm ci
+      - name: Lint with security rules
+        run: npm run lint
+      - name: Traceability links
+        run: npm run trace -- --check
+      - name: Tests with coverage (includes backup and restore)
+        run: npm run test:coverage
+      - name: Known vulnerabilities in dependencies
+        run: npm audit --audit-level=moderate
+
+  sast:
+    name: Semgrep static analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Semgrep security rule packs
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src \
+            semgrep/semgrep@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0 \
+            semgrep scan --metrics=off --error \
+              --config p/javascript --config p/nodejs --config p/expressjs \
+              --config p/owasp-top-ten --config p/secrets --config p/dockerfile .
+
+  codeql:
+    name: CodeQL static analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+
+  secrets:
+    name: Secrets in git history
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" \
+            zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /repo --redact --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
+
+  stack:
+    name: Container scan, recovery drill and ZAP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      TRIVY: aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+      ZAP: ghcr.io/zaproxy/zaproxy@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
+      COMPOSE: docker compose -f deploy/docker-compose.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Generate throwaway settings
+        run: node scripts/setup-env.js --production --domain localhost --https-port 8443 --http-port 8080
+      - name: Build and start the production stack
+        run: $COMPOSE up -d --build --wait
+      - name: The site answers over HTTPS
+        run: curl --fail --silent --show-error --insecure https://localhost:8443/api/health/ready
+
+      - name: Trivy - packages, Dockerfile and secrets (blocking)
+        run: |
+          docker run --rm -v "$PWD:/src" "$TRIVY" fs --quiet --timeout 15m \
+            --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --skip-dirs /src/.git --skip-files /src/deploy/.env,/src/deploy/.mongo-keyfile /src
+      - name: Trivy - app image (blocking)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY" image --quiet --timeout 15m \
+            --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 cafems-app:latest
+      - name: Trivy - Caddy and MongoDB images (reported, fixed by their publishers)
+        run: |
+          grep -oE 'image: (mongo|caddy):[^ ]+' deploy/docker-compose.yml | cut -d' ' -f2 | while read -r image; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY" image --quiet --timeout 15m \
+              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed "$image" < /dev/null
+          done
+
+      - name: OWASP ZAP baseline against the running app
+        run: |
+          mkdir -p zap-work && cp .zap/rules.tsv zap-work/ && chmod -R a+rwX zap-work
+          docker run --rm --network cafems-prod_frontend -v "$PWD/zap-work:/zap/wrk:rw" "$ZAP" \
+            zap-baseline.py -t http://app:3000/ -m 3 -c rules.tsv -r zap-report.html
+      - name: Keep the ZAP report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-report
+          path: zap-work/zap-report.html
+          if-no-files-found: ignore
+
+      - name: Recovery drill - back up, destroy the data, restore and compare
+        run: |
+          $COMPOSE run --rm -T app scripts/create-admin.js drill "Recovery Drill" | grep -q "Invitation created"
+          $COMPOSE run --rm -T backup
+          file=$(docker run --rm -v cafems-prod_backups:/b --entrypoint /bin/sh "$ZAP" -c 'ls /b | grep "\.bak$" | tail -1')
+          $COMPOSE stop app caddy mongo
+          docker rm -f cafems-prod-app-1 cafems-prod-caddy-1 cafems-prod-mongo-1 cafems-prod-db-init-1
+          docker volume rm cafems-prod_mongo-data cafems-prod_mongo-config cafems-prod_uploads
+          $COMPOSE up -d --wait
+          $COMPOSE run --rm -T restore "/backups/$file" cafems
+          # The Admin invited before the backup exists again, so a second first-Admin is refused
+          if $COMPOSE run --rm -T app scripts/create-admin.js second "Second Admin"; then
+            echo "The restored data is missing its Admin."; exit 1
+          fi
+
+      - name: Stack logs on failure
+        if: failure()
+        run: $COMPOSE logs --no-color --tail 100
+      - name: Stop the stack
+        if: always()
+        run: $COMPOSE --profile tools down -v
+
+  load:
+    name: Load test (reported)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Shared CI machines vary too much for timing to block a merge; the result is kept in the log
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run load-test

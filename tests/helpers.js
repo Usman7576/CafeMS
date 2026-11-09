@@ -37,7 +37,7 @@ function testEnv(extra = {}) {
 
 function testConfig(limits = {}) {
   const config = loadConfig(testEnv());
-  return { ...config, limits: { ...config.limits, authPer15Minutes: 100000, apiPerMinute: 100000, userPerMinute: 100000, sitePerMinute: 100000, ...limits } };
+  return { ...config, limits: { ...config.limits, authPer15Minutes: 100000, apiPerMinute: 100000, userPerMinute: 100000, sitePerMinute: 100000, publicReadsPerMinute: 100000, ...limits } };
 }
 
 async function startDb() {
@@ -45,7 +45,7 @@ async function startDb() {
   const client = await MongoClient.connect(server.getUri());
   const db = client.db("cafems_test");
   await ensureIndexes(db);
-  return { db, stop: async () => { await client.close(); await server.stop(); } };
+  return { db, uri: server.getUri(), stop: async () => { await client.close(); await server.stop(); } };
 }
 
 function buildApp(db, limits, gateway) {

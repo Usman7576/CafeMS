@@ -34,7 +34,7 @@
         </section>
         <section class="panel">
           <div class="panel-head"><div><h3>Erase customer data</h3><p>For a customer's request. Removes their number, name and notes; bill totals stay for tax records.</p></div></div>
-          <form class="panel-body" id="eraseForm" novalidate>
+          <form method="post" class="panel-body" id="eraseForm" novalidate>
             <div class="alert alert-error" id="eraseErr" role="alert"></div>
             <div class="field"><label for="erasePhone">Customer mobile number</label><input class="input" id="erasePhone" type="tel" maxlength="13" placeholder="03XXXXXXXXX" autocomplete="off" required></div>
             <button type="submit" class="btn btn-danger" id="eraseBtn">Erase data</button>

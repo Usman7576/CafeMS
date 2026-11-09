@@ -16,7 +16,8 @@ function createCafeService({ db }) {
 
   async function get() {
     const doc = await settings.findOne({ _id: "cafe" });
-    const { _id, ...saved } = doc || {};
+    const saved = { ...(doc || {}) };
+    delete saved._id;
     return { ...DEFAULTS, ...saved };
   }
 

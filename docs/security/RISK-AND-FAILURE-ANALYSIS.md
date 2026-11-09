@@ -98,7 +98,7 @@ Why the less obvious cells are what they are:
 | NOTIFY (external) | – | QUEUE (retries, then an Admin alert) | – |
 
 **Single points of failure, and what reduces each one:**
-- **DB**, with 4 hard callers, stops 5 services. It has encrypted backups with a tested restore. It runs as a replica set, but locally with one member, so it cannot fail over yet: production needs three members or a managed cluster (Phase 6).
+- **DB**, with 4 hard callers, stops 5 services. It has encrypted backups with a tested restore. It runs as a replica set with one member, so it cannot fail over: surviving a server failure needs three members or a managed database, as `docs/DEPLOYMENT.md` explains.
 - **AUDIT** stops 3. This is accepted, because the fail-secure rule outweighs availability here. It shares the database's replica set, so in practice it fails only when the database does.
 - **AUTH** stops 2. It has no outside dependency, and its sessions are stored in the database.
 
@@ -119,9 +119,9 @@ As the Failures deck notes, a failure is not always an attack, but an attacker c
 
 | Strategy | How CafeMS applies it |
 | --- | --- |
-| Regular testing and maintenance | `npm test` runs every control; CI in Phase 6 runs it on every change |
+| Regular testing and maintenance | `npm test` runs every control; CI runs it on every push and weekly |
 | Automated monitoring and alerts | Alert rules on the audit log every minute; audit chain verified every 15 minutes |
 | Noise that hides attacks | Repeats update one open alert instead of creating new ones, so a flood of minor events cannot bury a real attack |
-| Redundancy and failover | Soft dependencies on the gateway and message provider; a three-member replica set or managed cluster in production (Phase 6) |
+| Redundancy and failover | Soft dependencies on the gateway and message provider; a three-member replica set or managed database is the owner's choice at deployment |
 | Training and access control | Least-privilege roles, masked data and the role notes on each screen |
-| Consistent patching | `npm audit` reports 0 vulnerabilities; Dependabot and Trivy in Phase 6 |
+| Consistent patching | `npm audit` and Trivy run in CI; Dependabot proposes updates weekly; base images are pinned by digest |
