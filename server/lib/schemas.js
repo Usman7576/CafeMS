@@ -88,7 +88,8 @@ module.exports = {
     status: z.enum(["Requested", "Confirmed", "Seated", "Completed", "Cancelled"]).optional()
   }).strict(),
   salesQuery: z.object({ date: isoDate().optional() }).strict(),
-  auditReview: z.object({ note: z.string().trim().min(3).max(200) }).strict(),
+  // Angle brackets are refused, so a note can never carry markup into the audit log
+  auditReview: z.object({ note: z.string().trim().min(3).max(200).regex(/^[^<>]*$/) }).strict(),
   auditQuery: z.object({
     severity: z.enum(["info", "warning", "high"]).optional(),
     limit: z.coerce.number().int().min(1).max(200).optional().default(100),

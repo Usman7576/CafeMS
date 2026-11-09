@@ -94,12 +94,19 @@ async function main() {
   async function waiterRun() {
     const times = [];
     let failed = 0;
+    const reasons = {};
     for (let i = 0; i < SAMPLES; i += 1) {
       const res = await request("GET", "/api/v1/snapshot", { headers: { Cookie: staff[i % staff.length], "X-Background-Refresh": "1" }, ip: cafeIp });
-      if (res.status !== 200) failed += 1;
+      if (res.status !== 200) {
+        failed += 1;
+        let code = "";
+        try { code = JSON.parse(res.body).error.code; } catch { /* not a JSON error */ }
+        const reason = `${res.status} ${code}`.trim();
+        reasons[reason] = (reasons[reason] || 0) + 1;
+      }
       times.push(res.ms);
     }
-    return { times, failed, p50: percentile(times, 50), p95: percentile(times, 95) };
+    return { times, failed, reasons, p50: percentile(times, 50), p95: percentile(times, 95) };
   }
 
   await waiterRun(); // warm-up
@@ -107,7 +114,9 @@ async function main() {
     const results = [];
     for (let i = 0; i < ROUNDS; i += 1) results.push(await waiterRun());
     const median = [...results].sort((a, b) => a.p95 - b.p95)[Math.floor(ROUNDS / 2)];
-    return { ...median, failed: results.reduce((total, r) => total + r.failed, 0), p95s: results.map((r) => r.p95) };
+    const reasons = {};
+    for (const r of results) for (const [reason, count] of Object.entries(r.reasons)) reasons[reason] = (reasons[reason] || 0) + count;
+    return { ...median, failed: results.reduce((total, r) => total + r.failed, 0), reasons, p95s: results.map((r) => r.p95) };
   };
   const baseline = await rounds();
 
@@ -159,6 +168,7 @@ function report(r) {
     `| Median response | ${ms(r.baseline.p50)} | ${ms(r.underAttack.p50)} |`,
     `| 95th percentile | ${ms(r.baseline.p95)} | ${ms(r.underAttack.p95)} |`,
     `| Failed requests | ${r.baseline.failed} of ${r.samples} | ${r.underAttack.failed} of ${r.samples} |`,
+    ...(r.underAttack.failed || r.baseline.failed ? ["", `Failures by status: ${JSON.stringify({ alone: r.baseline.reasons, underAttack: r.underAttack.reasons })}`] : []),
     "",
     `**The attack:** ${r.concurrency} requests in flight at a time, from ${r.attackers} addresses, mixing password guessing, booking-form spam and page loads. ${r.attack.limited.toLocaleString()} of ${r.attack.sent.toLocaleString()} attack requests (${Math.round((r.attack.limited / r.attack.sent) * 100)}%) were refused by the rate limits.`,
     "",

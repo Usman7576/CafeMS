@@ -152,6 +152,7 @@ describe("the audit log is reviewed regularly (Week 2, scenario 14)", () => {
   test("a review must say something, and only an Admin can record one", async () => {
     const admin = await as("Admin");
     assert.equal((await admin.post(`${API}/audit/review`, { note: "" })).status, 400);
+    assert.equal((await admin.post(`${API}/audit/review`, { note: "<script>alert(1)</script>" })).status, 400);
     assert.equal((await (await as("Waiter")).post(`${API}/audit/review`, { note: "Reviewed it" })).status, 403);
   });
 });
