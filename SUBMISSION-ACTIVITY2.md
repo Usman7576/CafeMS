@@ -1,3 +1,5 @@
+> This write-up describes the prototype as it stood at this activity. The current system is described in [README.md](README.md).
+
 # Development Activity 2: Role-Based Functional Prototype
 
 Same project as Activity 1: **Cafe Management System (CMS)**. It runs offline with plain HTML, CSS and JavaScript. Open `index.html`, or serve the folder locally.
@@ -120,8 +122,8 @@ Opening any protected page after logout sends the user back to the login page. T
 | | |
 |---|---|
 | **Project Name** | Cafe Management System (CMS) |
-| **Group Members** | M. Usman (22L-7991), _[member]_, _[member]_, _[member]_ |
-| **Live/Local Project** | _[public URL]_ (local: open `index.html`) |
+| **Group Members** | M. Usman (22L-7991) |
+| **Live/Local Project** | Not hosted publicly (local: open `index.html`) |
 | **Roles Implemented** | Cashier and Manager (Waiter, Kitchen and Admin also work) |
 | **Restricted Function** | Issue refund (Manager only) |
 | **Security Concept Applied** | RBAC / least privilege, plus masking of customer phone numbers and audit logging of denied actions |

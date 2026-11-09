@@ -75,6 +75,7 @@ Requirements are reviewed whenever the design changes, and each review is dated:
 
 | Date | Review | Outcome |
 | --- | --- | --- |
+| 2026-11-09 | Phase 7: every role's screens walked through in a browser, on desktop and phone width | Two defects fixed: refreshes redrew screens needlessly and took focus from the cash box; wide tables made phone pages too wide |
 | 2026-11-09 | Phase 6: scanners, deployment and load test | SR-28 added; findings fixed and recorded in SCAN-RESULTS.md |
 | 2026-11-07 | Phase 5: requirements written down with traceability | 27 requirements, all linked to code and tests |
 | 2026-11-06 | Fixes from the Phase 1 to 4 review | 16 findings fixed, each with a test |

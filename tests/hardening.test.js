@@ -335,6 +335,16 @@ describe("browser hardening found by the ZAP scan", () => {
   });
 });
 
+describe("screen refreshes", () => {
+  test("identical data gives an identical snapshot, so screens do not redraw for nothing", async () => {
+    const admin = await as("Admin");
+    await admin.get(`${API}/snapshot`);
+    const manager = await as("Manager");
+    const first = (await manager.get(`${API}/snapshot`, { headers: { "X-Background-Refresh": "1" } })).text;
+    for (let i = 0; i < 15; i++) assert.equal((await manager.get(`${API}/snapshot`, { headers: { "X-Background-Refresh": "1" } })).text, first);
+  });
+});
+
 describe("encryption", () => {
   test("a shortened GCM authentication tag is refused, so forged values cannot be accepted", () => {
     const { encrypt, decrypt } = require("../server/lib/crypto");

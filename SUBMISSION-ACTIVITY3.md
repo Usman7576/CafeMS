@@ -1,3 +1,5 @@
+> This write-up describes the prototype as it stood at this activity. The current system is described in [README.md](README.md).
+
 # Development Activity 3 — Parallel Module Development and Integration
 
 ## Part 1: Project and module selection
@@ -50,7 +52,7 @@ These modules are complementary: the first captures a new guest reservation, whi
 
 ## Part 3: Member 2 — Module 2 implementation
 
-**Responsible Group Member:** _[member name / roll no.]_
+**Responsible Group Member:** M. Usman (22L-7991)
 
 **Primary function:** Search, filter, inspect, and update reservation records from `reservations.html`.
 

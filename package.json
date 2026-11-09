@@ -18,7 +18,8 @@
     "restore": "node scripts/restore.js",
     "lint": "eslint .",
     "test:coverage": "node --test --test-concurrency=2 --experimental-test-coverage --test-coverage-include=\"server/**\" --test-coverage-lines=90 --test-coverage-branches=85 --test-coverage-functions=90 \"tests/**/*.test.js\"",
-    "load-test": "node scripts/load-test.js"
+    "load-test": "node scripts/load-test.js",
+    "concepts": "node scripts/check-concepts.js"
   },
   "engines": {
     "node": ">=20"

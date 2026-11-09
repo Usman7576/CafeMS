@@ -37,6 +37,8 @@ jobs:
         run: npm run lint
       - name: Traceability links
         run: npm run trace -- --check
+      - name: Concept coverage links
+        run: npm run concepts -- --check
       - name: Tests with coverage (includes backup and restore)
         run: npm run test:coverage
       - name: Known vulnerabilities in dependencies

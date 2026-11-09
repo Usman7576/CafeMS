@@ -1,106 +1,116 @@
 # CafeMS: a secure website and management system for cafes
 
-A secure, web-based Cafe Management System built as the semester project for **Secure Software Development (SSD)**.
-The prototype covers the full service loop across all five staff roles. A waiter takes an order, the kitchen prepares it, the cashier bills it, and it all appears in the manager's reports and the admin's tamper-evident audit log.
+CafeMS is a public cafe website with a staff system behind it, built for the **Secure Software Development** course. Customers see the menu and request a table. Staff take orders, run the kitchen, bill tables, manage stock and review reports.
 
-> **Live demo:** _add your public URL here_
+Every rule is enforced on the server. The browser only shows what the server allows.
 
-## Current status
+| | |
+| --- | --- |
+| **Author** | M. Usman (22L-7991) |
+| **Stack** | Node.js 24, Express, MongoDB replica set, vanilla JavaScript, three.js, Docker, Caddy |
+| **Evidence** | 330+ automated tests, all lecture concepts mapped in [CONCEPT-COVERAGE.md](docs/security/CONCEPT-COVERAGE.md) |
+| **Deployment** | Runs on any Linux server with Docker: see [DEPLOYMENT.md](docs/DEPLOYMENT.md). Netlify cannot host it |
 
-Security hardening is in progress on the `security-hardening` branch. All screens now work through the server API, and nothing is decided or stored in the browser. Later phases add the lecture analysis tools and the DevSecOps toolchain.
+## What it does
 
-There are no shared or default passwords. In development, `npm run seed:dev` creates the staff accounts with random passwords, shown once. Each person adds an authenticator app at first sign-in.
+| Who | What they can do |
+| --- | --- |
+| **Customer** | Browse the live menu, see opening hours, request a table online |
+| **Waiter** | Take and edit their own orders, serve, request the bill, manage reservations |
+| **Kitchen** | Move tickets from Placed to Preparing to Ready; never sees prices or customer data |
+| **Cashier** | Bill tables with cash, card or wallet, and discounts up to 10% |
+| **Manager** | Everything a cashier does, with discounts to 25%; refunds, stock, reports, reservations |
+| **Admin** | Menu and photos, staff and roles, cafe details, audit log, security alerts, risk register |
 
-Activity write-ups: [SUBMISSION.md](SUBMISSION.md) (Activity 1), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) (Activity 2: role-based prototype), and [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md) (Activity 3: parallel module development and integration).
+The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 
-## Pages
+## How it is secured
 
-| Page | Roles | What it does |
-|---|---|---|
-| `index.html` | Public | Landing page: purpose, 9 modules, roles, SR-1 to SR-8 |
-| `login.html` | Public | Password and authenticator sign-in, MFA enrolment, recovery codes |
-| `setup.html` | Public | Set a password from a single-use Admin invitation or reset link |
-| `dashboard.html` | Waiter | Shift KPIs, my orders (filters), ready-to-serve queue, floor plan, request bill |
-| `order.html` | Waiter | Take or **edit** an order: table picker, menu search/filter, ticket, live totals, notes |
-| `kitchen.html` | Kitchen | Live ticket board (New → Preparing → Ready) with colour-coded ticket timers |
-| `billing.html` | Cashier, Manager | Open tables, role-limited discounts, cash/card/wallet, change calculator, optional customer mobile (masked for cashiers), printable receipt, manager-only refunds |
-| `overview.html` | Manager, Admin | Revenue by hour, live floor, stock alerts, activity feed, admin settings |
-| `inventory.html` | Manager | Stock levels, low-stock alerts, restock / write-off with reasons |
-| `reports.html` | Manager, Admin | KPIs, hourly revenue, payment split, best sellers, categories, tax summary, refunds, CSV export |
-| `menu.html` | Admin | Add / edit / delete items, prices, on/off switch, large-price-change warning |
-| `users.html` | Admin | Create staff, change roles, enable/disable accounts, permission matrix |
-| `audit.html` | Admin | Hash-chained audit log with integrity check, filters, CSV export |
-| `reservation.html` | Waiter, Manager | Create and validate a table reservation |
-| `reservations.html` | Waiter, Manager | Search, filter and update reservation status |
-| `404.html` | Public | Custom not-found page |
+| Area | Control |
+| --- | --- |
+| Sign-in | Argon2id passwords, authenticator codes for all staff, lockout after 3 failures, rate limits |
+| Sessions | Signed `__Host-` HttpOnly, SameSite=Strict cookie with a revocable server record; 5-minute idle and 8-hour limits |
+| Access | One permission table on every route, ownership in every query, a second person for large refunds and Admin changes |
+| Input | Strict schemas that refuse unknown fields; totals worked out on the server |
+| Browser | Strict CSP with Trusted Types, no inline code, no third-party resources, CSRF token and Origin check |
+| Data | AES-256-GCM for customer details, masked numbers, 90-day retention, erasure on request, encrypted backups |
+| Accountability | Hash-chained audit log signed with Ed25519, written in the same transaction as each action; alerts |
+| Delivery | Non-root, read-only distroless container; HTTPS through Caddy; private database network with a least-privilege login |
+| Pipeline | ESLint, Semgrep, CodeQL, gitleaks, Trivy, OWASP ZAP, a restore drill and tests on every push |
 
-## How the data flows
+## Security documents
 
-```
-Waiter sends order ──► Kitchen: New → Preparing → Ready ──► Waiter serves ──► Waiter requests bill
-      │ stock deducted per recipe                                                   │
-      ▼                                                                             ▼
-Inventory (low-stock alerts, auto sold-out)            Cashier bills table → receipt → table freed
-                                                                                    │
-                        Manager reports / refunds  ◄────────────────────────────────┘
-                        Admin audit log ◄── every critical action from every role
-```
+| Document | Contents |
+| --- | --- |
+| [CONCEPT-COVERAGE.md](docs/security/CONCEPT-COVERAGE.md) | Every lecture concept, with the file and test that prove it |
+| [SECURITY-REQUIREMENTS.md](docs/security/SECURITY-REQUIREMENTS.md) | Functional, non-functional and regulatory requirements; review log |
+| [TRACEABILITY.md](docs/security/TRACEABILITY.md) | Requirement to threat to code to test; misuse cases |
+| [THREAT-MODEL.md](docs/security/THREAT-MODEL.md) | Six-step process, attackers, STRIDE, PASTA, OCTAVE and VAST |
+| [RISK-AND-FAILURE-ANALYSIS.md](docs/security/RISK-AND-FAILURE-ANALYSIS.md) | WSES, FMEA, dependency matrix and failure types |
+| [SCAN-RESULTS.md](docs/security/SCAN-RESULTS.md) | What each scanner found, and every accepted exception |
+| [LOAD-TEST.md](docs/security/LOAD-TEST.md) | Staff response times during a simulated flood |
+| [INCIDENT-RESPONSE.md](docs/security/INCIDENT-RESPONSE.md) | Runbook, playbooks, key rotation and the 72-hour breach steps |
+| [RESIDUAL-RISKS.md](docs/security/RESIDUAL-RISKS.md) | What remains, and why |
+| [OUT-OF-SCOPE.md](docs/security/OUT-OF-SCOPE.md) | What cannot be built inside a web app |
+| [BURP-TEST-SCRIPT.md](docs/security/BURP-TEST-SCRIPT.md) | The manual penetration test |
 
-When no kitchen user has the display open, the kitchen is **simulated**: an order moves to Preparing after about 10 s and to Ready about 20 s later. An admin can switch this off. The browser keeps a local cache for offline use, while the Node.js API synchronizes the application state to MongoDB. Use **Reset demo data** in the user menu to start again.
+Admins can also see risk scores on the Risk register page. The payment gateway and SMS or email delivery are simulated, because real ones need provider accounts.
 
-## Security-aware design
+## Run it locally
 
-| Requirement | In this prototype |
-|---|---|
-| SR-1 Strong authentication | Username format and password complexity rules; generic failure messages (no account enumeration) |
-| SR-3 RBAC / least privilege | Each role gets only its own navigation and pages. Opening another role's page redirects and writes an *Access denied* audit entry. Disabled or re-roled users are signed out on their next page load. Discount limits per role (Cashier 10%, Manager 25%). Refunds are manager-only: a cashier who clicks **Refund** gets *Access denied*, the data layer rejects the request again, and the attempt is audited. Admins can't demote or disable themselves, and at least one admin must always remain. |
-| Personal data (least privilege) | Customer mobile numbers are shown in full only to Manager/Admin. Cashiers get a masked value (`0300-•••••43`), and the masking happens in the data layer, so the full number never reaches a cashier's page. |
-| SR-4 Input validation / XSS | All data-layer writes are validated. All user text is rendered with `textContent`, never `innerHTML`. CSV exports neutralise spreadsheet formula injection. |
-| SR-6 Sessions | Auto sign-out after 5 min idle with a 30 s warning. Sign-in pauses after 5 failures. |
-| SR-7 Auditing | Sign-ins, failures, lockouts, access denials, price/menu changes, role and account changes, refunds, discounts, stock changes and exports are logged. Entries are **hash-chained**, so editing or deleting one is detected on the audit page. |
-| SR-8 Payment security | Card and wallet payments go through a (simulated) gateway. No card fields exist, and nothing is stored. |
-| Credential handling | Password never stored; POST-only form that can't submit before its script loads, so credentials never appear in URLs |
-
-> Hiding a button is **not** a security control. This is a frontend prototype, and everything above will be enforced again on the server: bcrypt/Argon2 hashing, server-side RBAC on every request, parameterised queries, HTTPS and a server-side audit log.
-
-## Tech
-
-Plain HTML5, CSS3 and vanilla JavaScript with no build step and no dependencies. Inter and JetBrains Mono fonts. Inline SVG icons (Lucide-style, MIT). Dependency-free SVG charts.
-
-```
-css/style.css        design system and all components
-js/icons.js          inline SVG icons
-js/common.js         DOM helper, toasts, modals, confirm dialog, charts, CSV export, session
-js/store.js          prototype data layer ("fake backend"): users, menu, stock, orders, bills, audit
-js/app.js            staff app shell: role guard, sidebar, top bar, notifications, Ctrl+K palette, idle timeout
-js/<page>.js         one script per page
-```
-
-Keyboard: **Ctrl/⌘ + K** opens quick search on any staff page. **Esc** closes dialogs.
-
-## Run locally
-
-Requires Node.js 20+ and Docker Desktop. MongoDB runs as a replica set in Docker, because payments and orders use transactions.
+You need Node.js 24 and Docker Desktop. MongoDB runs as a replica set in Docker, because payments and orders use transactions.
 
 ```bash
 npm install
-docker compose up -d --wait
+```
+
+```bash
 npm run setup:env
+```
+
+```bash
+docker compose up -d --wait
+```
+
+```bash
+npm run db:setup
+```
+
+```bash
 npm run seed:dev
+```
+
+```bash
 npm start
 ```
 
-Open http://localhost:3000. `setup:env` generates the secret keys in `.env`, which git ignores. The server refuses to start if a key is missing or weak, or if MongoDB is not a replica set.
+Open http://localhost:3000. `setup:env` creates the keys and database passwords in `.env`, which git ignores. The server refuses to start if a key is missing or weak. `seed:dev` creates staff accounts with random passwords, shown once. There are no default passwords, and each person adds an authenticator app at first sign-in.
 
-Run the tests with `npm test`. They use a temporary database and do not touch your data.
+## Commands
 
-Back up with `npm run backup`, which writes an encrypted file and checksum to `backups/`. Restore into an empty database with `npm run restore -- <file> <database name>`. Keep `BACKUP_KEY` somewhere other than the backups.
+| Command | What it does |
+| --- | --- |
+| `npm test` | All tests, using a temporary database |
+| `npm run test:coverage` | Tests with coverage thresholds |
+| `npm run lint` | ESLint with security rules |
+| `npm run trace` | Checks and regenerates the traceability matrix |
+| `npm run concepts` | Checks and regenerates the concept coverage |
+| `npm run deps:report` | Dependency matrix report and single points of failure |
+| `npm run load-test` | Staff response times during a simulated flood |
+| `npm run backup` and `npm run restore` | Encrypted backup, and restore into an empty database |
 
-## Team
+## Project layout
 
-| Name | Roll No. | Role |
-|---|---|---|
-| M. Usman | 22L-7991 | Team Lead |
-| _[Member]_ | _[Roll no.]_ | Backend |
-| _[Member]_ | _[Roll no.]_ | Frontend |
-| _[Member]_ | _[Roll no.]_ | Security / Testing |
+```
+server/        Express app, routes, services, security middleware
+public/        Pages, browser scripts, styles, self-hosted fonts and three.js
+scripts/       Setup, seed, backup, first Admin, load test and report tools
+tests/         Automated tests, including attack and failure tests
+deploy/        Production Compose stack and Caddy configuration
+docs/          Deployment guide and security documents
+.github/       CI, release checksums, Dependabot and the pull request checklist
+```
+
+Earlier coursework is in [SUBMISSION.md](SUBMISSION.md), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) and [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md). They describe the prototype as it stood at each activity.
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).

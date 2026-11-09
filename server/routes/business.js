@@ -193,7 +193,9 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
       constants: { tables: TABLES, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: TAX_RATE, discountLimit: Object.hasOwn(DISCOUNT_LIMIT, role) ? DISCOUNT_LIMIT[role] : 0 }
     };
     const parts = [];
-    const add = (key, load) => parts.push(load().then((value) => { snapshot[key] = value; }));
+    // Results are added in this fixed order, not as each query finishes, so identical data gives
+    // identical text and the screens redraw only when something really changed
+    const add = (key, load) => parts.push(load().then((value) => [key, value]));
     if (allowed("menu.read")) add("menu", () => (allowed("menu.write") ? catalog.listForAdmin() : catalog.listForSale()));
     if (allowed("orders.write")) {
       add("orders", () => orderService.listOwn(username));
@@ -211,8 +213,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     if (allowed("audit.read")) add("recentAudit", () => auditRows({ limit: 20 }));
     if (allowed("alerts.manage")) add("alerts", () => alerts.listOpen());
     add("cafe", () => cafe.get());
-    await Promise.all(parts);
-    res.json(snapshot);
+    res.json({ ...snapshot, ...Object.fromEntries(await Promise.all(parts)) });
   }));
 
   return router;

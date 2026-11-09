@@ -979,3 +979,6 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .dep-matrix td.dep-2 { background: var(--danger-50); color: var(--danger); font-weight: 700; }
 .dep-matrix td.dep-1 { background: var(--warn-50); color: var(--warn); font-weight: 700; }
 .dep-matrix td.dep-1a { background: var(--info-50); color: var(--info); font-weight: 700; }
+
+/* Wide tables scroll inside their own box, so they never make the whole page wider on a phone */
+.table-wrap { overflow-x: auto; max-width: 100%; }

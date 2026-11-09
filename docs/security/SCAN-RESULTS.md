@@ -1,11 +1,12 @@
 # Security scan results
 
-**On 9 November 2026 every scan of CafeMS's own code and image passed, after fixing what they found.** The only open findings are in the official Caddy and MongoDB images, where the publishers have not yet released fixes. CI repeats these scans on every push and weekly. CodeQL runs only on GitHub, so its first result comes from the first CI run.
+**On 9 November 2026 every scan of CafeMS's own code and image passed, after fixing what they found.** The only open findings are in the official Caddy and MongoDB images, where the publishers have not yet released fixes. CI repeats these scans on every push and weekly. CodeQL runs only on GitHub: it has 0 open alerts, after one false positive was dismissed with the reason given below.
 
 | Tool | What it checks | Result | Blocks CI |
 | --- | --- | --- | --- |
 | ESLint with security rules | Code quality and risky patterns | 0 problems | Yes |
 | `npm audit` | Known vulnerable packages | 0 vulnerabilities | Yes |
+| CodeQL (security-extended) | Data-flow analysis on GitHub | 5 of 6 alerts fixed; 1 false positive dismissed; 0 open | Reported in the Security tab |
 | Semgrep (6 rule packs) | Static analysis of 148 files | 0 findings | Yes |
 | gitleaks | Secrets in every commit | 0 leaks, 1 reviewed false positive | Yes |
 | Trivy, project | Packages, Dockerfile, secrets | 0 HIGH or CRITICAL | Yes |
@@ -28,6 +29,7 @@
 | ESLint | Asset path pattern could backtrack badly | Rewritten with no nested repetition |
 | ESLint | A category named `__proto__` was mishandled in reports | Fixed: uses a Map |
 | Trivy | The Node base image carried dozens of HIGH findings and a bundled npm | Fixed: moved to a distroless image, with no shell or npm |
+| CodeQL | Backtracking patterns in the password check, a file race in `setup-env`, incomplete table escaping | Fixed |
 | Load test | Public menu requests could flood the database | Fixed: 5-second cache and a tighter per-address limit |
 | Recovery drill | Upload and backup folders were not writable in the new image | Fixed, and photo upload added to the end-to-end check |
 
@@ -40,6 +42,7 @@ These are recorded so that the exceptions are visible and can be reviewed.
 | gitleaks, `tests/config.test.js` in commit aae2d37 | A fake value decoding to "secret-value-that-must-not-leak". The test now builds it at run time |
 | ESLint `detect-object-injection` (off) | Flags every `obj[key]`. All 31 server and script uses were reviewed; each is a fixed key, a number or guarded by `Object.hasOwn` |
 | ESLint `detect-non-literal-fs-filename` | Each server use has a written reason in the code; paths never come from a request |
+| CodeQL `js/missing-token-validation` | False positive: CodeQL recognises only certain CSRF libraries. The app refuses other origins in `csrfOriginProtection`, checks a per-session `X-CSRF-Token` in `requireAuth`, and uses a `SameSite=Strict` cookie, all tested |
 | ZAP 10027, suspicious comments | Matches ordinary comments containing words such as "from" |
 | ZAP 10049, storable content | Intended: pages revalidate with ETag, and API responses are `no-store` |
 | ZAP 10109 and 10111 | Informational: the site uses JavaScript, and it has a sign-in form |

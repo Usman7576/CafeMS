@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const { check, render, testTitles } = require("../scripts/check-traceability");
+const concepts = require("../scripts/check-concepts");
 
 const DOCS = path.join(__dirname, "..", "docs", "security");
 const data = JSON.parse(fs.readFileSync(path.join(DOCS, "traceability.json"), "utf8"));
@@ -42,4 +43,16 @@ test("links between the security documents point at files that exist", () => {
       assert.ok(fs.existsSync(path.join(DOCS, m[1])), `${file} links to missing ${m[1]}`);
     }
   }
+});
+
+test("every lecture concept names files and tests that exist, and the coverage page is up to date", () => {
+  const coverage = JSON.parse(fs.readFileSync(path.join(DOCS, "concept-coverage.json"), "utf8"));
+  assert.deepEqual(concepts.check(coverage), []);
+  assert.equal(fs.readFileSync(path.join(DOCS, "CONCEPT-COVERAGE.md"), "utf8").replace(/\r\n/g, "\n"), concepts.render(coverage), "Run: npm run concepts");
+});
+
+test("no placeholders remain in the project's documents", () => {
+  const root = path.join(__dirname, "..");
+  const files = ["README.md", "SECURITY.md", "SUBMISSION.md", "SUBMISSION-ACTIVITY2.md", "SUBMISSION-ACTIVITY3.md"];
+  for (const file of files) assert.doesNotMatch(fs.readFileSync(path.join(root, file), "utf8"), /_\[[^\]]*(?:member|roll|url)[^\]]*\]_|add your public URL/i, file);
 });

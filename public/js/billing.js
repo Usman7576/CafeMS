@@ -5,7 +5,7 @@
   if (!window.App) return;
   const h = CMS.h, role = App.session.role;
   const DISCOUNTS = [0, 5, 10, 15, 20, 25];
-  let selected = null, discount = 0, method = "Cash", tendered = "", phone = "", query = "";
+  let selected = null, discount = 0, method = "Cash", tendered = "", phone = "", query = "", billSignature = "";
 
   App.ready(function () {
     const m = /^#t(\d+)$/.exec(location.hash);
@@ -21,7 +21,19 @@
     document.getElementById("printReceipt").addEventListener("click", function () { window.print(); });
   });
 
-  function renderAll() { renderStats(); renderTables(); renderBill(); renderBills(); }
+  function renderAll() { renderStats(); renderTables(); refreshBill(); renderBills(); }
+
+  // A refresh must not disturb a cashier who is typing: the bill is redrawn only if it really changed,
+  // and then the field they were in keeps the focus
+  function refreshBill() {
+    const tab = selected ? Store.openTables().find(function (t) { return t.no === selected; }) : null;
+    if (JSON.stringify(tab || null) === billSignature) return;
+    const active = document.activeElement;
+    const focusedId = active && active.id && active.closest("#billBody") ? active.id : null;
+    renderBill();
+    const again = focusedId && document.getElementById(focusedId);
+    if (again) again.focus();
+  }
 
   function renderStats() {
     const paid = Store.bills().filter(function (b) { return b.status === "Paid"; }), open = Store.openTables();
@@ -60,6 +72,7 @@
   function renderBill() {
     const body = document.getElementById("billBody");
     const tab = selected ? Store.openTables().find(function (t) { return t.no === selected; }) : null;
+    billSignature = JSON.stringify(tab || null);
     body.replaceChildren();
     document.getElementById("billState").textContent = "";
     if (!tab) {

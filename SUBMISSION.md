@@ -1,3 +1,5 @@
+> This write-up describes the prototype as it stood at this activity. The current system is described in [README.md](README.md).
+
 # Development Activity 1 — Submission
 
 ## 1. Project Information
@@ -9,16 +11,13 @@
 | No. | Name | Roll No. | Role |
 |---|---|---|---|
 | 1 | M. Usman | 22L-7991 | Team Lead |
-| 2 | _[Member name]_ | _[Roll no.]_ | Backend |
-| 3 | _[Member name]_ | _[Roll no.]_ | Frontend |
-| 4 | _[Member name]_ | _[Roll no.]_ | Security / Testing |
 
 **Primary User Role:** Waiter. Takes orders at tables. Permissions: create/update orders, view table status.
 The other four roles (Kitchen, Cashier, Manager, Admin) also have working workspaces, so the whole flow can be demonstrated.
 
 ## 2. Live Website
 
-**Public URL:** _[paste hosted URL]_
+**Public URL:** Not hosted publicly; see README.md to run it
 
 **Demo sign-in:** username `m.usman` (Waiter) with any password that has 8+ characters, upper and lower case letters and a number. The other demo accounts are listed on the sign-in page.
 
@@ -49,7 +48,7 @@ Flow: Home → Sign in → role workspace (Waiter: Dashboard ⇄ Take order) →
 
 ## 5. Testing
 
-**Problem discovered:** _[record the problem your group member found while using the site without explanation]_
+**Problem discovered:** Not recorded in this write-up.
 
 Issues we found and fixed during our own testing:
 - A sign-in form submitted before its script loaded would have sent the password in the URL. Fixed: POST-only form, and the button stays disabled until the script is ready.
@@ -58,4 +57,4 @@ Issues we found and fixed during our own testing:
 - The kitchen simulation moved tickets on before the kitchen user could act. Fixed: it pauses while the kitchen display is open.
 - The receipt printed a stray "null" line and was taller than the screen. Fixed.
 
-**Improvement made:** _[how you fixed the group member's problem]_
+**Improvement made:** Not recorded in this write-up.
