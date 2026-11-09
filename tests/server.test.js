@@ -237,7 +237,7 @@ test("every route has a guard, so none can be left open by accident (complete me
       }
     }
   }
-  walk(app._router.stack, "");
+  walk(app.router.stack, "");
   assert.ok(found.length >= 15, `only found ${found.length} routes`);
   const unguarded = found.filter((r) => !r.guards.length).map((r) => `${r.method} ${r.path}`);
   assert.deepEqual(unguarded, []);

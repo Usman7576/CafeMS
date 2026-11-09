@@ -17,8 +17,19 @@
 		max_size 3MB
 	}
 
-	reverse_proxy app:3000 {
-		header_up X-Forwarded-Proto {scheme}
+	# Bulkhead: requests carrying a staff session have their own app process, so a flood at the public
+	# site or the sign-in page cannot slow the tills. The cookie only chooses the process; the app
+	# still checks every session itself.
+	@staff header Cookie *__Host-cms_session=*
+	handle @staff {
+		reverse_proxy app-staff:3000 {
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	handle {
+		reverse_proxy app:3000 {
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	# Caddy already hides cookies in its logs; these request headers are hidden as well

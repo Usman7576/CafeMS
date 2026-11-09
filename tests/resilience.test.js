@@ -394,8 +394,12 @@ describe("security alerts", () => {
 });
 
 describe("menu photo upload", () => {
-  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), crypto.randomBytes(64)]);
-  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), crypto.randomBytes(64)]);
+  let PNG, JPEG;
+  before(async () => {
+    const pixels = { create: { width: 16, height: 16, channels: 3, background: "#663300" } };
+    PNG = await require("sharp")(pixels).png().toBuffer();
+    JPEG = await require("sharp")(pixels).jpeg().toBuffer();
+  });
   const upload = (client, id, type, body) => {
     const cookie = Object.entries(client.jar).map(([k, v]) => `${k}=${v}`).join("; ");
     return client.loadCsrf().then((me) => request(app).put(`${API}/menu/${id}/photo`).set("Cookie", cookie).set("Origin", ORIGIN).set("X-CSRF-Token", me.body.csrfToken).set("Content-Type", type).send(body));

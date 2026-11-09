@@ -379,14 +379,20 @@
       "code": [
         "server/lib/crypto.js",
         "server/services/reservations.js",
-        "server/services/billing.js"
+        "server/services/billing.js",
+        "server/routes/business.js",
+        "deploy/docker-compose.yml",
+        "scripts/setup-env.js"
       ],
       "tests": [
         "name, phone and notes are encrypted at rest",
         "only a Manager or Admin can see the full number, and it is logged",
         "waiters see a masked phone; only a Manager or Admin can reveal it, with a log entry (finding 32)",
         "a shortened GCM authentication tag is refused, so forged values cannot be accepted",
-        "searching by number is limited per person and recorded, without storing the number"
+        "searching by number is limited per person and recorded, without storing the number",
+        "opening reservations is recorded once an hour per person, without repeating on every refresh",
+        "opening one bill is recorded, and many views raise an alert",
+        "every database file is encrypted at rest with AES-256, and the key stays out of git and the image"
       ]
     },
     {
@@ -404,7 +410,9 @@
       "tests": [
         "scripts, SVG, HTML and disguised files are refused and recorded",
         "a file over 2 MB is refused",
-        "uploads cannot be stored inside the web root"
+        "uploads cannot be stored inside the web root",
+        "content hidden after a real image, and its metadata, do not survive",
+        "a file with an image header that is not really an image is refused and recorded"
       ]
     },
     {
@@ -452,7 +460,7 @@
       "id": "SR-16",
       "type": "Functional",
       "priority": "Medium",
-      "text": "The system shall raise de-duplicated alerts for failed sign-ins per person and per address, denials, bulk exports, number views, refund spikes and payment conflicts.",
+      "text": "The system shall raise de-duplicated alerts for failed sign-ins per person and per address, denials, bulk exports, number views, refund spikes and payment conflicts, and shall also alert on sign-ins from a new network, access, price and security setting changes, many record views and stopped backups, in a list a flood cannot hide.",
       "threats": [
         "T-01",
         "T-19",
@@ -460,12 +468,23 @@
       ],
       "code": [
         "server/services/alerts.js",
-        "server/workers.js"
+        "server/workers.js",
+        "server/services/opsChecks.js",
+        "server/routes/auth.js",
+        "public/js/audit.js"
       ],
       "tests": [
         "failed sign-ins, denials, exports, number views and refunds each raise an alert",
         "one password tried against many usernames from one address raises an alert (password spraying)",
-        "a flood updates one alert instead of creating many"
+        "a flood updates one alert instead of creating many",
+        "a flood of low-value alerts cannot push a serious one out of the Admin's list",
+        "the most serious alerts are listed first",
+        "a role change raises an alert",
+        "many price changes by one person raise an alert",
+        "a changed security setting is recorded by name and raises an alert",
+        "a new network raises an alert; a known one, and a person's first sign-in, do not",
+        "an overdue review raises a reminder, and recording a review clears it",
+        "a review must say something, and only an Admin can record one"
       ]
     },
     {
@@ -541,7 +560,10 @@
         "server/config.js",
         "server/index.js",
         "server/services/publicCache.js",
-        "scripts/load-test.js"
+        "scripts/load-test.js",
+        "server/lib/passwords.js",
+        "deploy/Caddyfile",
+        "deploy/docker-compose.yml"
       ],
       "tests": [
         "the general API rate limit applies",
@@ -549,7 +571,9 @@
         "pages and health checks are limited too",
         "oversized bodies are refused",
         "one address can send only a limited number of requests",
-        "one address can read the public API only a limited number of times"
+        "one address can read the public API only a limited number of times",
+        "only a few passwords are hashed at once, and an overfull queue is refused",
+        "staff sessions and public traffic are served by separate app processes"
       ],
       "note": "Measured under a simulated flood in LOAD-TEST.md: no staff request failed, but response times do not meet the Week 4 example of no more than 10% slower."
     },
@@ -586,14 +610,17 @@
         "scripts/restore.js",
         "server/lifecycle.js",
         "deploy/docker-compose.yml",
-        "deploy/docker-compose.ha.yml"
+        "deploy/docker-compose.ha.yml",
+        "server/services/opsChecks.js"
       ],
       "tests": [
         "a restore brings back every record, and the audit chain still verifies",
         "an altered file or the wrong key is refused",
         "a request in progress finishes, then the database closes and the process exits cleanly",
         "a backup taken while the cafe is busy restores with a valid audit chain",
-        "old backups are removed, and only files this tool made"
+        "old backups are removed, and only files this tool made",
+        "no recent backup raises an alert, and a recent one does not",
+        "the status record stays out of backups, so a restore still starts from an empty database"
       ]
     },
     {

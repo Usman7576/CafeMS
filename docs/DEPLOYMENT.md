@@ -1,6 +1,6 @@
 # Deploying CafeMS
 
-**CafeMS runs on any Linux server with Docker, and Caddy gets its HTTPS certificate automatically.** You need a server with at least 2 GB of memory, a domain name, and about 15 minutes. Netlify cannot host it, because it has no way to run the server or database.
+**CafeMS runs on any Linux server with Docker, and Caddy gets its HTTPS certificate automatically.** You need a server with at least 3 GB of memory, a domain name, and about 15 minutes. Netlify cannot host it, because it has no way to run the server or database.
 
 ## Before real customers use it
 
@@ -9,6 +9,9 @@
 | **Connect a real payment gateway, or take cash only** | The payment gateway is simulated, so Card and Wallet payments are marked Paid without any money moving |
 | **Connect a real SMS or email provider if you want messages sent** | Receipts and staff notices are queued and logged, but nothing is actually delivered |
 | **Decide how the database survives a failure** | The default stack runs one database. Use the three-member option below, keep off-site backups, and use separate servers or a managed database to survive losing the whole machine |
+| **Save the database encryption key** | Every database file is encrypted with AES-256-GCM using `deploy/.mongo-encryption-key`. Without that file the database cannot be read, so keep a copy away from the server |
+| **Turn on your provider's disk encryption if you can** | The key file sits on the same server as the data, so disk encryption adds a layer if a whole disk is stolen |
+| **Schedule nightly backups** | An alert appears on the Security page if no backup has succeeded for 26 hours |
 | **Consider flood protection such as Cloudflare** | The app limits requests, but a large attack needs protection before traffic reaches the server |
 
 ## Deploy
@@ -61,7 +64,7 @@ Use both `-f` options on every later `docker compose` command too.
 
 ## Back up, and test the backup
 
-Keep a copy of `deploy/.env` somewhere safe and separate from the server. **Without it, the backups and encrypted customer data cannot be read.**
+Keep a copy of `deploy/.env` and `deploy/.mongo-encryption-key` somewhere safe and separate from the server. **Without them, the backups and encrypted data cannot be read.**
 
 Take a backup:
 
@@ -90,10 +93,14 @@ docker compose -f deploy/docker-compose.yml run --rm restore /backups/YOUR-FILE.
 ```
 
 ```bash
-docker compose -f deploy/docker-compose.yml restart app
+docker compose -f deploy/docker-compose.yml restart app app-staff
 ```
 
 The same `deploy/.env` must be in place, because it holds the keys that decrypt the data. The restore fails if the audit chain does not verify. If you erased a customer's data after that backup was made, erase it again. CI practises this whole recovery on every run.
+
+## Review the audit log every week
+
+The Admin opens the Audit page, reads the week's entries, follows up anything unexpected and clicks **Mark as reviewed**. The review is recorded, and a reminder appears on the Security page if none has been recorded for 7 days.
 
 ## Update
 

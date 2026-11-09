@@ -77,7 +77,7 @@ The audit of the prototype found 33 findings, and the review of Phases 1 to 4 fo
 | Weakness | Why it remains | Compensating control |
 | --- | --- | --- |
 | A shared cafe device keeps a session for up to 5 idle minutes | A shorter limit would sign staff out mid-order | Sign-out on the device, session list with revoke |
-| Rate limits are kept in the server's memory | One server instance is enough for a cafe | The stack runs one app container; a shared store is needed before adding more |
+| Rate limits are kept in each app process's memory | Staff and public traffic go to separate processes, so counters are not shared | Account lockout is in the database and counts across both; a shared store is needed before adding more |
 | Payment gateway and SMS are simulated | A real one needs a merchant account | Interfaces are signed and timed out as a real one would be |
 | Anyone who knows a username can lock that account for 15 minutes | The course requires lockout after 3 failures, and it stops password guessing | Another Admin can unlock at once; the server's operator can recover an Admin; each lock raises an alert |
 | A Manager can refund up to Rs 5,000 alone | A second person for every refund would stall service | Refund-spike alert, audit log, fresh code for every refund |

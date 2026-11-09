@@ -66,6 +66,7 @@ describe("every role against every route (RBAC matrix)", () => {
     ["get", "/reports/sales.csv", ["Manager", "Admin"]],
     ["get", "/audit", ["Admin"]],
     ["get", "/audit/verify", ["Admin"]],
+    ["post", "/audit/review", ["Admin"]],
     ["get", "/audit/public-keys", ["Admin"]],
     ["get", "/alerts", ["Admin"]],
     ["post", "/alerts/aaaaaaaaaaaaaaaaaaaaaaaa/acknowledge", ["Admin"]],

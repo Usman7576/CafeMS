@@ -10,5 +10,6 @@ node_modules/
 # Production secrets and data, made by: npm run setup:env -- --production
 deploy/.env
 deploy/.mongo-keyfile
+deploy/.mongo-encryption-key
 deploy/backups/
 coverage/

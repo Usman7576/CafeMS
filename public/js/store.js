@@ -159,6 +159,7 @@
       return normalize(result.entries);
     },
     verifyAudit: function () { return Api.call("GET", "/audit/verify"); },
+    reviewAudit: function (note) { return Api.call("POST", "/audit/review", { note: note }); },
     billPhone: async function (no) { return (await Api.call("GET", "/bills/" + encodeURIComponent(no) + "/phone")).phone; },
     reservationPhone: async function (id) { return (await Api.call("GET", "/reservations/" + encodeURIComponent(id) + "/phone")).phone; },
 

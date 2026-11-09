@@ -1,7 +1,7 @@
 const { test, before, after, describe } = require("node:test");
 const assert = require("node:assert/strict");
 const jwt = require("jsonwebtoken");
-const { authenticator } = require("otplib");
+const authenticator = require("../server/lib/totp");
 const { startDb, buildApp, browser, createUser, freshCode, signIn, PASSWORD } = require("./helpers");
 const { hashToken } = require("../server/lib/crypto");
 const { SESSION_COOKIE } = require("../server/services/sessions");

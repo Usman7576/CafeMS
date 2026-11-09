@@ -34,6 +34,7 @@ const schema = z.object({
   MONGODB_DB: z.string().regex(/^[A-Za-z0-9_-]{1,63}$/).default("cafems"),
   APP_ORIGIN: z.string().url().default("http://localhost:3000"),
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  RUN_WORKERS: z.enum(["true", "false"]).default("true"),
   UPLOAD_DIR: z.string().min(1).default("uploads")
 });
 
@@ -75,6 +76,7 @@ function loadConfig(env) {
     appOrigin: s.APP_ORIGIN,
     usesTls: origin.protocol === "https:",
     trustProxy: s.TRUST_PROXY,
+    runWorkers: s.RUN_WORKERS === "true",
     jwt,
     data,
     blindIndexKey,
@@ -84,6 +86,10 @@ function loadConfig(env) {
     retentionDays: 90,
     refundApprovalLimit: 5000,
     refundWindowDays: 30,
+    // An alert is raised when no backup has succeeded for this long. Nightly backups allow a late run.
+    backupMaxAgeHours: isProduction ? 26 : 0,
+    // An alert is raised when nobody has recorded reviewing the audit log for this long
+    logReviewDays: isProduction ? 7 : 0,
     limits: Object.freeze({
       jsonBody: "100kb",
       photoBody: "2mb",

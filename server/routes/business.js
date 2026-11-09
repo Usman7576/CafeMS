@@ -13,9 +13,30 @@ const { recordEvent, verifyChain, publicKeys } = require("../services/auditLog")
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const params = (schema) => validate(schema, "params");
 
+const VIEW_RECORD_MS = 60 * 60 * 1000;
+const MAX_VIEW_KEYS = 5000;
+
 function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
   const router = express.Router();
   const { requireAuth, requirePermission, requireStepUp } = middleware;
+  // Opening customer records is recorded, but screens refresh every few seconds, so the same view by the
+  // same person is written once an hour. Opening many different records still adds up to an alert.
+  const viewed = new Map();
+  async function recordView(req, action, what, details) {
+    const { username, role } = req.auth.user;
+    const key = `${username}|${action}|${what}`;
+    const now = Date.now();
+    if (viewed.get(key) > now - VIEW_RECORD_MS) return;
+    await recordEvent(db, req, { actor: username, role, action, details, severity: "info" });
+    if (viewed.size >= MAX_VIEW_KEYS) viewed.clear();
+    viewed.set(key, now);
+  }
+  async function viewedList(req, what, label, load) {
+    const records = await load();
+    await recordView(req, "Customer records viewed", `${what}:{}`, `${label} · ${records.length} records`);
+    return records;
+  }
+
   const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, risk, publicCache } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
@@ -103,10 +124,14 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   }));
   // Past days are for roles with report access; a cashier works with today's bills only
   router.get("/bills", ...allow("billing.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => {
-    res.json({ bills: await billing.list(can(req.auth.user.role, "reports.read") ? req.validQuery : {}) });
+    const bills = await billing.list(can(req.auth.user.role, "reports.read") ? req.validQuery : {});
+    await recordView(req, "Customer records viewed", `bills:${JSON.stringify(req.validQuery)}`, `Bills · ${bills.length} records`);
+    res.json({ bills });
   }));
   router.get("/bills/:no", ...allow("billing.read"), params(schemas.params.billNo), wrap(async (req, res) => {
-    res.json(await billing.get(req.validParams.no, { todayOnly: !can(req.auth.user.role, "reports.read") }));
+    const bill = await billing.get(req.validParams.no, { todayOnly: !can(req.auth.user.role, "reports.read") });
+    await recordView(req, "Bill viewed", req.validParams.no, req.validParams.no);
+    res.json(bill);
   }));
   router.get("/bills/:no/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.billNo), wrap(async (req, res) => res.json({ phone: await billing.revealPhone(req, req.validParams.no) })));
   // Money leaves the business, so the manager confirms an authenticator code first
@@ -129,7 +154,11 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   }));
 
   // ---------- Reservations ----------
-  router.get("/reservations", ...allow("reservations.write"), validate(schemas.reservationQuery, "query"), wrap(async (req, res) => res.json({ reservations: await reservations.list(req.validQuery) })));
+  router.get("/reservations", ...allow("reservations.write"), validate(schemas.reservationQuery, "query"), wrap(async (req, res) => {
+    const found = await reservations.list(req.validQuery);
+    await recordView(req, "Customer records viewed", `reservations:${JSON.stringify(req.validQuery)}`, `Reservations · ${found.length} records`);
+    res.json({ reservations: found });
+  }));
   // Only the ID is kept for repeat requests, so guest details are never stored unencrypted
   router.post("/reservations", ...allow("reservations.write"), validate(schemas.reservation), wrap(async (req, res) => {
     const outcome = await idempotentTransaction(db, req, async (session) => ({ status: 201, body: { id: (await reservations.create(req, req.body, session)).id } }));
@@ -167,6 +196,11 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   };
   router.get("/audit", ...allow("audit.read"), validate(schemas.auditQuery, "query"), wrap(async (req, res) => res.json({ entries: await auditRows(req.validQuery) })));
   router.get("/audit/verify", ...allow("audit.read"), personalLimiter("audit-verify", 60), wrap(async (_req, res) => res.json(await verifyChain(db))));
+  // Recording the review is what makes it a routine: an overdue one raises a reminder
+  router.post("/audit/review", ...allow("audit.read"), validate(schemas.auditReview), wrap(async (req, res) => {
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Audit log reviewed", details: req.body.note, severity: "info" });
+    res.status(204).end();
+  }));
   router.get("/audit/public-keys", ...allow("audit.read"), wrap(async (_req, res) => res.json({ keys: publicKeys(db) })));
 
   // ---------- Security alerts and customer data rights ----------
@@ -212,9 +246,9 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     }
     if (allowed("kitchen.read")) add("tickets", () => orderService.kitchenTickets());
     if (allowed("billing.pay") || allowed("reports.read")) add("openTables", () => billing.openTables());
-    if (allowed("billing.read")) add("bills", () => billing.list());
+    if (allowed("billing.read")) add("bills", () => viewedList(req, "bills", "Bills", () => billing.list()));
     if (allowed("inventory.read")) add("inventory", () => catalog.listInventory());
-    if (allowed("reservations.write")) add("reservations", () => reservations.list());
+    if (allowed("reservations.write")) add("reservations", () => viewedList(req, "reservations", "Reservations", () => reservations.list()));
     if (allowed("reports.read")) add("sales", () => billing.salesReport());
     if (allowed("approvals.read")) add("approvals", () => approvals.listFor(role));
     if (allowed("users.manage")) add("users", () => userService.list());

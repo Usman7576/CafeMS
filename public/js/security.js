@@ -32,7 +32,7 @@
     alerts.forEach(function (a) {
       list.appendChild(h("li", null, [
         h("span", { class: "tno " + (a.severity === "high" ? "danger" : "warn"), icon: "alert", iconSize: 18 }),
-        h("div", { class: "meta" }, [h("b", { text: a.title }), h("small", { text: a.details + " · " + CMS.timeAgo(a.lastSeenAt) })]),
+        h("div", { class: "meta" }, [h("b", { text: a.title }), h("small", { text: a.details + " · " + CMS.timeAgo(a.lastSeenAt) + (a.similarHidden ? " · and " + a.similarHidden + " more like this" : "") })]),
         h("button", { class: "btn btn-secondary btn-sm", type: "button", text: "Acknowledge", onclick: function (e) {
           const button = e.currentTarget;
           CMS.busy(button, function () { return CMS.attempt(function () { return Store.acknowledgeAlert(a.id); }); });

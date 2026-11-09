@@ -8,7 +8,8 @@
 # Start with this file on a new deployment; adding it later needs the members joined by hand.
 
 x-member: &member
-  image: mongo:7@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
+  image: percona/percona-server-mongodb:7.0@sha256:9a1e1e0997654a2ecd42480f0950813d60849b3585e5cf4bd0261d6ec62cac97
+  user: "0:0"
   read_only: true
   cap_drop: [ALL]
   cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
@@ -17,8 +18,8 @@ x-member: &member
   entrypoint:
     - bash
     - -c
-    - install -m 400 -o mongodb -g mongodb /run/secrets/mongo_keyfile /tmp/keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/keyfile
-  secrets: [mongo_keyfile]
+    - install -m 400 -o 1001 -g 0 /run/secrets/mongo_keyfile /tmp/keyfile && install -m 400 -o 1001 -g 0 /run/secrets/mongo_encryption_key /tmp/encryption-key && exec /entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/keyfile --enableEncryption --encryptionKeyFile /tmp/encryption-key --encryptionCipherMode AES256-GCM
+  secrets: [mongo_keyfile, mongo_encryption_key]
   tmpfs: [/tmp]
   networks: [backend]
 
@@ -51,6 +52,10 @@ services:
       start_period: 30s
 
   app:
+    environment:
+      MONGODB_URI: *uri
+
+  app-staff:
     environment:
       MONGODB_URI: *uri
 

@@ -4,7 +4,7 @@
 
 ## Your account
 
-- **Use a password you use nowhere else.** At least 12 characters. A few unrelated words work well. Common words with numbers added, such as `Password123!`, are refused.
+- **Use a password you use nowhere else.** At least 12 characters, with upper and lower case letters, a number and a symbol. A few unrelated words joined with a number and a symbol work well. Common words with numbers added, such as `Password123!`, are refused.
 - **Never share your password or your authenticator codes**, even with a manager. Nobody from the cafe or IT will ever ask for them.
 - **Keep your recovery codes somewhere safe and private**, away from your phone. Each one works once.
 - **New phone or lost phone?** Tell an Admin straight away. They will send you a new setup link and your old phone will stop working.

@@ -1,4 +1,4 @@
-# CafeMS production stack: Caddy (TLS) -> app -> MongoDB replica set.
+# CafeMS production stack: Caddy (TLS) -> app and app-staff -> MongoDB replica set.
 #
 #   npm run setup:env -- --production --domain cafe.example.com
 #   docker compose -f deploy/docker-compose.yml up -d --build --wait
@@ -33,17 +33,22 @@ x-app-keys: &app-keys
 services:
   mongo:
     <<: *hardening
-    image: mongo:7@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
-    # MongoDB's start-up changes the key file's owner and drops to its own user, which needs these five
+    # Percona Server for MongoDB is the same database with free encryption at rest: every data file,
+    # index and journal is written with AES-256-GCM.
+    image: percona/percona-server-mongodb:7.0@sha256:9a1e1e0997654a2ecd42480f0950813d60849b3585e5cf4bd0261d6ec62cac97
+    # It starts as root only to set the key files' owner, then drops to its own user, which needs these five
+    user: "0:0"
     cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
     entrypoint:
       - bash
       - -c
-      - install -m 400 -o mongodb -g mongodb /run/secrets/mongo_keyfile /tmp/keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/keyfile
+      - install -m 400 -o 1001 -g 0 /run/secrets/mongo_keyfile /tmp/keyfile && install -m 400 -o 1001 -g 0 /run/secrets/mongo_encryption_key /tmp/encryption-key && exec /entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/keyfile --enableEncryption --encryptionKeyFile /tmp/encryption-key --encryptionCipherMode AES256-GCM
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
-    secrets: [mongo_keyfile]
+      # The database has no route to the internet in any case; this also turns the vendor's reporting off
+      PERCONA_TELEMETRY_DISABLE: "1"
+    secrets: [mongo_keyfile, mongo_encryption_key]
     tmpfs: [/tmp]
     volumes:
       - mongo-data:/data/db
@@ -76,11 +81,13 @@ services:
       mongo: { condition: service_healthy }
     networks: [backend]
 
-  app:
+  # Serves everyone without a staff session, and runs the background jobs. Caddy sends signed-in staff
+  # to app-staff instead, so a flood at the public site cannot use the staff screens' CPU.
+  app: &app-service
     <<: *hardening
     image: cafems-app:latest
     build: { context: .., dockerfile: Dockerfile }
-    environment:
+    environment: &app-env
       <<: *app-keys
       NODE_ENV: production
       APP_ORIGIN: ${APP_ORIGIN:?}
@@ -99,6 +106,12 @@ services:
       resources:
         limits: { memory: 512m, cpus: "1.0" }
 
+  app-staff:
+    <<: *app-service
+    environment:
+      <<: *app-env
+      RUN_WORKERS: "false"
+
   caddy:
     <<: *hardening
     image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
@@ -115,6 +128,7 @@ services:
       - caddy-config:/config
     depends_on:
       app: { condition: service_healthy }
+      app-staff: { condition: service_healthy }
     networks: [frontend]
 
   # Tools, run on demand. See docs/DEPLOYMENT.md for the backup schedule and the restore steps.
@@ -146,6 +160,8 @@ services:
 secrets:
   mongo_keyfile:
     file: ./.mongo-keyfile
+  mongo_encryption_key:
+    file: ./.mongo-encryption-key
 
 networks:
   # No route to the internet: only the app can reach the database

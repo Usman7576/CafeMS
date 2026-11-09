@@ -9,6 +9,9 @@ const path = require("path");
 const zlib = require("zlib");
 const { BSON } = require("mongodb");
 
+// Live operational status (last backup time, settings seen). It belongs to this server, so it is neither
+// backed up nor counted when checking that a restore target is empty.
+const OPERATIONAL = "system_status";
 const MAGIC = Buffer.from("CAFEMSBK1");
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
@@ -34,6 +37,7 @@ async function createBackup({ db, key, directory, uploadDir }) {
   const snapshot = db.client.startSession({ snapshot: true });
   try {
     for (const { name } of await db.listCollections({}, { nameOnly: true }).toArray()) {
+      if (name === OPERATIONAL) continue;
       collections[name] = await db.collection(name).find({}, { session: snapshot }).toArray();
       counts[name] = collections[name].length;
     }
@@ -96,6 +100,7 @@ async function readBackup(backupPath, key) {
 async function restoreBackup({ backupPath, key, db, uploadDir }) {
   const { manifest, data } = await readBackup(backupPath, key);
   for (const { name } of await db.listCollections({}, { nameOnly: true }).toArray()) {
+    if (name === OPERATIONAL) continue;
     if (await db.collection(name).estimatedDocumentCount()) throw new Error(`The target database is not empty (${name}). Restore into an empty database.`);
   }
   for (const [name, rows] of Object.entries(data.collections)) {

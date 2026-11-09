@@ -23,6 +23,10 @@ Keep a written timeline from the first minute: what was seen, what was done, by 
 | Unusual exports, number views or refunds | Admin Security page |
 | A bill possibly paid twice, or refused gateway callbacks | Admin Security page |
 | Audit chain broken | Admin Security page; checked every 15 minutes |
+| Sign-in from a new network, staff access or prices changed | Admin Security page |
+| Security settings changed since the last start | Admin Security page |
+| Backups have stopped (none for 26 hours) | Admin Security page |
+| The weekly audit log review is overdue | Admin Security page |
 | Messages not being delivered | Admin Security page |
 | The site is slow or down | Health check at `/api/health/ready`; container status with `C ps` |
 | A person reports something | Staff, a customer or the repository's private vulnerability report |
@@ -106,6 +110,7 @@ Edit `deploy/.env`, then apply the change with `docker compose -f deploy/docker-
 | `GATEWAY_SECRET` | Change it together with the payment provider | Callbacks signed with the old secret are refused |
 | `BACKUP_KEY` | Keep the old key for old backups, and take a new backup | Each backup needs the key it was made with |
 | Database passwords | Change the password in MongoDB and in `deploy/.env` | The app reconnects with the new one |
+| `.mongo-encryption-key` | Cannot be swapped in place: back up, start a new database with a new key, and restore | Keep the old key until the new database is confirmed |
 | `BLIND_INDEX_KEY` | Cannot be swapped without re-indexing every number; plan this with a developer | Phone search stops matching old records |
 
 Generate a new key with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.

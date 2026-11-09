@@ -1,6 +1,6 @@
 const { test, before, after, describe } = require("node:test");
 const assert = require("node:assert/strict");
-const { authenticator } = require("otplib");
+const authenticator = require("../server/lib/totp");
 const { startDb, buildApp, browser, createUser, freshCode, signIn } = require("./helpers");
 const { hashToken } = require("../server/lib/crypto");
 

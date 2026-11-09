@@ -35,15 +35,15 @@ This document follows the Week 4 process: define requirements early, involve sta
 | SR-09 | Functional | High | Strict CSP with Trusted Types; no HTML built from strings |
 | SR-10 | Functional | High | Second person for refunds over Rs 5,000 and Admin changes; fresh code for sensitive actions |
 | SR-11 | Functional | High | Signed, hash-chained audit log written in the same transaction as the action |
-| SR-12 | Functional | High | Customer data encrypted with AES-256-GCM, masked by role, full views logged |
+| SR-12 | Functional | High | All database files and customer fields encrypted with AES-256-GCM, masked by role; opening records and full views logged |
 | SR-13 | Functional | Medium | Photo uploads checked by signature, 2 MB limit, stored outside the web root |
 | SR-14 | Functional | High | Idempotency keys, transactions and version checks |
 | SR-15 | Functional | High | Signed, single-use gateway callbacks; no second payment during a charge |
-| SR-16 | Functional | Medium | De-duplicated alerts for sign-in failures, denials, exports, number views, refunds, payment conflicts |
+| SR-16 | Functional | Medium | De-duplicated alerts, which a flood cannot hide, for sign-in failures, new networks, denials, exports, record and number views, refunds, payment conflicts, access and price changes, security settings and stopped backups |
 | SR-17 | Functional | High | Least-privilege database account; production needs database credentials |
 | SR-18 | Functional | High | Refuse to start with weak secrets; generic error messages |
 | SR-19 | Functional | Medium | Exports limited per person, recorded and safe in spreadsheets |
-| SR-20 | Non-functional | High | Keeps serving under a flood: limits per address, per person and for pages |
+| SR-20 | Non-functional | High | Keeps serving under a flood: staff have their own process; limits per address, per person and for pages |
 | SR-21 | Non-functional | Medium | A slow gateway or message provider never stops the till |
 | SR-22 | Non-functional | Medium | Encrypted backups with tested restore; graceful shutdown |
 | SR-23 | Non-functional | Low | Active staff stay signed in; automatic refreshes never keep an idle session open |
@@ -75,6 +75,7 @@ Requirements are reviewed whenever the design changes, and each review is dated:
 
 | Date | Review | Outcome |
 | --- | --- | --- |
+| 2026-11-09 | Second check of the code against all eight decks ([CODE-REVIEW.md](CODE-REVIEW.md)) | 1 proven weakness and 7 partial concepts addressed; the flood target greatly improved but not fully met |
 | 2026-11-09 | Independent review of the finished system ([CODE-REVIEW.md](CODE-REVIEW.md)) | 18 defects and 8 thin concepts; all addressed, each code defect with a test |
 | 2026-11-09 | Phase 7: every role's screens walked through in a browser, on desktop and phone width | Two defects fixed: refreshes redrew screens needlessly and took focus from the cash box; wide tables made phone pages too wide |
 | 2026-11-09 | Phase 6: scanners, deployment and load test | SR-28 added; findings fixed and recorded in SCAN-RESULTS.md |

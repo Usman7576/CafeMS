@@ -6,6 +6,7 @@
 .seed-credentials.txt
 deploy/.env
 deploy/.mongo-keyfile
+deploy/.mongo-encryption-key
 .git
 .github
 .claude

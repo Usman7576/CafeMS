@@ -1,6 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
-const { randomToken, hashToken, blindIndex } = require("../lib/crypto");
+const { randomToken, hashToken, blindIndex, networkRef } = require("../lib/crypto");
+const MAX_KNOWN_NETWORKS = 20;
 const { hashPassword, verifyPassword, dummyVerify, passwordProblems, MAX_LENGTH } = require("../lib/passwords");
 const { AppError, invalidInput } = require("../lib/errors");
 const { publicRoute, validate } = require("../middleware/auth");
@@ -148,8 +149,15 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
 
       const token = await atomically(async (session) => {
         await challenges.deleteOne({ _id: challenge._id }, { session });
-        await users.updateOne({ username: user.username }, { $set: { failedAttempts: 0, lockedUntil: null } }, { session });
+        const known = user.knownNetworks || [];
+        const network = networkRef(req.ip, config.blindIndexKey);
+        const newNetwork = !known.includes(network);
+        await users.updateOne({ username: user.username }, {
+          $set: { failedAttempts: 0, lockedUntil: null, knownNetworks: newNetwork ? [...known, network].slice(-MAX_KNOWN_NETWORKS) : known }
+        }, { session });
         const issued = await sessions.create(user, req, session);
+        // A person's first network is simply learned. Later ones are worth a look.
+        if (newNetwork && known.length) await audit(req, { actor: user.username, role: user.role, action: "Sign-in from a new network", details: "Not seen before for this account", severity: "warning" }, session);
         await audit(req, {
           actor: user.username, role: user.role, action: "Signed in",
           details: req.body.code ? "Password and authenticator code" : "Password and recovery code",
@@ -189,7 +197,11 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
         const recoveryCodes = await mfa.completeEnrolment(challenge.username, challenge.pendingSecretEnc, req.body.code, session);
         if (!recoveryCodes) return null;
         await challenges.deleteOne({ _id: challenge._id }, { session });
-        await users.updateOne({ username: current.username }, { $set: { failedAttempts: 0, lockedUntil: null } }, { session });
+        const known = current.knownNetworks || [];
+        const network = networkRef(req.ip, config.blindIndexKey);
+        await users.updateOne({ username: current.username }, {
+          $set: { failedAttempts: 0, lockedUntil: null, knownNetworks: known.includes(network) ? known : [...known, network].slice(-MAX_KNOWN_NETWORKS) }
+        }, { session });
         const token = await sessions.create(current, req, session);
         await audit(req, { actor: current.username, role: current.role, action: "MFA enrolled", details: "Authenticator added", severity: "warning" }, session);
         return { token, recoveryCodes };

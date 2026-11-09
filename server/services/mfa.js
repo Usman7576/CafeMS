@@ -1,11 +1,10 @@
 // TOTP authenticator codes. Secrets are encrypted at rest, a code works only once,
 // and recovery codes are stored as hashes and removed on use.
 const crypto = require("crypto");
-const { authenticator } = require("otplib");
+const totp = require("../lib/totp");
 const QRCode = require("qrcode");
 const { encrypt, decrypt, hashToken } = require("../lib/crypto");
 
-const totp = authenticator.clone({ window: 1, step: 30, digits: 6 });
 const ISSUER = "CafeMS";
 const RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -17,7 +16,7 @@ function createMfaService(config, db) {
   const users = db.collection("users");
 
   async function beginEnrolment(username) {
-    const secret = totp.generateSecret(20);
+    const secret = totp.generateSecret();
     const otpauthUri = totp.keyuri(username, ISSUER, secret);
     return {
       secretEnc: encrypt(secret, secretContext(username), config.data),

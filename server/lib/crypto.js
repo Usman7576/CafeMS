@@ -1,5 +1,6 @@
 // Published, standard primitives only (open design): security rests on the keys.
 const crypto = require("crypto");
+const net = require("net");
 
 const IV_BYTES = 12;
 // The full 16-byte GCM tag is required; a shortened tag would make forgeries far easier
@@ -45,6 +46,14 @@ function blindIndex(value, key) {
   return crypto.createHmac("sha256", key).update(String(value)).digest("hex");
 }
 
+// A keyed reference to the network an address belongs to (IPv4 /24, or the first three IPv6 groups).
+// Comparing networks rather than exact addresses stops ordinary address changes raising alerts.
+function networkRef(ip, key) {
+  const text = String(ip || "").replace(/^::ffff:/i, "");
+  const network = net.isIPv4(text) ? text.split(".").slice(0, 3).join(".") : text.split(":").slice(0, 3).join(":");
+  return blindIndex(`network:${network}`, key);
+}
+
 // Builds an Ed25519 key pair from a 32-byte seed held in the settings
 const ED25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b657004220420", "hex");
 function ed25519Keys(seed) {
@@ -52,4 +61,4 @@ function ed25519Keys(seed) {
   return { privateKey, publicKey: crypto.createPublicKey(privateKey) };
 }
 
-module.exports = { randomToken, hashToken, safeEqual, encrypt, decrypt, blindIndex, ed25519Keys };
+module.exports = { randomToken, hashToken, safeEqual, encrypt, decrypt, blindIndex, networkRef, ed25519Keys };

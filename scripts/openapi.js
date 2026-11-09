@@ -12,6 +12,8 @@ const EXAMPLES = Object.freeze({ id: "1", no: "1", username: "demo.user", sid: "
 // These would end the scanner's own session part-way through
 const SKIP = new Set(["post /api/v1/auth/logout", "delete /api/v1/auth/sessions/{sid}"]);
 
+const MOUNTS = Object.freeze(["/api/v1", "/auth", "/public", "/users"]);
+
 function collect(stack, prefix, found) {
   for (const layer of stack) {
     if (layer.route) {
@@ -21,8 +23,9 @@ function collect(stack, prefix, found) {
       }
     } else if (layer.handle && layer.handle.stack) {
       // Express keeps a mounted router's path only as a pattern, such as /^\/api\/v1\/?(?=\/|$)/
-      const mount = String(layer.regexp).replace(/^\/\^/, "").replace(/\\\/\?\(\?=\\\/\|\$\)\/i?$/, "").replace(/\\\//g, "/");
-      collect(layer.handle.stack, prefix + (mount.startsWith("/") ? mount : ""), found);
+      // A router mounted at the root matches everything, so it has no path of its own
+      const mount = layer.slash ? "" : MOUNTS.find((path) => layer.matchers.some((matches) => matches(`${path}/probe`))) || "";
+      collect(layer.handle.stack, prefix + mount, found);
     }
   }
 }
@@ -37,7 +40,7 @@ function jsonSchema(schema) {
 
 function build(app) {
   const found = [];
-  collect(app._router.stack, "", found);
+  collect(app.router.stack, "", found);
   const paths = {};
   for (const route of found) {
     const openPath = route.path.replace(/:([A-Za-z]+)/g, "{$1}");

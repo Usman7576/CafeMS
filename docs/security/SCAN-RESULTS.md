@@ -1,6 +1,6 @@
 # Security scan results
 
-**On 9 November 2026 every scan of CafeMS's own code and image passed, after fixing what they found.** The only open findings are in the official Caddy and MongoDB images, where the publishers have not yet released fixes. CI repeats these scans on every push and weekly. CodeQL runs only on GitHub: it has 0 open alerts, after one false positive was dismissed with the reason given below.
+**On 9 November 2026 every scan of CafeMS's own code and image passed, after fixing what they found.** The only open findings are in the official Caddy and Percona MongoDB images, where the publishers have not yet released fixes. CI repeats these scans on every push and weekly. CodeQL runs only on GitHub: it has 0 open alerts, after one false positive was dismissed with the reason given below.
 
 | Tool | What it checks | Result | Blocks CI |
 | --- | --- | --- | --- |
@@ -11,11 +11,11 @@
 | gitleaks | Secrets in every commit | 0 leaks, 1 reviewed false positive | Yes |
 | Trivy, project | Packages, Dockerfile, secrets | 0 HIGH or CRITICAL | Yes |
 | Trivy, app image | Everything in the shipped image | 0 HIGH or CRITICAL | Yes |
-| Trivy, Caddy and MongoDB images | Third-party images | Open findings, below | No, reported |
+| Trivy, Caddy and Percona MongoDB images | Third-party images | Open findings, below | No, reported |
 | OWASP ZAP baseline | The public pages of the running app, passively, on the private container network | 0 failures, 0 warnings, 63 rules passed | Yes |
 | OWASP ZAP active API scan | Attack requests against all 66 documented API paths, signed in as an Admin; 222 URLs, capped at 15 minutes | 0 failures, 0 server errors, 119 rules passed; 2 low warnings accepted below | Yes |
 | actionlint | CI workflow files | 0 problems | No, run by hand |
-| Tests with coverage | Every control | 360 of 360 pass; 97.8% of lines | Yes |
+| Tests with coverage | Every control | 380 of 380 pass; 97.8% of lines | Yes |
 | Recovery drill | Back up, destroy, restore, compare | Data, photo and counts restored | Yes |
 | Failover drill | Kill the database primary on the three-member stack | A new primary served writes after about 10 seconds | Yes |
 | Load test | Staff requests during a flood | No staff request failed ([details](LOAD-TEST.md)) | No, reported |
@@ -59,9 +59,9 @@ No fixed image existed on 9 November 2026. Dependabot proposes new digests as so
 | Image | Finding | Why the risk is low here |
 | --- | --- | --- |
 | Caddy 2.11.9 | CVE-2026-78661, `golang.org/x/net/html` denial of service | That library parses HTML, used by a Caddy feature this setup does not enable |
-| MongoDB 7 | `golang.org/x/net` in `mongodump` and similar tools | Those tools are never run in this stack |
-| MongoDB 7 | Go runtime findings in `gosu` | Used only for a moment at start-up to drop privileges; it handles no network traffic |
-| MongoDB 7 | `apt` and `js-yaml` in the shell tooling | Not reachable: the container has no route to the internet and no published port |
+| Percona MongoDB 7.0 | CVE-2026-78661, `golang.org/x/net` in `mongodump`, similar tools and the telemetry agent | Those tools are never run in this stack, and telemetry is turned off |
+| Percona MongoDB 7.0 | CVE-2026-114406, `ca-certificates` | The database makes no outbound connections: it has no route to the internet and no published port |
+| Percona MongoDB 7.0 | CVE-2026-77214, `expat` | MongoDB does not parse XML from clients, and only the app can reach the container |
 
 ## How the scans were run
 

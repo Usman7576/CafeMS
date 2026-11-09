@@ -107,3 +107,14 @@ try {
 } catch (error) {
   if (error.code !== "EEXIST") throw error;
 }
+
+// The key that encrypts the production database's files. Losing it makes the data unreadable.
+if (production) {
+  const encryptionKeyPath = path.join(folder, ".mongo-encryption-key");
+  try {
+    fs.writeFileSync(encryptionKeyPath, crypto.randomBytes(32).toString("base64"), { mode: 0o600, flag: "wx" });
+    console.log(`Created ${path.relative(path.join(__dirname, ".."), encryptionKeyPath)} for database encryption.`);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+}

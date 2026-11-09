@@ -47,8 +47,8 @@ describe("production stack", () => {
 
   test("every service is read-only, drops all capabilities and cannot gain privileges", () => {
     assert.match(compose, /x-hardening: &hardening\n {2}read_only: true\n {2}cap_drop: \[ALL\]\n {2}security_opt: \["no-new-privileges:true"\]/);
-    assert.deepEqual(Object.keys(all).sort(), ["app", "backup", "caddy", "db-init", "mongo", "restore"]);
-    for (const [name, text] of Object.entries(all)) assert.match(text, /<<: \*(?:hardening|backup-tool)/, name);
+    assert.deepEqual(Object.keys(all).sort(), ["app", "app-staff", "backup", "caddy", "db-init", "mongo", "restore"]);
+    for (const [name, text] of Object.entries(all)) assert.match(text, /<<: \*(?:hardening|backup-tool|app-service)/, name);
   });
 
   test("only Caddy is reachable from outside, and the database network has no route out", () => {
@@ -68,8 +68,17 @@ describe("production stack", () => {
     assert.match(all.mongo, /--auth --keyFile/);
   });
 
+  test("every database file is encrypted at rest with AES-256, and the key stays out of git and the image", () => {
+    for (const text of [all.mongo, read("deploy/docker-compose.ha.yml")]) {
+      assert.match(text, /--enableEncryption --encryptionKeyFile \/tmp\/encryption-key --encryptionCipherMode AES256-GCM/);
+      assert.match(text, /percona-server-mongodb/);
+    }
+    assert.match(read("scripts/setup-env.js"), /randomBytes\(32\)/);
+    for (const file of [".gitignore", ".dockerignore"]) assert.ok(read(file).includes("deploy/.mongo-encryption-key"), file);
+  });
+
   test("third-party images are pinned by digest, and Caddy's admin interface is off", () => {
-    for (const name of ["mongo", "caddy"]) assert.match(all[name], /image: [a-z0-9:.-]+@sha256:[0-9a-f]{64}/, name);
+    for (const name of ["mongo", "caddy"]) assert.match(all[name], /image: [a-z0-9:./-]+@sha256:[0-9a-f]{64}/, name);
     assert.match(read("deploy/Caddyfile"), /admin off/);
   });
 
@@ -100,6 +109,18 @@ describe("pipeline", () => {
 });
 
 describe("redundancy and signed releases", () => {
+  test("staff sessions and public traffic are served by separate app processes", () => {
+    const caddy = read("deploy/Caddyfile");
+    assert.match(caddy, /@staff header Cookie \*__Host-cms_session=\*/);
+    assert.match(caddy, /reverse_proxy app-staff:3000/);
+    assert.match(caddy, /reverse_proxy app:3000/);
+    const compose = read("deploy/docker-compose.yml");
+    assert.match(compose, /app-staff:\s+<<: \*app-service/);
+    assert.match(compose, /RUN_WORKERS: "false"/);
+    assert.match(read("server/index.js"), /config\.runWorkers \? startWorkers/);
+    assert.match(read("deploy/docker-compose.ha.yml"), /app-staff:\s+environment:\s+MONGODB_URI: \*uri/);
+  });
+
   test("the three-member database option has three members, and the app can reach them all", () => {
     const ha = read("deploy/docker-compose.ha.yml");
     for (const member of ["mongo:27017", "mongo2:27017", "mongo3:27017"]) assert.ok(ha.includes(`host: '${member}'`), member);

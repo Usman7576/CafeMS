@@ -39,8 +39,15 @@
         h("b", { text: v.ok ? "Integrity verified" : "Integrity check failed at entry #" + v.brokenAt }),
         h("span", { text: v.ok ? v.count + " entries. Each is linked to the one before it by SHA-256 and signed with Ed25519, so any edit, removal or reordering is detected." : v.reason + " Investigate before trusting this log." })
       ]),
-      h("button", { class: "btn btn-secondary btn-sm", icon: "refresh", iconSize: 14, text: "Re-verify", onclick: function () { renderIntegrity(); } })
+      h("button", { class: "btn btn-secondary btn-sm", icon: "refresh", iconSize: 14, text: "Re-verify", onclick: function () { renderIntegrity(); } }),
+      h("button", { class: "btn btn-secondary btn-sm", icon: "shield", iconSize: 14, text: "Mark as reviewed", onclick: function () { markReviewed(); } })
     );
+  }
+
+  // Part of the weekly routine: a reminder appears on the Security page if a review is overdue
+  async function markReviewed() {
+    const ok = await CMS.attempt(function () { return Store.reviewAudit("Reviewed entries on the Audit page").then(function () { return true; }); });
+    if (ok) { CMS.toast("Review recorded", "ok"); load(); }
   }
 
   function renderUsers() {

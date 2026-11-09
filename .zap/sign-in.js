@@ -4,7 +4,7 @@
 // TLS is verified against Caddy's own root certificate rather than being switched off.
 const fs = require("fs");
 const crypto = require("crypto");
-const { authenticator } = require("otplib");
+const authenticator = require("../server/lib/totp");
 
 const [link, output] = process.argv.slice(2);
 const origin = new URL(link).origin;

@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status", "gateway_callbacks"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
@@ -32,6 +32,7 @@ async function ensureIndexes(db) {
   await db.collection("auth_tokens").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await db.collection("auth_tokens").createIndex({ username: 1 });
   await db.collection("alerts").createIndex({ key: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "Open" } });
+  await db.collection("alerts").createIndex({ status: 1, rule: 1, lastSeenAt: -1 });
   await db.collection("outbox").createIndex({ status: 1, nextAttemptAt: 1 });
   await db.collection("outbox").createIndex({ sentAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
   await db.collection("notifications").createIndex({ deliveredAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });

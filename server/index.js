@@ -33,7 +33,8 @@ async function start() {
   server.headersTimeout = 15000;
   server.keepAliveTimeout = 5000;
 
-  const stopWorkers = startWorkers({ config, db, logger });
+  // Background jobs run in one process only, so a message is never sent twice
+  const stopWorkers = config.runWorkers ? startWorkers({ config, db, logger }) : () => {};
 
   const stop = createShutdown({ server, client, stopWorkers, logger });
   process.once("SIGTERM", stop);

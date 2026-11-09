@@ -240,14 +240,19 @@
       "slide": "29",
       "concept": "Encryption",
       "status": "Built",
-      "how": "AES-256-GCM field encryption with key IDs",
+      "how": "AES-256-GCM on every database file (Percona Server for MongoDB), plus field encryption with key IDs for customer details",
       "files": [
-        "server/lib/crypto.js"
+        "server/lib/crypto.js",
+        "docs/security/RESIDUAL-RISKS.md",
+        "docs/DEPLOYMENT.md",
+        "deploy/docker-compose.yml",
+        "scripts/setup-env.js"
       ],
       "tests": [
         "name, phone and notes are encrypted at rest",
         "the data cannot be read after being moved to another record",
-        "a shortened GCM authentication tag is refused, so forged values cannot be accepted"
+        "a shortened GCM authentication tag is refused, so forged values cannot be accepted",
+        "every database file is encrypted at rest with AES-256, and the key stays out of git and the image"
       ]
     },
     {
@@ -397,14 +402,15 @@
       "slide": "8, 16",
       "concept": "File security and malicious uploads",
       "status": "Built",
-      "how": "Signature check, 2 MB limit, random name, outside the web root, nosniff",
+      "how": "Signature check, 2 MB limit, random name, outside the web root, nosniff; every image decoded and rebuilt, removing hidden content and metadata",
       "files": [
         "server/services/photos.js"
       ],
       "tests": [
         "scripts, SVG, HTML and disguised files are refused and recorded",
         "a file over 2 MB is refused",
-        "a real image is stored outside the web root under a random name, and served safely"
+        "a real image is stored outside the web root under a random name, and served safely",
+        "content hidden after a real image, and its metadata, do not survive"
       ]
     },
     {
@@ -756,14 +762,17 @@
       "slide": "36-37",
       "concept": "Least common mechanism",
       "status": "Built",
-      "how": "Separate collections, no shared browser cache, separate per-person limits and sessions",
+      "how": "Separate collections, no shared browser cache, separate per-person limits and sessions; staff and public traffic served by separate app processes",
       "files": [
         "server/db.js",
-        "server/app.js"
+        "server/app.js",
+        "deploy/Caddyfile",
+        "deploy/docker-compose.yml"
       ],
       "tests": [
         "each signed-in person has a limit, so one person cannot use up a shared cafe address",
-        "the device list shows only your sessions, and you can revoke only your own"
+        "the device list shows only your sessions, and you can revoke only your own",
+        "staff sessions and public traffic are served by separate app processes"
       ]
     },
     {
@@ -846,14 +855,20 @@
       "slide": "19 (7), 20 (14)",
       "concept": "Scenario: unusual access in logs, all record access reviewed",
       "status": "Built",
-      "how": "Address and browser recorded; full-number views logged; alert rules",
+      "how": "Address and browser recorded; new networks alert; opening customer records and full-number views logged; a weekly audit log review is recorded, with a reminder when overdue",
       "files": [
         "server/services/auditLog.js",
-        "server/services/alerts.js"
+        "server/services/alerts.js",
+        "server/routes/auth.js",
+        "server/services/opsChecks.js",
+        "public/js/audit.js"
       ],
       "tests": [
         "only a Manager or Admin can see the full number, and it is logged",
-        "one password tried against many usernames from one address raises an alert (password spraying)"
+        "one password tried against many usernames from one address raises an alert (password spraying)",
+        "a new network raises an alert; a known one, and a person's first sign-in, do not",
+        "opening one bill is recorded, and many views raise an alert",
+        "an overdue review raises a reminder, and recording a review clears it"
       ]
     },
     {
@@ -968,13 +983,17 @@
       "slide": "8",
       "concept": "Non-functional requirements and performance under attack",
       "status": "Built",
-      "how": "Load test of staff requests during a flood",
+      "how": "Staff have their own app process, with limits per address and person. Far better under a flood, but the 10% example is not fully met, as LOAD-TEST.md says",
       "files": [
         "scripts/load-test.js",
-        "docs/security/LOAD-TEST.md"
+        "docs/security/LOAD-TEST.md",
+        "server/lib/passwords.js",
+        "deploy/Caddyfile"
       ],
       "tests": [
-        "one address can send only a limited number of requests"
+        "one address can send only a limited number of requests",
+        "only a few passwords are hashed at once, and an overfull queue is refused",
+        "staff sessions and public traffic are served by separate app processes"
       ]
     },
     {
@@ -1147,6 +1166,21 @@
       "tests": [
         "exports are logged, limited per person, and safe to open in a spreadsheet",
         "a large refund waits for a different person with a fresh code"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "12",
+      "concept": "Insider turning off backups",
+      "status": "Built",
+      "how": "The backup script records each success; an alert appears after 26 hours without one",
+      "files": [
+        "server/services/opsChecks.js",
+        "scripts/backup.js",
+        "server/workers.js"
+      ],
+      "tests": [
+        "no recent backup raises an alert, and a recent one does not"
       ]
     },
     {
@@ -1500,12 +1534,13 @@
       "slide": "13",
       "concept": "Noise that hides real attacks",
       "status": "Built",
-      "how": "Repeat alerts are merged",
+      "how": "Repeat alerts are merged; each kind shows five, most serious first, and counts the rest",
       "files": [
         "server/services/alerts.js"
       ],
       "tests": [
-        "a flood updates one alert instead of creating many"
+        "a flood updates one alert instead of creating many",
+        "a flood of low-value alerts cannot push a serious one out of the Admin's list"
       ]
     },
     {
@@ -1513,9 +1548,14 @@
       "slide": "16-17",
       "concept": "Testing, monitoring, failover and patching",
       "status": "Documented",
-      "how": "Each strategy mapped to what CafeMS does",
+      "how": "Each strategy mapped to what CafeMS does; alerts for access, price and security setting changes",
       "files": [
-        "docs/security/RISK-AND-FAILURE-ANALYSIS.md"
+        "docs/security/RISK-AND-FAILURE-ANALYSIS.md",
+        "server/services/opsChecks.js"
+      ],
+      "tests": [
+        "a role change raises an alert",
+        "a changed security setting is recorded by name and raises an alert"
       ]
     },
     {

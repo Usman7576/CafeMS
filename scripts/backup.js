@@ -4,6 +4,7 @@ const path = require("path");
 const { loadConfig } = require("../server/config");
 const { createClient } = require("../server/db");
 const { createBackup, parseBackupKey, pruneBackups } = require("../server/lib/backup");
+const { recordBackupSuccess } = require("../server/services/opsChecks");
 
 const KEEP_DAYS = 30;
 
@@ -19,6 +20,8 @@ const KEEP_DAYS = 30;
     if (removed.length) console.log(`Removed ${removed.length} files older than ${KEEP_DAYS} days.`);
     console.log(`Backup written: ${result.path}`);
     console.log(`SHA-256: ${result.sha256}`);
+    // The backup itself has succeeded by now, so a problem here is reported and does not fail it
+    await recordBackupSuccess(client.db(config.mongoDb), result.sha256).catch((error) => console.error(`Could not record the backup time: ${error.message}`));
   } finally {
     await client.close();
   }

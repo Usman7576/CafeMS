@@ -1,8 +1,31 @@
 const argon2 = require("argon2");
+const { AppError } = require("./errors");
 
 const OPTIONS = { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 };
 const MIN_LENGTH = 12;
 const MAX_LENGTH = 128;
+
+// Each hash takes 19 MB of memory on purpose. Running only a few at once means a sign-in flood cannot
+// exhaust the memory of a small server.
+const MAX_RUNNING = 2;
+const MAX_WAITING = 100;
+let running = 0;
+const waiting = [];
+
+function limited(task) {
+  if (running >= MAX_RUNNING && waiting.length >= MAX_WAITING) return Promise.reject(new AppError(503, "busy", "The system is busy. Please try again in a moment."));
+  return new Promise((resolve, reject) => {
+    const start = () => {
+      running += 1;
+      task().then(resolve, reject).finally(() => {
+        running -= 1;
+        const next = waiting.shift();
+        if (next) next();
+      });
+    };
+    if (running < MAX_RUNNING) start(); else waiting.push(start);
+  });
+}
 
 const COMMON = new Set([
   "password1234", "password12345", "passw0rd1234", "p@ssw0rd1234", "p@ssword1234", "qwerty123456", "qwertyuiop12",
@@ -53,18 +76,18 @@ function guessable(lower) {
 // A fixed hash verified for unknown accounts, so response time does not reveal which usernames exist.
 let dummyHash = null;
 async function dummyVerify(password) {
-  if (!dummyHash) dummyHash = await argon2.hash("cafems-account-does-not-exist", OPTIONS);
-  await argon2.verify(dummyHash, String(password));
+  if (!dummyHash) dummyHash = await limited(() => argon2.hash("cafems-account-does-not-exist", OPTIONS));
+  await limited(() => argon2.verify(dummyHash, String(password)));
   return false;
 }
 
 function hashPassword(password) {
-  return argon2.hash(password, OPTIONS);
+  return limited(() => argon2.hash(password, OPTIONS));
 }
 
 async function verifyPassword(hash, password) {
   if (!hash) return dummyVerify(password);
-  return argon2.verify(hash, String(password));
+  return limited(() => argon2.verify(hash, String(password)));
 }
 
 // Returns a list of unmet rules; an empty list means the password is acceptable.
@@ -83,4 +106,4 @@ function passwordProblems(password, username) {
   return problems;
 }
 
-module.exports = { hashPassword, verifyPassword, dummyVerify, passwordProblems, MAX_LENGTH };
+module.exports = { hashPassword, verifyPassword, dummyVerify, passwordProblems, limited, MAX_LENGTH, MAX_RUNNING, MAX_WAITING };

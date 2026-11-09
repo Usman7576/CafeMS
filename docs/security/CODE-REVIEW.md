@@ -1,12 +1,28 @@
 # Code review log
 
-**Three reviews have been carried out, and every finding is recorded here with its outcome.** This is a single-author project, so no second human has reviewed the code. The independent review below was done by an automated reviewer working from the code and lecture decks alone, without the project's plan. It does not replace review by a person, and future changes should use the checklist in `.github/pull_request_template.md`.
+**Four reviews have been carried out, and every finding is recorded here with its outcome.** This is a single-author project, so no second human has reviewed the code. The independent review below was done by an automated reviewer working from the code and lecture decks alone, without the project's plan. It does not replace review by a person, and future changes should use the checklist in `.github/pull_request_template.md`.
 
 | Date | Review | Reviewer | Result |
 | --- | --- | --- | --- |
+| 2026-11-09 | Code compared again with every slide of the eight decks | Automated reviewer, with proof tests | 1 proven weakness, 7 partial concepts, 3 documentation errors; outcomes below |
 | 2026-11-09 | Whole system against the eight lecture decks | Independent automated reviewer | 18 defects, 8 thin concepts and 17 inaccurate claims; outcomes below |
 | 2026-11-09 | CodeQL findings from the first CI run | CodeQL, checked by hand | 5 fixed, 1 false positive dismissed with a reason |
 | 2026-11-04 | Phases 1 to 4 against the plan | Author, with tests on a throwaway database | 16 problems, all fixed; listed in the plan's log |
+
+## Second comparison with the decks, 9 November 2026
+
+| Deck | Finding | Outcome | Proved by |
+| --- | --- | --- | --- |
+| Failures, slide 13 | A flood of alerts could push a serious one out of the Admin's list | Fixed: each kind shows at most five, most serious first, and says how many more it holds | "a flood of low-value alerts cannot push a serious one out of the Admin's list" |
+| Failures, slide 16 | No alert when access, prices or security settings changed | Fixed | "a role change raises an alert", "a changed security setting is recorded by name and raises an alert" |
+| Attackers, slide 12 | Nothing noticed if backups stopped | Fixed: alert after 26 hours | "no recent backup raises an alert, and a recent one does not" |
+| Week 2, scenario 7 | A successful sign-in from a new place raised nothing | Fixed for networks; there is no country lookup | "a new network raises an alert; a known one, and a person's first sign-in, do not" |
+| Week 2 scenario 14, FMEA slide 15 | Opening customer records was not logged | Fixed: once an hour per person and view, with an alert for many | "opening one bill is recorded, and many views raise an alert" |
+| SSD Lec1, slides 3 and 8 | Uploads were checked only by their first bytes | Fixed: decoded and rewritten, removing hidden content and metadata | "content hidden after a real image, and its metadata, do not survive" |
+| Week 4, slide 8 | Far more than 10% slower under a flood | Greatly reduced, not fully met: staff now have their own app process, cutting the slowdown from about 1,300% to about 20-70%. Capping password hashing gave no speed gain and remains only to limit memory use | "only a few passwords are hashed at once, and an overfull queue is refused" |
+| Week 4, slide 14 | Not all data at rest was encrypted | Fixed: production uses Percona Server for MongoDB with AES-256-GCM on every database file | "every database file is encrypted at rest with AES-256, and the key stays out of git and the image" |
+| Week 4 slide 24, Failures slide 17 | The MFA library was deprecated and others were behind | Fixed: `otplib` 13, Express 5, MongoDB driver 7 and others upgraded | Whole test suite |
+| Week 2, scenario 14 | No routine for reading the audit log | Fixed: weekly review recorded from the Audit page, with a reminder when overdue | "an overdue review raises a reminder, and recording a review clears it" |
 
 ## Independent review of 9 November 2026
 

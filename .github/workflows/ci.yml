@@ -118,7 +118,7 @@ jobs:
             --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 cafems-app:latest
       - name: Trivy - Caddy and MongoDB images (reported, fixed by their publishers)
         run: |
-          grep -oE 'image: (mongo|caddy):[^ ]+' deploy/docker-compose.yml | cut -d' ' -f2 | while read -r image; do
+          grep -oE 'image: (percona/percona-server-mongodb|caddy):[^ ]+' deploy/docker-compose.yml | cut -d' ' -f2 | while read -r image; do
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY" image --quiet --timeout 15m \
               --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed "$image" < /dev/null
           done
@@ -146,7 +146,7 @@ jobs:
             options="$options -config $prefix.matchstr=${header%%|*} -config $prefix.regex=false -config $prefix.replacement=${header#*|}"
             index=$((index + 1))
           done
-          chmod -R a+rwX zap-work
+          rm -f zap-work/session.json
           docker run --rm --network cafems-prod_frontend -v "$PWD/zap-work:/zap/wrk:rw" "$ZAP" \
             zap-api-scan.py -t openapi.json -f openapi -O http://app:3000 -c rules.tsv -T 12 -r zap-api-report.html -z "$options"
       - name: Keep the ZAP reports
@@ -162,8 +162,8 @@ jobs:
           $COMPOSE run --rm -T app scripts/create-admin.js drill "Recovery Drill" | grep -q "Invitation link"
           $COMPOSE run --rm -T backup
           file=$(docker run --rm -v cafems-prod_backups:/b --entrypoint /bin/sh "$ZAP" -c 'ls /b | grep "\.bak$" | tail -1')
-          $COMPOSE stop app caddy mongo
-          docker rm -f cafems-prod-app-1 cafems-prod-caddy-1 cafems-prod-mongo-1 cafems-prod-db-init-1
+          $COMPOSE stop app app-staff caddy mongo
+          docker rm -f cafems-prod-app-1 cafems-prod-app-staff-1 cafems-prod-caddy-1 cafems-prod-mongo-1 cafems-prod-db-init-1
           docker volume rm cafems-prod_mongo-data cafems-prod_mongo-config cafems-prod_uploads
           $COMPOSE up -d --wait
           $COMPOSE run --rm -T restore "/backups/$file" cafems
