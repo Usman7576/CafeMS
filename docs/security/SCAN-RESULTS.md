@@ -67,4 +67,4 @@ No fixed image existed on 9 November 2026. Dependabot proposes new digests as so
 
 ## How the scans were run
 
-Each tool ran from the same image digest that CI uses, against the code in this repository and a local copy of the production stack. The active scan is automated and time-capped, and about two-thirds of its requests were correctly refused by permission checks and rate limits, so it does not go deep into every route. It does not replace the manual Burp Suite test in [BURP-TEST-SCRIPT.md](BURP-TEST-SCRIPT.md), which is still to be run by a person.
+Each tool ran from the same image digest that CI uses, against the code in this repository and a local copy of the production stack. The active scan is automated and time-capped, and about two-thirds of its requests were correctly refused by permission checks and rate limits, so it does not go deep into every route. The 30 attacks in [BURP-TEST-SCRIPT.md](BURP-TEST-SCRIPT.md) were also sent through Burp Suite's proxy and refused; hand testing in Repeater has not been done.

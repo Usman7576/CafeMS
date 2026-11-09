@@ -474,7 +474,7 @@
       "slide": "16",
       "concept": "Burp Suite",
       "status": "Manual",
-      "how": "A step-by-step test script for a person to run; the same 30 attacks are replayed automatically on every CI run, while the manual test itself still needs a person",
+      "how": "All 30 listed attacks sent through Burp Suite's proxy and refused, and replayed automatically on every CI run; hand testing in Repeater has not been done",
       "files": [
         "docs/security/BURP-TEST-SCRIPT.md",
         "scripts/attack-replay.js",

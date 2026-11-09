@@ -81,11 +81,39 @@ Use a Waiter's cookie and CSRF token unless a step says otherwise.
 
 ## Results
 
-Copy this table into your submission, with your screenshots.
+All 30 attacks were sent through Burp Suite Community's proxy by `scripts/attack-replay.js`, so they appear in its HTTP history. They were not typed into Repeater by a person. Add a note below for anything tested by hand.
 
 | # | Date | Result: pass or fail | Notes |
 | --- | --- | --- | --- |
-| 1 | | | |
-| 2 | | | |
+| 1 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 2 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 3 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 4 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 5 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 6 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 7 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 8 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 9 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 10 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 11 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 12 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 13 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 14 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 15 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 16 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 17 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 18 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 19 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 20 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 21 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 22 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 23 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 24 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 25 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 26 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 27 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 28 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 29 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 30 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
 
 Anything that is **not** refused is a finding. Add a failing test for it, fix it, and record it in the review log in `SECURITY-REQUIREMENTS.md`.
