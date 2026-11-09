@@ -64,12 +64,12 @@ function limiter(windowMs, max, message, options = {}) {
 
 // Blocks cross-site state changes, including login CSRF. Browsers always send Origin on these
 // requests, so a missing value is refused too (fail-secure).
-function originCheck(config) {
-  return function checkOrigin(req, _res, next) {
+function csrfOriginProtection(config) {
+  return function csrfCheckOrigin(req, _res, next) {
     if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
     if (req.get("origin") !== config.appOrigin) return next(new AppError(403, "bad_origin", "This request was blocked."));
     return next();
   };
 }
 
-module.exports = { securityHeaders, permissionsPolicy, requestId, noStore, limiter, originCheck };
+module.exports = { securityHeaders, permissionsPolicy, requestId, noStore, limiter, csrfOriginProtection };

@@ -65,6 +65,12 @@ describe("passwords people commonly choose are refused", () => {
     }
   });
 
+  test("very long strings of symbols or repeats are checked quickly", () => {
+    const started = Date.now();
+    for (const odd of ["!".repeat(5000), `a${"!".repeat(5000)}a`, "ab".repeat(2500), `${"1".repeat(2500)}password${"2".repeat(2500)}`]) passwordProblems(odd, "someone");
+    assert.ok(Date.now() - started < 200);
+  });
+
   test("strong passwords still pass", () => {
     for (const p of ["Correct-Horse-7-Battery", "Blue-Kettle-42-River", "Xy!29581047#"]) assert.deepEqual(passwordProblems(p, "someone"), [], p);
   });

@@ -22,9 +22,28 @@ const COMMON_WORDS = new Set([
 ]);
 const SWAPS = Object.freeze({ "@": "a", "4": "a", "8": "b", "3": "e", "1": "i", "!": "i", "0": "o", "$": "s", "5": "s", "7": "t", "+": "t" });
 
+const isLetter = (c) => c >= "a" && c <= "z";
+
+// Plain loops rather than regular expressions, so odd input cannot make the check slow
+function withoutDecoration(lower) {
+  let start = 0;
+  while (start < lower.length && !isLetter(lower[start]) && lower[start] !== "@" && lower[start] !== "$") start += 1;
+  let end = lower.length;
+  while (end > start && !isLetter(lower[end - 1])) end -= 1;
+  return lower.slice(start, end);
+}
+
+// "passwordpassword" becomes "password"
+function withoutRepeats(text) {
+  for (let size = 1; size <= text.length / 2; size += 1) {
+    if (text.length % size === 0 && text.slice(0, size).repeat(text.length / size) === text) return text.slice(0, size);
+  }
+  return text;
+}
+
 function guessable(lower) {
-  const trimmed = lower.replace(/^[^a-z@$]+/, "").replace(/[^a-z]+$/, "");
-  const core = [...trimmed].map((c) => (Object.hasOwn(SWAPS, c) ? SWAPS[c] : c)).join("").replace(/[^a-z]/g, "").replace(/^(.+?)\1+$/, "$1");
+  const letters = [...withoutDecoration(lower)].map((c) => (Object.hasOwn(SWAPS, c) ? SWAPS[c] : c)).filter(isLetter).join("");
+  const core = withoutRepeats(letters);
   if (!core) return false;
   if (COMMON_WORDS.has(core)) return true;
   // A common word with one or two extra letters, such as "Passwordx1!"

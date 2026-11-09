@@ -132,9 +132,7 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
         throw new AppError(401, "challenge_expired", "Your sign-in has expired. Please start again.");
       }
 
-      const ok = req.body.code
-        ? await mfa.verifyCode(user, req.body.code)
-        : await mfa.verifyRecoveryCode(user, req.body.recoveryCode);
+      const ok = await mfa.verifySecondFactor(user, req.body);
       if (!ok) {
         await audit(req, { actor: user.username, role: user.role, action: "MFA failed", details: req.body.code ? "Wrong or reused code" : "Wrong recovery code", severity: "warning" });
         await failChallenge(challenge);

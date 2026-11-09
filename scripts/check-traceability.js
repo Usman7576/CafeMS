@@ -52,7 +52,7 @@ function check(data, titles = testTitles()) {
   return problems;
 }
 
-const cell = (text) => String(text).replace(/\|/g, "\\|");
+const cell = (text) => String(text).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 function render(data, titles = testTitles()) {
   const lines = [

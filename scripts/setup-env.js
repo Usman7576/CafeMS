@@ -29,7 +29,17 @@ if (!/^\d{1,5}$/.test(httpsPort) || !/^\d{1,5}$/.test(httpPort)) {
 
 const folder = production ? path.join(__dirname, "..", "deploy") : path.join(__dirname, "..");
 const envPath = path.join(folder, ".env");
-const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
+
+// Reads the file directly and treats "not there" as empty, so nothing can change between a check and the read
+function readIfPresent(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return "";
+    throw error;
+  }
+}
+const existing = readIfPresent(envPath);
 // name is always one of the fixed setting names below
 const has = (name) => new RegExp(`^${name}=.+`, "m").test(existing);
 const newKey = () => `k1:${crypto.randomBytes(32).toString("base64")}`;
@@ -90,7 +100,10 @@ if (!missing.length) {
 
 // The key file the database replica set needs once access control is on
 const keyfilePath = path.join(folder, ".mongo-keyfile");
-if (!fs.existsSync(keyfilePath)) {
-  fs.writeFileSync(keyfilePath, crypto.randomBytes(512).toString("base64"), { mode: 0o600 });
+try {
+  // The "wx" flag refuses to overwrite: an existing key file is left exactly as it is
+  fs.writeFileSync(keyfilePath, crypto.randomBytes(512).toString("base64"), { mode: 0o600, flag: "wx" });
   console.log(`Created ${path.relative(path.join(__dirname, ".."), keyfilePath)} for the database.`);
+} catch (error) {
+  if (error.code !== "EEXIST") throw error;
 }

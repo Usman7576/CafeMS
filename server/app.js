@@ -5,7 +5,7 @@ const rateLimit = require("express-rate-limit");
 const pinoHttp = require("pino-http");
 const { AppError } = require("./lib/errors");
 const { PAGES, PUBLIC_PAGES, HOME } = require("./lib/permissions");
-const { securityHeaders, permissionsPolicy, requestId, noStore, limiter, originCheck } = require("./middleware/security");
+const { securityHeaders, permissionsPolicy, requestId, noStore, limiter, csrfOriginProtection } = require("./middleware/security");
 const { createAuthMiddleware, publicRoute } = require("./middleware/auth");
 const { createSessionService } = require("./services/sessions");
 const { createMfaService } = require("./services/mfa");
@@ -117,8 +117,9 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
     }
   });
 
-  api.use(originCheck(config));
   api.use(cookieParser());
+  // Every state-changing API request passes this; signed-in requests also need the session's CSRF token
+  api.use(csrfOriginProtection(config));
 
   api.use("/auth", createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }));
   // Limits one person's sensitive reads, such as bulk exports (keyed by user, not by address)

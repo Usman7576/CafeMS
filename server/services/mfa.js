@@ -53,6 +53,13 @@ function createMfaService(config, db) {
     return result.modifiedCount === 1;
   }
 
+  // The schema allows exactly one of these two fields, so the field that was sent picks its own check
+  const CHECKS = Object.freeze({ code: verifyCode, recoveryCode: verifyRecoveryCode });
+  function verifySecondFactor(user, factor) {
+    const [[kind, value]] = Object.entries(factor);
+    return CHECKS[kind](user, value);
+  }
+
   function generateRecoveryCodes() {
     return Array.from({ length: config.auth.recoveryCodes }, () => {
       let code = "";
@@ -87,7 +94,7 @@ function createMfaService(config, db) {
     return result.modifiedCount === 1 ? codes : null;
   }
 
-  return { beginEnrolment, verifyCode, verifyRecoveryCode, completeEnrolment, replaceRecoveryCodes };
+  return { beginEnrolment, verifyCode, verifyRecoveryCode, verifySecondFactor, completeEnrolment, replaceRecoveryCodes };
 }
 
 module.exports = { createMfaService };
