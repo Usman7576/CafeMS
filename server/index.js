@@ -2,7 +2,7 @@ require("dotenv").config({ quiet: true });
 
 const { loadConfig, ConfigError } = require("./config");
 const { createApp } = require("./app");
-const { createClient, ensureIndexes, assertTransactionsAvailable } = require("./db");
+const { createClient, ensureIndexes, assertAuditIndexes, assertTransactionsAvailable } = require("./db");
 const { startWorkers } = require("./workers");
 const { createLogger } = require("./lib/logger");
 const { createShutdown } = require("./lifecycle");
@@ -24,6 +24,7 @@ async function start() {
   const db = client.db(config.mongoDb);
   await assertTransactionsAvailable(db);
   await ensureIndexes(db);
+  await assertAuditIndexes(db);
 
   const server = createApp({ config, db, logger }).listen(config.port, () => {
     logger.info(`CafeMS running at ${config.appOrigin}`);

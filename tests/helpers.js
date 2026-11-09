@@ -8,7 +8,7 @@ const { MongoClient } = require("mongodb");
 const { authenticator } = require("otplib");
 const { loadConfig } = require("../server/config");
 const { createApp } = require("../server/app");
-const { ensureIndexes } = require("../server/db");
+const { ensureIndexes, ensureAuditIndexes } = require("../server/db");
 const { createLogger } = require("../server/lib/logger");
 const { hashPassword } = require("../server/lib/passwords");
 const { encrypt } = require("../server/lib/crypto");
@@ -45,6 +45,7 @@ async function startDb() {
   const client = await MongoClient.connect(server.getUri());
   const db = client.db("cafems_test");
   await ensureIndexes(db);
+  await ensureAuditIndexes(db);
   return { db, uri: server.getUri(), stop: async () => { await client.close(); await server.stop(); } };
 }
 

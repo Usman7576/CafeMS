@@ -30,7 +30,7 @@ The service loop: a waiter sends an order, stock is taken, the kitchen prepares 
 | --- | --- |
 | Sign-in | Argon2id passwords, authenticator codes for all staff, lockout after 3 failures, rate limits |
 | Sessions | Signed `__Host-` HttpOnly, SameSite=Strict cookie with a revocable server record; 5-minute idle and 8-hour limits |
-| Access | One permission table on every route, ownership in every query, a second person for large refunds and Admin changes |
+| Access | One permission table on every route; waiters reach only their own orders and cashiers only today's bills; a second person for large refunds and Admin changes |
 | Input | Strict schemas that refuse unknown fields; totals worked out on the server |
 | Browser | Strict CSP with Trusted Types, no inline code, no third-party resources, CSRF token and Origin check |
 | Data | AES-256-GCM for customer details, masked numbers, 90-day retention, erasure on request, encrypted backups |

@@ -3,3 +3,5 @@
 10109	IGNORE	(Informational: notes that the site uses JavaScript)
 10111	IGNORE	(Informational: notes that a sign-in form exists)
 10202	IGNORE	(False positive: a native form post returns 404; real requests use fetch with the X-CSRF-Token header and an Origin check)
+2	IGNORE	(Intended: the audit log and device list record the address each request came from, and only Admins or the account owner see them)
+100001	IGNORE	(Expected: CSV exports are text/csv and unknown paths return the HTML error page; the rule assumes every response is JSON)

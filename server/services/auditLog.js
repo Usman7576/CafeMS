@@ -62,8 +62,17 @@ async function verifyChain(db) {
   let expected = 1;
   let prev = GENESIS;
   const fail = (brokenAt, reason) => ({ ok: false, brokenAt, reason, count: expected - 1 });
+  const events = db.collection("audit_events");
+  const heads = db.collection("audit_head");
 
-  for await (const e of db.collection("audit_events").find({ seq: { $exists: true } }).sort({ seq: 1 })) {
+  // The head is read first and only entries up to it are checked, so an action committed while this
+  // runs cannot look like tampering. An entry and the head always commit together.
+  const start = await heads.findOne({ _id: "head" });
+  const lastChained = start ? start.seq : 0;
+
+  if (await events.findOne({ seq: { $exists: false } })) return fail(0, "An entry that is not part of the chain was added.");
+
+  for await (const e of events.find({ seq: { $lte: lastChained } }).sort({ seq: 1 })) {
     if (e.seq !== expected) return fail(expected, "An entry is missing.");
     if (e.prevHash !== prev) return fail(e.seq, "The link to the previous entry does not match.");
     if (entryHash(e) !== e.hash) return fail(e.seq, "The entry was changed.");
@@ -73,9 +82,13 @@ async function verifyChain(db) {
     expected += 1;
   }
 
-  const head = await db.collection("audit_head").findOne({ _id: "head" });
   const lastSeq = expected - 1;
-  if ((head ? head.seq : 0) !== lastSeq || (lastSeq > 0 && head.hash !== prev)) return fail(lastSeq + 1, "Entries are missing from the end of the log.");
+  if (lastChained !== lastSeq || (lastSeq > 0 && start.hash !== prev)) return fail(lastSeq + 1, "Entries are missing from the end of the log.");
+
+  // Newest entry first, then the head: a real entry can never be ahead of a head read after it
+  const [newest] = await events.find().sort({ seq: -1 }).limit(1).toArray();
+  const end = await heads.findOne({ _id: "head" });
+  if (newest && newest.seq > (end ? end.seq : 0)) return fail(newest.seq, "An entry beyond the end of the chain was added.");
   return { ok: true, count: lastSeq, lastHash: lastSeq ? prev : null };
 }
 

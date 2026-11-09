@@ -1,5 +1,7 @@
-# Pushing a tag such as v1.0.0 publishes the source archive with its SHA-256 checksums, so anyone can
-# check that what they deploy is exactly what was released:  sha256sum -c SHA256SUMS
+# Pushing a tag such as v1.0.0 publishes the source archive with its SHA-256 checksums and a signed
+# build attestation. Anyone can check that what they deploy is exactly what this repository built:
+#   sha256sum -c SHA256SUMS
+#   gh attestation verify cafems-v1.0.0.tar.gz --repo Usman7576/CafeMS
 name: Release
 
 on:
@@ -15,6 +17,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      # Lets GitHub sign the attestation with a short-lived key tied to this workflow (Sigstore)
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the archive and its checksums
@@ -25,6 +30,10 @@ jobs:
           cp package-lock.json "cafems-$TAG-package-lock.json"
           sha256sum "cafems-$TAG.tar.gz" "cafems-$TAG-package-lock.json" > SHA256SUMS
           cat SHA256SUMS
+      - name: Sign the release (build provenance attestation)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: cafems-*.tar.gz
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}

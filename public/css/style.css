@@ -982,3 +982,15 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 
 /* Wide tables scroll inside their own box, so they never make the whole page wider on a phone */
 .table-wrap { overflow-x: auto; max-width: 100%; }
+
+/* Recipe editor and dependency graph */
+.recipe-rows { display: grid; gap: 8px; margin-bottom: 8px; }
+.recipe-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; }
+.dep-graph { display: block; width: 100%; height: auto; }
+.dep-node { fill: var(--surface-2); stroke: var(--ink); stroke-width: 1.5; }
+.dep-node-external { stroke-dasharray: 5 4; }
+.dep-label { fill: var(--ink); font-size: 13px; font-weight: 700; }
+.dep-arrow { fill: var(--muted); }
+.dep-line { stroke: var(--muted); stroke-width: 1.6; }
+.dep-line-dashed { stroke-dasharray: 8 6; }
+.dep-line-dotted { stroke-dasharray: 2 5; stroke-linecap: round; }

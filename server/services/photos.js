@@ -1,5 +1,5 @@
-// Menu photo storage. Files live outside the web root under random names, and the real type is read
-// from the file's own first bytes, so a renamed script cannot pass as a picture.
+// Menu photo storage. Files live outside the web root under random names. The type is checked against
+// the file's own first bytes, which refuses a renamed script; files are also served so they cannot run.
 const fs = require("fs/promises");
 const path = require("path");
 const { randomToken } = require("../lib/crypto");

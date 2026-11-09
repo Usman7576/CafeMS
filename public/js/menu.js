@@ -9,6 +9,7 @@
     document.getElementById("menuSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); renderRows(); });
     document.getElementById("addItem").addEventListener("click", function () { openForm(null); });
     document.getElementById("itemForm").addEventListener("submit", save);
+    document.getElementById("addIngredient").addEventListener("click", function () { addRecipeRow(null); });
     const desc = document.getElementById("fDesc");
     desc.addEventListener("input", function () { document.getElementById("descCount").textContent = desc.value.length + " / 80"; });
     render();
@@ -59,8 +60,27 @@
     });
   }
 
+  function addRecipeRow(line) {
+    const stock = Store.inventory();
+    const select = h("select", { class: "select", "aria-label": "Ingredient" }, stock.map(function (s) { return h("option", { value: String(s.id), text: s.name + " (" + s.unit + ")" }); }));
+    if (line) select.value = String(line.ing);
+    const qty = h("input", { class: "input", type: "number", min: "0.001", step: "0.001", "aria-label": "Quantity per portion", placeholder: "Per portion" });
+    if (line) qty.value = line.qty;
+    const row = h("div", { class: "recipe-row" }, [select, qty]);
+    row.appendChild(h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", icon: "trash", iconSize: 15, "aria-label": "Remove ingredient", onclick: function () { row.remove(); } }));
+    document.getElementById("recipeRows").appendChild(row);
+  }
+
+  function readRecipe() {
+    return Array.prototype.map.call(document.querySelectorAll("#recipeRows .recipe-row"), function (row) {
+      return { ing: Number(row.querySelector("select").value), qty: Number(row.querySelector("input").value) };
+    });
+  }
+
   function openForm(m) {
     editingId = m ? m.id : null;
+    document.getElementById("recipeRows").replaceChildren();
+    if (m) (m.recipe || []).forEach(addRecipeRow);
     CMS.clearError(document.getElementById("itemErr"));
     document.getElementById("itemTitle").textContent = m ? "Edit " + m.name : "Add menu item";
     document.getElementById("fPhoto").value = "";
@@ -79,7 +99,7 @@
     const data = {
       id: editingId, name: document.getElementById("fName").value, cat: document.getElementById("fCat").value,
       price: document.getElementById("fPrice").value === "" ? NaN : Number(document.getElementById("fPrice").value),
-      desc: document.getElementById("fDesc").value, available: document.getElementById("fAvail").checked
+      desc: document.getElementById("fDesc").value, available: document.getElementById("fAvail").checked, recipeEdit: readRecipe()
     };
     const old = editingId ? Store.menuItem(editingId) : null;
     if (old && old.price !== data.price && Number.isInteger(data.price)) {

@@ -189,6 +189,7 @@
     updateReservation: function (id, status) { return change("POST", "/reservations/" + encodeURIComponent(id) + "/status", { status: status }); },
     saveMenuItem: function (d) {
       const body = { name: d.name, cat: d.cat, price: d.price, desc: d.desc, available: d.available };
+      if (d.recipeEdit) body.recipe = d.recipeEdit;
       return d.id ? change("PUT", "/menu/" + d.id, body) : change("POST", "/menu", body);
     },
     deleteMenuItem: function (id) { return change("DELETE", "/menu/" + id); },

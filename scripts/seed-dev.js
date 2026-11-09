@@ -1,5 +1,5 @@
-// Development only: creates the staff accounts with random passwords, printed once and
-// never stored in plain text. Each person enrols an authenticator at first sign-in.
+// Development only: creates the staff accounts with random passwords, printed once. The database holds
+// only their hashes. Each person enrols an authenticator at first sign-in.
 require("dotenv").config({ quiet: true });
 
 const crypto = require("crypto");

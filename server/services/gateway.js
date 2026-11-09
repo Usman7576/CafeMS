@@ -9,6 +9,9 @@ function createSimulatedGateway(delayMs = 200) {
   return {
     charge: ({ reference, amount }) => new Promise((resolve) => {
       setTimeout(() => resolve({ status: "approved", reference, amount, gatewayRef: `SIM-${crypto.randomBytes(6).toString("hex")}` }), delayMs);
+    }),
+    refund: ({ reference, amount }) => new Promise((resolve) => {
+      setTimeout(() => resolve({ status: "refunded", reference, amount, gatewayRef: `SIM-R-${crypto.randomBytes(6).toString("hex")}` }), delayMs);
     })
   };
 }

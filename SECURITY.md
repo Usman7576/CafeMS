@@ -28,3 +28,9 @@ Each release publishes a `SHA256SUMS` file. After downloading, run this in the s
 ```bash
 sha256sum -c SHA256SUMS
 ```
+
+Each release also has a signed attestation that this repository's workflow built it:
+
+```bash
+gh attestation verify cafems-v1.0.0.tar.gz --repo Usman7576/CafeMS
+```

@@ -31,9 +31,6 @@ async function ensureIndexes(db) {
   await db.collection("auth_challenges").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await db.collection("auth_tokens").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await db.collection("auth_tokens").createIndex({ username: 1 });
-  await db.collection("audit_events").createIndex({ at: -1 });
-  await db.collection("audit_events").createIndex({ seq: 1 }, { unique: true, sparse: true });
-  await db.collection("audit_events").createIndex({ action: 1, at: -1 });
   await db.collection("alerts").createIndex({ key: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "Open" } });
   await db.collection("outbox").createIndex({ status: 1, nextAttemptAt: 1 });
   await db.collection("outbox").createIndex({ sentAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
@@ -50,4 +47,18 @@ async function ensureIndexes(db) {
   await db.collection("gateway_callbacks").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 }
 
-module.exports = { createClient, ensureIndexes, assertTransactionsAvailable };
+// Audit indexes are created by the administrator (npm run db:setup), because the app's own account must
+// not be able to add indexes to the audit log: a time-to-live index would delete its entries.
+async function ensureAuditIndexes(db) {
+  await db.collection("audit_events").createIndex({ at: -1 });
+  await db.collection("audit_events").createIndex({ seq: 1 }, { unique: true, sparse: true });
+  await db.collection("audit_events").createIndex({ action: 1, at: -1 });
+}
+
+// Refuses to start rather than run without the index that keeps audit sequence numbers unique
+async function assertAuditIndexes(db) {
+  const indexes = await db.collection("audit_events").indexes();
+  if (!indexes.some((i) => i.key.seq === 1 && i.unique)) throw new Error("The audit log has no indexes. Run: npm run db:setup");
+}
+
+module.exports = { createClient, ensureIndexes, ensureAuditIndexes, assertAuditIndexes, assertTransactionsAvailable };

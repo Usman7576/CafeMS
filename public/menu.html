@@ -41,6 +41,7 @@
           <div class="field"><label for="fPrice">Price</label><div class="input-group"><span class="addon">Rs</span><input class="input" id="fPrice" type="number" min="50" max="20000" step="10" inputmode="numeric" required></div></div>
           <div class="field"><span class="label">Availability</span><label class="switch-row"><input type="checkbox" class="switch" id="fAvail" checked><span>Show on the menu</span></label></div>
           <div class="field span-2"><label for="fPhoto" class="label">Photo <span class="opt">Optional · PNG, JPEG or WebP, up to 2 MB</span></label><input class="input" id="fPhoto" type="file" accept="image/png,image/jpeg,image/webp"></div>
+          <div class="field span-2"><span class="label">Recipe <span class="opt">Stock used by one portion; leave empty if stock is not tracked</span></span><div id="recipeRows" class="recipe-rows"></div><button type="button" class="btn btn-secondary btn-sm" id="addIngredient">Add ingredient</button></div>
           <div class="field span-2 mb-0"><label for="fDesc" class="label">Description <span class="opt" id="descCount">0 / 80</span></label><input class="input" id="fDesc" maxlength="80"></div>
         </div>
       </div>

@@ -35,7 +35,7 @@ function createCatalogService({ db }) {
 
   async function listForAdmin() {
     const [items, stock] = await Promise.all([menu.find().sort({ _id: 1 }).toArray(), stockMap()]);
-    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: Boolean(m.photo), available: m.available, reason: unavailableReason(m, stock) }));
+    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: Boolean(m.photo), available: m.available, reason: unavailableReason(m, stock), recipe: (m.recipe || []).map((r) => ({ ing: r.ing, qty: fromMilli(r.qtyMilli), name: stock.has(r.ing) ? stock.get(r.ing).name : "Unknown" })) }));
   }
 
   const inventoryView = (ing, usedIn) => ({
@@ -93,16 +93,28 @@ function createCatalogService({ db }) {
     const actor = req.auth.user;
     const event = (action, details, severity) => recordEvent(db, req, { actor: actor.username, role: actor.role, action, details, severity }, { session });
 
+    // Each ingredient must exist and appear once; stored in thousandths, like stock
+    let recipe;
+    if (data.recipe) {
+      const ids = data.recipe.map((r) => r.ing);
+      if (new Set(ids).size !== ids.length) throw new AppError(400, "invalid_input", "Each ingredient can appear only once in a recipe.");
+      if (await inventory.countDocuments({ _id: { $in: ids } }, { session }) !== ids.length) throw new AppError(400, "invalid_input", "A recipe uses an ingredient that does not exist.");
+      recipe = data.recipe.map((r) => ({ ing: r.ing, qtyMilli: toMilli(r.qty) }));
+      if (recipe.some((r) => r.qtyMilli < 1)) throw new AppError(400, "invalid_input", "Enter how much of each ingredient one portion uses.");
+    }
+    const fields = { ...data };
+    delete fields.recipe;
+
     // A case-insensitive comparison that treats the name purely as text
     const duplicate = await menu.findOne(
-      { name: data.name, ...(id ? { _id: { $ne: id } } : {}) },
+      { name: fields.name, ...(id ? { _id: { $ne: id } } : {}) },
       { session, collation: { locale: "en", strength: 2 } }
     );
     if (duplicate) throw new AppError(409, "name_taken", "An item with this name already exists.");
 
     if (!id) {
       const newId = await nextSequence(db, "menu", 0, session);
-      await menu.insertOne({ _id: newId, ...data, recipe: [] }, { session });
+      await menu.insertOne({ _id: newId, ...fields, recipe: recipe || [] }, { session });
       await event("Menu item added", `${data.name} · ${data.cat} · Rs ${data.price}`, "warning");
       return newId;
     }
@@ -112,7 +124,8 @@ function createCatalogService({ db }) {
     if (current.price !== data.price) await event("Price changed", `${current.name}: Rs ${current.price} to Rs ${data.price}`, "warning");
     if (current.available !== data.available) await event(data.available ? "Item switched on" : "Item switched off", data.name, "info");
     if (current.name !== data.name || current.cat !== data.cat || current.desc !== data.desc) await event("Menu item edited", data.name, "info");
-    await menu.updateOne({ _id: id }, { $set: data }, { session });
+    if (recipe) await event("Recipe changed", data.name, "info");
+    await menu.updateOne({ _id: id }, { $set: { ...fields, ...(recipe ? { recipe } : {}) } }, { session });
     return id;
   }
 

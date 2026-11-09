@@ -8,6 +8,8 @@
 
 const CODES = Object.freeze(["2", "1", "1A", "0"]);
 const STRENGTH = Object.freeze({ 2: "hard", 1: "soft", "1A": "async" });
+// The graph notation from the slides: solid for hard sync, dashed for soft sync, dotted for soft async
+const LINE = Object.freeze({ 2: "solid", 1: "dashed", "1A": "dotted" });
 
 class MatrixError extends Error {}
 
@@ -32,7 +34,7 @@ function edges(model) {
   const list = [];
   model.matrix.forEach((row, i) => row.forEach((cell, j) => {
     const code = String(cell);
-    if (code !== "0") list.push({ from: model.components[i], to: model.components[j], code, strength: STRENGTH[code] });
+    if (code !== "0") list.push({ from: model.components[i], to: model.components[j], code, strength: STRENGTH[code], line: LINE[code] });
   }));
   return list;
 }

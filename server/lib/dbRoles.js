@@ -1,5 +1,5 @@
 // Least privilege in the database: the app account can read and add audit entries, but never change or
-// delete them. Even a fully compromised app cannot rewrite history with this account.
+// delete them, and it cannot create indexes on them (a time-to-live index would delete entries).
 const READ_WRITE = ["find", "insert", "update", "remove"];
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "menu", "inventory", "orders", "bills", "reservations", "tables",
   "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks"];
@@ -9,7 +9,7 @@ function appPrivileges(dbName) {
   const on = (collection, actions) => ({ resource: { db: dbName, collection }, actions });
   return [
     ...COLLECTIONS.map((name) => on(name, [...READ_WRITE, "createIndex"])),
-    on("audit_events", ["find", "insert", "createIndex"]),
+    on("audit_events", ["find", "insert", "listIndexes"]),
     on("", ["listCollections", "createCollection"])
   ];
 }

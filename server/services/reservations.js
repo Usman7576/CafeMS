@@ -27,8 +27,16 @@ function createReservationService({ config, db }) {
     if (query.phone) filter.phoneIndex = blindIndex(query.phone, config.blindIndexKey);
     if (query.date) filter.date = query.date;
     if (query.status) filter.status = query.status;
-    // Without a filter, the list is recent and upcoming bookings, so old ones can never push new ones out
-    if (!query.phone && !query.date && !query.status) filter.date = { $gte: localDate(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000) };
+    // Without a filter, upcoming bookings and recent ones are fetched separately, so neither can push
+    // the other off the staff screen
+    if (!query.phone && !query.date && !query.status) {
+      const today = localDate();
+      const [recent, upcoming] = await Promise.all([
+        reservations.find({ date: { $gte: localDate(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000), $lt: today } }).sort({ date: -1, time: -1 }).limit(100).toArray(),
+        reservations.find({ date: { $gte: today } }).sort({ date: 1, time: 1 }).limit(400).toArray()
+      ]);
+      return [...recent.reverse(), ...upcoming].map(view);
+    }
     const rows = await reservations.find(filter).sort({ date: 1, time: 1 }).limit(500).toArray();
     return rows.map(view);
   }

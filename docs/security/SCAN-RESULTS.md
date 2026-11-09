@@ -7,15 +7,17 @@
 | ESLint with security rules | Code quality and risky patterns | 0 problems | Yes |
 | `npm audit` | Known vulnerable packages | 0 vulnerabilities | Yes |
 | CodeQL (security-extended) | Data-flow analysis on GitHub | 5 of 6 alerts fixed; 1 false positive dismissed; 0 open | Reported in the Security tab |
-| Semgrep (6 rule packs) | Static analysis of 148 files | 0 findings | Yes |
+| Semgrep (6 rule packs) | Static analysis of every project file | 0 findings | Yes |
 | gitleaks | Secrets in every commit | 0 leaks, 1 reviewed false positive | Yes |
 | Trivy, project | Packages, Dockerfile, secrets | 0 HIGH or CRITICAL | Yes |
 | Trivy, app image | Everything in the shipped image | 0 HIGH or CRITICAL | Yes |
 | Trivy, Caddy and MongoDB images | Third-party images | Open findings, below | No, reported |
-| OWASP ZAP baseline | The running app, from outside | 0 failures, 0 warnings, 63 rules passed | Yes |
+| OWASP ZAP baseline | The public pages of the running app, passively, on the private container network | 0 failures, 0 warnings, 63 rules passed | Yes |
+| OWASP ZAP active API scan | Attack requests against all 66 documented API paths, signed in as an Admin; 222 URLs, capped at 15 minutes | 0 failures, 0 server errors, 119 rules passed; 2 low warnings accepted below | Yes |
 | actionlint | CI workflow files | 0 problems | No, run by hand |
-| Tests with coverage | Every control | All pass; 97% of lines | Yes |
+| Tests with coverage | Every control | 360 of 360 pass; 97.8% of lines | Yes |
 | Recovery drill | Back up, destroy, restore, compare | Data, photo and counts restored | Yes |
+| Failover drill | Kill the database primary on the three-member stack | A new primary served writes after about 10 seconds | Yes |
 | Load test | Staff requests during a flood | No staff request failed ([details](LOAD-TEST.md)) | No, reported |
 
 ## What the scans found, and what was done
@@ -46,6 +48,8 @@ These are recorded so that the exceptions are visible and can be reviewed.
 | ZAP 10027, suspicious comments | Matches ordinary comments containing words such as "from" |
 | ZAP 10049, storable content | Intended: pages revalidate with ETag, and API responses are `no-store` |
 | ZAP 10109 and 10111 | Informational: the site uses JavaScript, and it has a sign-in form |
+| ZAP 2, private IP disclosure (active scan) | Intended: the audit log and device list record each request's address. Only Admins, or the account's owner, see them. In the scan the addresses were the test containers' own |
+| ZAP 100001, unexpected content type (active scan) | Expected: CSV exports are `text/csv` and unknown paths return the HTML error page; the rule assumes every response is JSON |
 | ZAP 10202, no CSRF token in forms | A native form post returns 404; real requests use `fetch` with the CSRF header and an Origin check |
 
 ## Open findings in third-party images
@@ -61,4 +65,4 @@ No fixed image existed on 9 November 2026. Dependabot proposes new digests as so
 
 ## How the scans were run
 
-Each tool ran from the same image digest that CI uses, against the code in this repository and a local copy of the production stack. Manual testing with Burp Suite is planned for Phase 7.
+Each tool ran from the same image digest that CI uses, against the code in this repository and a local copy of the production stack. The active scan is automated and time-capped, and about two-thirds of its requests were correctly refused by permission checks and rate limits, so it does not go deep into every route. It does not replace the manual Burp Suite test in [BURP-TEST-SCRIPT.md](BURP-TEST-SCRIPT.md), which is still to be run by a person.

@@ -90,7 +90,7 @@ jobs:
   stack:
     name: Container scan, recovery drill and ZAP
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       TRIVY: aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
       ZAP: ghcr.io/zaproxy/zaproxy@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
@@ -128,17 +128,38 @@ jobs:
           mkdir -p zap-work && cp .zap/rules.tsv zap-work/ && chmod -R a+rwX zap-work
           docker run --rm --network cafems-prod_frontend -v "$PWD/zap-work:/zap/wrk:rw" "$ZAP" \
             zap-baseline.py -t http://app:3000/ -m 3 -c rules.tsv -r zap-report.html
-      - name: Keep the ZAP report
+      - name: OWASP ZAP active scan of the signed-in API
+        run: |
+          npm ci
+          node scripts/openapi.js zap-work/openapi.json
+          docker cp cafems-prod-caddy-1:/data/caddy/pki/authorities/local/root.crt caddy-root.crt
+          link=$($COMPOSE run --rm -T app scripts/create-admin.js scanner "Scan Admin" | grep -o 'https://[^ ]*')
+          NODE_EXTRA_CA_CERTS=caddy-root.crt node .zap/sign-in.js "$link" zap-work/session.json
+          cookie=$(node -p "require('./zap-work/session.json').cookie")
+          csrf=$(node -p "require('./zap-work/session.json').csrfToken")
+          # Slow enough to stay under the per-person limit, and capped so that the scan always finishes
+          options="-config scanner.threadPerHost=1 -config scanner.delayInMs=300 -config scanner.maxRuleDurationInMins=1 -config scanner.maxScanDurationInMins=15"
+          index=0
+          for header in "Cookie|$cookie" "X-CSRF-Token|$csrf" "Origin|https://localhost:8443"; do
+            prefix="replacer.full_list($index)"
+            options="$options -config $prefix.description=h$index -config $prefix.enabled=true -config $prefix.matchtype=REQ_HEADER"
+            options="$options -config $prefix.matchstr=${header%%|*} -config $prefix.regex=false -config $prefix.replacement=${header#*|}"
+            index=$((index + 1))
+          done
+          chmod -R a+rwX zap-work
+          docker run --rm --network cafems-prod_frontend -v "$PWD/zap-work:/zap/wrk:rw" "$ZAP" \
+            zap-api-scan.py -t openapi.json -f openapi -O http://app:3000 -c rules.tsv -T 12 -r zap-api-report.html -z "$options"
+      - name: Keep the ZAP reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: zap-report
-          path: zap-work/zap-report.html
+          name: zap-reports
+          path: zap-work/*.html
           if-no-files-found: ignore
 
       - name: Recovery drill - back up, destroy the data, restore and compare
         run: |
-          $COMPOSE run --rm -T app scripts/create-admin.js drill "Recovery Drill" | grep -q "Invitation created"
+          $COMPOSE run --rm -T app scripts/create-admin.js drill "Recovery Drill" | grep -q "Invitation link"
           $COMPOSE run --rm -T backup
           file=$(docker run --rm -v cafems-prod_backups:/b --entrypoint /bin/sh "$ZAP" -c 'ls /b | grep "\.bak$" | tail -1')
           $COMPOSE stop app caddy mongo
@@ -146,14 +167,51 @@ jobs:
           docker volume rm cafems-prod_mongo-data cafems-prod_mongo-config cafems-prod_uploads
           $COMPOSE up -d --wait
           $COMPOSE run --rm -T restore "/backups/$file" cafems
-          # The Admin invited before the backup exists again, so a second first-Admin is refused
-          if $COMPOSE run --rm -T app scripts/create-admin.js second "Second Admin"; then
-            echo "The restored data is missing its Admin."; exit 1
+          # The two Admins invited before the backup exist again, so a third is refused
+          if $COMPOSE run --rm -T app scripts/create-admin.js third "Third Admin"; then
+            echo "The restored data is missing its Admins."; exit 1
           fi
 
       - name: Stack logs on failure
         if: failure()
         run: $COMPOSE logs --no-color --tail 100
+      - name: Stop the stack
+        if: always()
+        run: $COMPOSE --profile tools down -v
+
+  failover:
+    name: Failover drill on three database members
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COMPOSE: docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ha.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Start the three-member stack
+        run: |
+          node scripts/setup-env.js --production --domain localhost --https-port 8443 --http-port 8080
+          $COMPOSE up -d --build --wait
+      - name: Kill the primary; the app must recover and accept writes
+        run: |
+          attempt() { curl --silent --insecure --max-time 8 --output /dev/null --write-out '%{http_code}' -X POST https://localhost:8443/api/v1/auth/login \
+            -H 'Origin: https://localhost:8443' -H 'Content-Type: application/json' -d '{"username":"failover.drill","password":"Wrong-Password-1"}'; }
+          test "$(attempt)" = 401
+          docker kill cafems-prod-mongo-1
+          # The readiness check needs a primary. It has no sign-in limit, so it can be polled.
+          sleep 2
+          for second in $(seq 1 60); do
+            if curl --fail --silent --insecure --max-time 8 --output /dev/null https://localhost:8443/api/health/ready; then
+              echo "A new primary was ready within about $second tries."
+              # A failed sign-in writes to the audit log, so 401 proves that writes work again
+              test "$(attempt)" = 401
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "The app did not recover."; exit 1
       - name: Stop the stack
         if: always()
         run: $COMPOSE --profile tools down -v

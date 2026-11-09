@@ -207,7 +207,8 @@
         "3 failures lock the account, and the right password is then refused",
         "wrong MFA codes also count towards the lock",
         "the right password alone does not reset the count, so authenticator codes cannot be guessed forever",
-        "a new browser cannot reset the lock"
+        "a new browser cannot reset the lock",
+        "a locked account cannot pass an authenticator re-check or change its password"
       ]
     },
     {
@@ -333,13 +334,16 @@
       "code": [
         "server/services/approvals.js",
         "server/services/billing.js",
-        "server/services/users.js"
+        "server/services/users.js",
+        "scripts/create-admin.js"
       ],
       "tests": [
         "a large refund waits for a different person with a fresh code",
         "one Admin alone cannot create another Admin; a second Admin must approve",
         "need a fresh authenticator code as well as the Manager role",
-        "the target of a request cannot approve it"
+        "the target of a request cannot approve it",
+        "the Admin who set up a Manager's account cannot approve that Manager's large refund",
+        "one Admin can disable a compromised Admin at once, and it raises an alert"
       ]
     },
     {
@@ -359,7 +363,9 @@
         "detects a recalculated hash, because the attacker cannot sign it",
         "if the audit entry fails, the action it describes does not happen",
         "the recorded waiter is always the signed-in person",
-        "an action that cannot be recorded does not happen (fail-secure audit)"
+        "an action that cannot be recorded does not happen (fail-secure audit)",
+        "a row added outside the chain fails verification and is never shown",
+        "verifying while actions are being written gives no false alarm"
       ]
     },
     {
@@ -379,7 +385,8 @@
         "name, phone and notes are encrypted at rest",
         "only a Manager or Admin can see the full number, and it is logged",
         "waiters see a masked phone; only a Manager or Admin can reveal it, with a log entry (finding 32)",
-        "a shortened GCM authentication tag is refused, so forged values cannot be accepted"
+        "a shortened GCM authentication tag is refused, so forged values cannot be accepted",
+        "searching by number is limited per person and recorded, without storing the number"
       ]
     },
     {
@@ -437,7 +444,8 @@
         "forged, old, wrong-amount and malformed callbacks are refused",
         "a copied gateway callback is accepted only once",
         "no second payment is taken while a card charge is still waiting for the gateway",
-        "a late approval for a bill already paid another way is recorded and raises an alert"
+        "a late approval for a bill already paid another way is recorded and raises an alert",
+        "a callback that failed part-way can be retried; only a processed one is a replay"
       ]
     },
     {
@@ -476,7 +484,8 @@
       ],
       "tests": [
         "the app account can add audit entries but cannot change or delete them",
-        "production refuses a database connection with no username and password (least privilege)"
+        "production refuses a database connection with no username and password (least privilege)",
+        "the app's database account cannot add indexes to the audit log, so it cannot erase it with a TTL index"
       ]
     },
     {
@@ -496,7 +505,8 @@
         "refuses to start without secrets",
         "refuses weak or wrongly sized keys",
         "broken JSON gives a clean error with no stack trace",
-        "sign-in fails closed and reveals nothing"
+        "sign-in fails closed and reveals nothing",
+        "an unsupported charset is a client error, not a server error"
       ]
     },
     {
@@ -513,7 +523,8 @@
       ],
       "tests": [
         "exports are logged, limited per person, and safe to open in a spreadsheet",
-        "CSV cells that a spreadsheet would run as formulas are neutralised"
+        "CSV cells that a spreadsheet would run as formulas are neutralised",
+        "the export limit is shared by every export, per person"
       ]
     },
     {
@@ -574,12 +585,15 @@
         "scripts/backup.js",
         "scripts/restore.js",
         "server/lifecycle.js",
-        "deploy/docker-compose.yml"
+        "deploy/docker-compose.yml",
+        "deploy/docker-compose.ha.yml"
       ],
       "tests": [
         "a restore brings back every record, and the audit chain still verifies",
         "an altered file or the wrong key is refused",
-        "a request in progress finishes, then the database closes and the process exits cleanly"
+        "a request in progress finishes, then the database closes and the process exits cleanly",
+        "a backup taken while the cafe is busy restores with a valid audit chain",
+        "old backups are removed, and only files this tool made"
       ]
     },
     {
@@ -619,7 +633,7 @@
         "only Caddy is reachable from outside, and the database network has no route out",
         "the app never receives the database administrator password or the backup key",
         "every action is pinned to a commit, and the default token is read-only",
-        "refuses once an Admin exists, so it cannot get round the second-Admin rule"
+        "allows a second Admin, then refuses, so it cannot get round the second-Admin rule"
       ]
     },
     {
@@ -654,7 +668,8 @@
       ],
       "tests": [
         "retention removes personal data after 90 days, and keeps recent data",
-        "the privacy notice tells customers what the security log keeps"
+        "the privacy notice tells customers what the security log keeps",
+        "an unknown username is never stored, in case a password was typed there"
       ]
     },
     {

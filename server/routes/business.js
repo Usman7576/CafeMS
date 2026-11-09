@@ -112,12 +112,17 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   // Money leaves the business, so the manager confirms an authenticator code first
   router.post("/bills/:no/refund", ...allow("billing.refund"), requireStepUp, params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
     const outcome = await idempotentTransaction(db, req, (session) => billing.refund(req, req.validParams.no, req.body.reason, session));
+    if (outcome.status === 200) await billing.reversePayment(req, req.validParams.no);
     res.status(outcome.status).json(outcome.body);
   }));
 
   // ---------- Approvals: the deciding person confirms an authenticator code first ----------
   router.get("/approvals", ...allow("approvals.read"), wrap(async (req, res) => res.json({ approvals: await approvals.listFor(req.auth.user.role) })));
-  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), tx((req, session) => approvals.approve(req, req.validParams.id, session)));
+  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
+    const result = await inTransaction(db, (session) => approvals.approve(req, req.validParams.id, session));
+    if (result && result.refund) await billing.reversePayment(req, result.no);
+    res.json(result);
+  }));
   router.post("/approvals/:id/reject", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
     await inTransaction(db, (session) => approvals.reject(req, req.validParams.id, session));
     res.status(204).end();
@@ -131,8 +136,11 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     res.status(outcome.status).json(await reservations.get(outcome.body.id));
   }));
   // A POST, because a phone number in a URL would end up in access logs and browser history
-  router.post("/reservations/search", ...allow("reservations.write"), validate(schemas.reservationSearch), wrap(async (req, res) => {
-    res.json({ reservations: await reservations.list({ phone: req.body.phone }) });
+  // Limited and recorded, so it cannot be used to work out a masked number by trying candidates
+  router.post("/reservations/search", ...allow("reservations.write"), personalLimiter("phone-search", 30), validate(schemas.reservationSearch), wrap(async (req, res) => {
+    const found = await reservations.list({ phone: req.body.phone });
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Customer number searched", details: `${found.length} found`, severity: "info" });
+    res.json({ reservations: found });
   }));
   router.post("/reservations/:id/status", ...allow("reservations.write"), params(schemas.params.reservationId), validate(schemas.reservationStatus),
     tx((req, session) => reservations.setStatus(req, req.validParams.id, req.body.status, session)));
@@ -151,7 +159,8 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
 
   // ---------- Audit log ----------
   const auditRows = (query) => {
-    const filter = {};
+    // Only entries in the signed chain are shown; anything else makes the integrity check fail
+    const filter = { seq: { $exists: true } };
     if (query.severity) filter.severity = query.severity;
     if (query.before) filter.at = { $lt: new Date(query.before) };
     return db.collection("audit_events").find(filter, { projection: { _id: 0 } }).sort({ at: -1, _id: -1 }).limit(query.limit).toArray();

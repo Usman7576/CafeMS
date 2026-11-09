@@ -40,6 +40,11 @@ function createApprovalService({ db }) {
     if (approval.status !== "Pending" || approval.expiresAt.getTime() <= Date.now()) throw new AppError(409, "already_decided", "This request has already been decided or has expired.");
     if (approval.requestedBy === actor.username) throw new AppError(403, "same_person", "A different person must approve your own request.");
     if (approval.payload.target === actor.username) throw new AppError(403, "same_person", "You cannot decide a request about your own account.");
+    // Whoever created or last reset the requester's account could be both people at once
+    if (approval.type === "refund") {
+      const requester = await db.collection("users").findOne({ username: approval.requestedBy }, { session });
+      if (requester && requester.sponsor === actor.username) throw new AppError(403, "same_person", "You set up this person's account, so a different person must approve.");
+    }
     return approval;
   }
 

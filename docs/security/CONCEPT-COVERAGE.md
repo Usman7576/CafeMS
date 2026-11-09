@@ -1,6 +1,6 @@
 # Concept coverage
 
-**All 114 concepts from the eight lecture decks are accounted for: 92 built and tested, 16 written analyses, 1 manual procedure and 5 that cannot be built inside a web app.**
+**All 115 concepts from the eight lecture decks are accounted for: 91 built and tested, 17 written analyses, 1 manual procedure and 6 that cannot be built inside a web app.**
 
 Generated from `concept-coverage.json` by `npm run concepts`; do not edit by hand. A test fails if a file or test named here stops existing, or if this page is out of date.
 
@@ -38,9 +38,9 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | 16 | API security | Built | Authentication, permissions, strict schemas, CSRF, rate limits and idempotency | `server/app.js`, `server/lib/tx.js` | a signed-in change needs the CSRF token; requests from another site, or with no Origin, are blocked; an order needs an Idempotency-Key |
 | 8, 16 | File security and malicious uploads | Built | Signature check, 2 MB limit, random name, outside the web root, nosniff | `server/services/photos.js` | scripts, SVG, HTML and disguised files are refused and recorded; a file over 2 MB is refused; a real image is stored outside the web root under a random name, and served safely |
 | 8 | Error messages leaking information | Built | Central handler: generic message and a request ID | `server/app.js` | broken JSON gives a clean error with no stack trace |
-| 16 | Code review | Built | Pull request security checklist and a dated review log | `.github/pull_request_template.md`, `docs/security/SECURITY-REQUIREMENTS.md` | – |
+| 16 | Code review | Documented | Dated independent review with every finding and outcome, and a pull request security checklist | `docs/security/CODE-REVIEW.md`, `.github/pull_request_template.md` | – |
 | 16 | SAST | Built | ESLint security rules, Semgrep and CodeQL | `eslint.config.js`, `.github/workflows/ci.yml`, `docs/security/SCAN-RESULTS.md` | CI runs every tool the plan names |
-| 16 | DAST and OWASP ZAP | Built | ZAP baseline against the running production stack | `.zap/rules.tsv`, `.github/workflows/ci.yml`, `docs/security/SCAN-RESULTS.md` | CI runs every tool the plan names |
+| 16 | DAST and OWASP ZAP | Built | Passive scan, plus an active scan of the signed-in API against the running stack | `.zap/rules.tsv`, `.zap/sign-in.js`, `scripts/openapi.js`, `.github/workflows/ci.yml`, `docs/security/SCAN-RESULTS.md` | CI runs every tool the plan names |
 | 16 | Burp Suite | Manual | A step-by-step test script for a person to run | `docs/security/BURP-TEST-SCRIPT.md` | – |
 | 16 | Dependency scanning | Built | npm audit, Trivy and Dependabot | `.github/dependabot.yml`, `.github/workflows/ci.yml` | the packages npm audit flagged are on fixed versions (finding 17) |
 | 16 | Docker | Built | Multi-stage, non-root, read-only image | `Dockerfile`, `deploy/docker-compose.yml` | runs on a pinned, minimal base as an unprivileged user; every service is read-only, drops all capabilities and cannot gain privileges |
@@ -56,8 +56,8 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | --- | --- | --- | --- | --- | --- |
 | 8-9 | Confidentiality | Built | Each role receives only its own fields; personal data encrypted | `server/routes/business.js`, `server/lib/crypto.js` | the snapshot holds only that role's data; name, phone and notes are encrypted at rest |
 | 10-11 | Integrity, hashing and version control | Built | Server-side rules, transactions, SHA-256 audit chain, Git | `server/services/auditLog.js`, `server/lib/tx.js` | if any step fails, nothing is saved; detects edited details, a changed actor and a changed time |
-| 12-13 | Availability, redundancy and failover | Built | Throttling, health checks, graceful shutdown; multi-member database is a deployment choice | `server/app.js`, `server/lifecycle.js`, `docs/DEPLOYMENT.md` | the public health checks reveal status only (finding 18); a request in progress finishes, then the database closes and the process exits cleanly |
-| 14-15 | Accountability and non-repudiation | Built | Actor taken from the session; entries signed with Ed25519 | `server/services/auditLog.js` | the recorded waiter is always the signed-in person; detects a recalculated hash, because the attacker cannot sign it |
+| 12-13 | Availability, redundancy and failover | Built | Throttling, health checks, graceful shutdown, and a three-member database option proved by a failover drill | `server/app.js`, `server/lifecycle.js`, `deploy/docker-compose.ha.yml`, `.github/workflows/ci.yml` | the public health checks reveal status only (finding 18); a request in progress finishes, then the database closes and the process exits cleanly; the three-member database option has three members, and the app can reach them all |
+| 14-15 | Accountability and non-repudiation | Built | Actor taken from an MFA-verified session; entries signed with Ed25519 by the server (personal signatures are a listed residual risk) | `server/services/auditLog.js`, `docs/security/RESIDUAL-RISKS.md` | the recorded waiter is always the signed-in person; detects a recalculated hash, because the attacker cannot sign it |
 | 16-17 | Authentication | Built | Password plus MFA | `server/routes/auth.js` | a correct password alone gives no session (MFA is mandatory) |
 | 22-23 | Least privilege | Built | Permission table, role-filtered data, restricted database account, no container capabilities | `server/lib/permissions.js`, `server/lib/dbRoles.js` | what each role receives (least privilege); the app account can add audit entries but cannot change or delete them |
 | 24-25 | Defence in depth | Built | Independent layers: CSP, validation, RBAC, ownership, encryption, limits, audit | `docs/security/THREAT-MODEL.md`, `server/app.js` | every role against every route (RBAC matrix); name, phone and notes are encrypted at rest |
@@ -74,7 +74,7 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | 18 (5) | Scenario: encrypted transaction records | Built | Customer details on bills encrypted; amounts stay readable for reports | `server/services/billing.js` | stored encrypted, and masked in every response |
 | 19 (6) | Scenario: sensitive email encrypted automatically | Out of scope | The app sends no email; messages hold no personal data | `docs/security/OUT-OF-SCOPE.md` | a paid bill with a phone queues a receipt holding no phone number |
 | 19 (7), 20 (14) | Scenario: unusual access in logs, all record access reviewed | Built | Address and browser recorded; full-number views logged; alert rules | `server/services/auditLog.js`, `server/services/alerts.js` | only a Manager or Admin can see the full number, and it is logged; one password tried against many usernames from one address raises an alert (password spraying) |
-| 19 (8), (10) | Scenario: code signing and verifying a download's hash | Built | Locked packages with npm ci, pinned images and actions, SHA-256 release checksums | `.github/workflows/release.yml`, `Dockerfile`, `package-lock.json` | runs on a pinned, minimal base as an unprivileged user; every action is pinned to a commit, and the default token is read-only |
+| 19 (8), (10) | Scenario: code signing and verifying a download's hash | Built | Signed build attestations and SHA-256 checksums on releases; locked packages, pinned images and actions | `.github/workflows/release.yml`, `Dockerfile`, `package-lock.json` | releases carry a signed provenance attestation and checksums; runs on a pinned, minimal base as an unprivileged user; every action is pinned to a commit, and the default token is read-only |
 | 19 (9) | Scenario: account lockout | Built | Lock after 3 failures for 15 minutes; Admin can unlock | `server/routes/auth.js` | 3 failures lock the account, and the right password is then refused; an Admin can unlock an account |
 | 20 (11) | Scenario: biometric access | Out of scope | Physical security of a site | `docs/security/OUT-OF-SCOPE.md` | – |
 | 20 (12) | Scenario: disaster recovery test | Built | Backup, destroy and restore drill in CI | `.github/workflows/ci.yml`, `docs/DEPLOYMENT.md` | CI runs every tool the plan names; a restore brings back every record, and the audit chain still verifies |
@@ -113,7 +113,7 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | 7 | Script kiddies | Built | Rate limits, lockout and security headers | `server/app.js`, `server/middleware/security.js` | the auth rate limit stops rapid guessing across accounts; are present on pages and API responses |
 | 3 | Hacktivists and defacement | Built | Read-only containers, only listed files served, strict CSP | `deploy/docker-compose.yml`, `server/app.js` | every service is read-only, drops all capabilities and cannot gain privileges; project files cannot be downloaded (finding 15) |
 | 8, 15 | Nation-state actors and poisoned updates | Built | Locked packages, pinned images and actions, scanning, signed audit | `package-lock.json`, `.github/dependabot.yml`, `Dockerfile` | every action is pinned to a commit, and the default token is read-only |
-| 6 | Cyber terrorists | Documented | Very low relevance to a cafe; accepted risk with a reason | `docs/security/THREAT-MODEL.md`, `docs/security/RESIDUAL-RISKS.md` | – |
+| 6 | Cyber terrorists | Out of scope | Very low relevance to a cafe; accepted risk with a reason | `docs/security/OUT-OF-SCOPE.md`, `docs/security/THREAT-MODEL.md`, `docs/security/RESIDUAL-RISKS.md` | – |
 
 ## WSES
 
@@ -142,7 +142,7 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | 7-13 | Worked example ShopMini and its degrees | Built | Reproduced | `server/lib/dependencies.js` | reproduces ShopMini's degrees: AUTH in 2 out 0, ORD in 1 out 3, PAY in 1 out 0 |
 | 7 | Soft sync: Pending Payment on timeout | Built | 3-second timeout, then a Pending Payment bill and retry | `server/services/billing.js`, `server/services/gateway.js` | a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged |
 | 3 | Soft async: queued messages | Built | Outbox collection and background worker | `server/services/outbox.js`, `server/workers.js` | a delivered message is sent once; stock falling to its reorder level queues one message, without blocking the order |
-| 13, 20, 23 | Degrees, graph styles and single points of failure | Built | Report script and Admin risk page | `scripts/dependency-report.js`, `public/js/risk.js` | CafeMS's own matrix is valid and names the database as its main single point of failure |
+| 13, 20, 23 | Degrees, graph styles and single points of failure | Built | Report script and an Admin page graph drawn with solid, dashed and dotted edges | `scripts/dependency-report.js`, `public/js/risk.js`, `public/risk.html` | CafeMS's own matrix is valid and names the database as its main single point of failure; each edge carries the slides' line style: solid, dashed or dotted |
 
 ## Failures
 
@@ -155,5 +155,6 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | 10 | Human errors | Built | Second person, confirmations and an audit trail | `server/services/approvals.js` | the last active Admin cannot be removed, even if a request gets through |
 | 11 | Interdependency failures | Built | Hard and soft dependencies, failing closed | `server/lib/dependencies.js` | a failure spreads along hard dependencies: the database takes down the web server, inventory and front end; sign-in fails closed and reveals nothing |
 | 13 | Noise that hides real attacks | Built | Repeat alerts are merged | `server/services/alerts.js` | a flood updates one alert instead of creating many |
-| 16-17 | Testing, monitoring, failover, training and patching | Documented | Each strategy mapped to what CafeMS does | `docs/security/RISK-AND-FAILURE-ANALYSIS.md` | – |
+| 16-17 | Testing, monitoring, failover and patching | Documented | Each strategy mapped to what CafeMS does | `docs/security/RISK-AND-FAILURE-ANALYSIS.md` | – |
+| 17 | User training | Documented | A short guide for staff on passwords, phones, phishing, refunds and reporting problems | `docs/STAFF-SECURITY-GUIDE.md` | – |
 | 18-25 | Dependency mapping and failure propagation | Built | Script showing what each component's failure affects | `scripts/dependency-report.js`, `server/lib/dependencies.js` | a soft payment failure leaves orders working; a hard login failure stops them |

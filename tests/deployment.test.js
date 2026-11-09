@@ -63,7 +63,7 @@ describe("production stack", () => {
 
   test("the app never receives the database administrator password or the backup key", () => {
     assert.doesNotMatch(all.app, /MONGO_ROOT|MONGO_INITDB|BACKUP_KEY/);
-    assert.match(all.app, /TRUST_PROXY: "1"/);
+    assert.match(all.app, /TRUST_PROXY: \$\{TRUST_PROXY:-1\}/);
     assert.match(all.app, /NODE_ENV: production/);
     assert.match(all.mongo, /--auth --keyFile/);
   });
@@ -93,9 +93,25 @@ describe("pipeline", () => {
 
   test("CI runs every tool the plan names", () => {
     const ci = read(`${dir}/ci.yml`);
-    for (const tool of ["npm run lint", "npm run test:coverage", "npm audit", "semgrep", "codeql-action", "gitleaks", "aquasec/trivy", "zap-baseline.py", "Recovery drill", "npm run trace"]) {
+    for (const tool of ["npm run lint", "npm run test:coverage", "npm audit", "semgrep", "codeql-action", "gitleaks", "aquasec/trivy", "zap-baseline.py", "zap-api-scan.py", "Recovery drill", "Failover drill", "npm run trace", "npm run concepts"]) {
       assert.ok(ci.includes(tool), tool);
     }
+  });
+});
+
+describe("redundancy and signed releases", () => {
+  test("the three-member database option has three members, and the app can reach them all", () => {
+    const ha = read("deploy/docker-compose.ha.yml");
+    for (const member of ["mongo:27017", "mongo2:27017", "mongo3:27017"]) assert.ok(ha.includes(`host: '${member}'`), member);
+    assert.match(ha, /x-uri: &uri mongodb:\/\/[^\n]*@mongo:27017,mongo2:27017,mongo3:27017\//);
+    assert.match(ha, /read_only: true\n {2}cap_drop: \[ALL\]/);
+  });
+
+  test("releases carry a signed provenance attestation and checksums", () => {
+    const release = read(".github/workflows/release.yml");
+    assert.match(release, /attest-build-provenance@[0-9a-f]{40}/);
+    assert.match(release, /id-token: write/);
+    assert.match(release, /sha256sum/);
   });
 });
 
@@ -111,7 +127,7 @@ describe("first Admin of a new deployment", () => {
   });
   after(() => ctx.stop());
 
-  test("creates one invitation, storing only the hash of its link, and is audited", async () => {
+  test("creates an invitation, storing only the hash of its link, and is audited", async () => {
     const result = run("owner", "Cafe Owner");
     assert.equal(result.status, 0, result.stderr);
     const token = /#token=([\w-]+)/.exec(result.stdout)[1];
@@ -121,14 +137,28 @@ describe("first Admin of a new deployment", () => {
     assert.equal(user.passwordHash, undefined);
     assert.equal(await ctx.db.collection("auth_tokens").countDocuments({ _id: token }), 0);
     assert.equal(await ctx.db.collection("auth_tokens").countDocuments({ username: "owner" }), 1);
-    assert.ok(await ctx.db.collection("audit_events").findOne({ action: "First Admin invited", severity: "high" }));
+    assert.ok(await ctx.db.collection("audit_events").findOne({ action: "Admin invited from the server", severity: "high" }));
   });
 
-  test("refuses once an Admin exists, so it cannot get round the second-Admin rule", async () => {
-    const result = run("second", "Second Admin");
+  test("allows a second Admin, then refuses, so it cannot get round the second-Admin rule", async () => {
+    assert.equal(run("second", "Second Admin").status, 0);
+    const result = run("third", "Third Admin");
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /already exists/);
-    assert.equal(await ctx.db.collection("users").countDocuments({ username: "second" }), 0);
+    assert.match(result.stderr, /Two Admins already exist/);
+    assert.equal(await ctx.db.collection("users").countDocuments({ username: "third" }), 0);
+  });
+
+  test("the server's operator can recover a locked-out Admin, replacing their credentials", async () => {
+    await ctx.db.collection("users").updateOne({ username: "owner" }, { $set: { status: "Disabled", passwordHash: "old", "mfa.enabled": true } });
+    const result = run("--recover", "owner");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /#token=/);
+    const user = await ctx.db.collection("users").findOne({ username: "owner" });
+    assert.equal(user.status, "Invited");
+    assert.equal(user.passwordHash, undefined);
+    assert.equal(user.mfa.enabled, false);
+    assert.ok(await ctx.db.collection("audit_events").findOne({ action: "Admin recovered from the server", details: "owner", severity: "high" }));
+    assert.equal(run("--recover", "nobody.here").status, 1);
   });
 
   test("refuses a bad username", () => {

@@ -54,7 +54,11 @@ module.exports = {
     cat: text(24, "!Choose or enter a category.").min(1, "!Choose or enter a category.").transform(noControl),
     price: z.number("!Price must be a whole number between Rs 50 and Rs 20,000.").int("!Price must be a whole number between Rs 50 and Rs 20,000.").min(50, "!Price must be a whole number between Rs 50 and Rs 20,000.").max(20000, "!Price must be a whole number between Rs 50 and Rs 20,000."),
     desc: text(80, "!Description must be 80 characters or fewer.").transform(noControl).optional().default(""),
-    available: z.boolean().optional().default(true)
+    available: z.boolean().optional().default(true),
+    recipe: z.array(z.object({
+      ing: z.number().int().min(1),
+      qty: z.number("!Enter how much of each ingredient one portion uses.").positive("!Enter how much of each ingredient one portion uses.").max(1000, "!Enter how much of each ingredient one portion uses.")
+    }).strict()).max(20, "!A recipe can have at most 20 ingredients.").optional()
   }).strict(),
   stockAdjustment: z.object({
     delta: z.number("!Enter a quantity between 0 and 1000.").finite().min(-1000, "!Enter a quantity between 0 and 1000.").max(1000, "!Enter a quantity between 0 and 1000.").refine((n) => n !== 0, "!Enter a quantity between 0 and 1000."),

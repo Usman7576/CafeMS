@@ -1,127 +1,1567 @@
 {
   "about": "One row per concept in the eight lecture decks. status is Built (code and a test), Documented (a written analysis the deck asks for), Manual (a procedure a person runs) or Out of scope (cannot be built inside a web app, with the reason in OUT-OF-SCOPE.md). npm run concepts checks every file and test named here and rewrites CONCEPT-COVERAGE.md.",
   "concepts": [
-    { "deck": "SSD Lec1", "slide": "2-3, 8", "concept": "Attack surface created by each feature", "status": "Documented", "how": "Every feature is analysed for how it can be abused", "files": ["docs/security/THREAT-MODEL.md", "docs/security/TRACEABILITY.md"] },
-    { "deck": "SSD Lec1", "slide": "7, 9", "concept": "Secure SDLC: security throughout, because late fixes cost more", "status": "Built", "how": "Requirements, threat model, code, tests, scans and CI run together on every change", "files": [".github/workflows/ci.yml", "docs/security/SECURITY-REQUIREMENTS.md"], "tests": ["CI runs every tool the plan names"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Web architecture", "status": "Built", "how": "Browser, API, database and proxy tiers, with a guarded route for everything", "files": ["server/app.js", "deploy/docker-compose.yml"], "tests": ["every route has a guard, so none can be left open by accident (complete mediation)"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Git and version control", "status": "Built", "how": "Feature branch, reviewed commits and secret scanning of the whole history", "files": [".gitleaksignore", ".github/pull_request_template.md", ".github/workflows/ci.yml"], "tests": ["generated secrets stay out of git"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Registration", "status": "Built", "how": "Admin invitation with a single-use, 24-hour link that sets a password and MFA", "files": ["server/services/users.js", "server/routes/auth.js"], "tests": ["the whole flow: invite, set password, enrol, sign in", "a link works once, and only its hash is stored"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "Password hashing", "status": "Built", "how": "Argon2id", "files": ["server/lib/passwords.js"], "tests": ["passwords are stored only as Argon2id hashes"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "Login and logout", "status": "Built", "how": "Server-side sign-in and revocable sign-out", "files": ["server/routes/auth.js"], "tests": ["a wrong password is refused, even though it meets the rules (finding 1)", "sign-out ends the session on the server, so a copied cookie stops working"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "Sessions", "status": "Built", "how": "Server session record checked on every request; 5-minute idle and 8-hour limits", "files": ["server/services/sessions.js"], "tests": ["5 idle minutes end the session", "the 8-hour limit applies however active the session is"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "JWT", "status": "Built", "how": "Signed token with a pinned algorithm and key ID", "files": ["server/services/sessions.js"], "tests": ["forged tokens are refused: alg none, wrong key, no server record"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "MFA", "status": "Built", "how": "TOTP for all staff, with single-use recovery codes", "files": ["server/services/mfa.js"], "tests": ["a correct password alone gives no session (MFA is mandatory)", "a code cannot be used twice", "a recovery code works exactly once"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "Secure cookies", "status": "Built", "how": "__Host- prefix, HttpOnly, Secure, SameSite=Strict", "files": ["server/services/sessions.js"], "tests": ["a correct code creates a session and sets a hardened cookie"] },
-    { "deck": "SSD Lec1", "slide": "27", "concept": "Brute-force protection", "status": "Built", "how": "Per-account lockout, per-address rate limit, alerts", "files": ["server/routes/auth.js", "server/app.js"], "tests": ["3 failures lock the account, and the right password is then refused", "the auth rate limit stops rapid guessing across accounts"] },
-    { "deck": "SSD Lec1", "slide": "28", "concept": "Roles and RBAC", "status": "Built", "how": "One permission table", "files": ["server/lib/permissions.js"], "tests": ["every role against every route (RBAC matrix)"] },
-    { "deck": "SSD Lec1", "slide": "28", "concept": "Middleware", "status": "Built", "how": "requireAuth, requirePermission and requireStepUp on the routes", "files": ["server/middleware/auth.js"], "tests": ["every route has a guard, so none can be left open by accident (complete mediation)"] },
-    { "deck": "SSD Lec1", "slide": "28", "concept": "Least privilege", "status": "Built", "how": "Role-filtered responses and a restricted database account", "files": ["server/routes/business.js", "server/lib/dbRoles.js"], "tests": ["the snapshot holds only that role's data", "the app account can add audit entries but cannot change or delete them"] },
-    { "deck": "SSD Lec1", "slide": "28, 31", "concept": "Resource-level authorization", "status": "Built", "how": "Ownership inside every query", "files": ["server/services/orders.js"], "tests": ["one waiter cannot see or change another waiter's order"] },
-    { "deck": "SSD Lec1", "slide": "16, 29", "concept": "Prepared statements and SQL injection", "status": "Built", "how": "MongoDB's equivalent: typed filters from strictly validated input, so query operators cannot be injected", "files": ["server/lib/schemas.js", "server/middleware/auth.js"], "tests": ["NoSQL operator objects are refused"] },
-    { "deck": "SSD Lec1", "slide": "29", "concept": "Encryption", "status": "Built", "how": "AES-256-GCM field encryption with key IDs", "files": ["server/lib/crypto.js"], "tests": ["name, phone and notes are encrypted at rest", "the data cannot be read after being moved to another record", "a shortened GCM authentication tag is refused, so forged values cannot be accepted"] },
-    { "deck": "SSD Lec1", "slide": "29", "concept": "Secure database access", "status": "Built", "how": "Database requires a login, on a private network, with a least-privilege account", "files": ["server/lib/dbRoles.js", "scripts/db-setup.js", "deploy/docker-compose.yml"], "tests": ["only Caddy is reachable from outside, and the database network has no route out", "production refuses a database connection with no username and password (least privilege)"] },
-    { "deck": "SSD Lec1", "slide": "29", "concept": "Backup", "status": "Built", "how": "Encrypted backup with a checksum and a tested restore", "files": ["server/lib/backup.js"], "tests": ["a restore brings back every record, and the audit chain still verifies", "the backup file holds no readable data"] },
-    { "deck": "SSD Lec1", "slide": "31", "concept": "Integrity: total changed from Rs 2,500 to 250", "status": "Built", "how": "Totals worked out on the server from stored prices", "files": ["server/services/billing.js", "server/lib/domain.js"], "tests": ["the total is calculated on the server; the browser cannot set it (Rs 2,500 to 250)"] },
-    { "deck": "SSD Lec1", "slide": "31", "concept": "Confidentiality: another customer's address", "status": "Built", "how": "Encryption, masking and ownership checks", "files": ["server/services/reservations.js"], "tests": ["stored encrypted, and masked in every response"] },
-    { "deck": "SSD Lec1", "slide": "31", "concept": "Availability: thousands of requests", "status": "Built", "how": "Limits per address, per person and for pages; body limits; timeouts", "files": ["server/app.js", "server/index.js", "scripts/load-test.js"], "tests": ["the general API rate limit applies", "oversized bodies are refused"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "XSS", "status": "Built", "how": "All text rendered as text, never as HTML", "files": ["public/js/common.js"], "tests": ["script text in a name is stored as plain text, and shown as plain text"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "DOM security", "status": "Built", "how": "No innerHTML anywhere, enforced by Trusted Types", "files": ["public/js/common.js", "server/middleware/security.js"], "tests": ["no browser script writes HTML from strings or stores business data on the device (findings 14, 20, 30)"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "CSP", "status": "Built", "how": "Strict policy with no inline code or outside hosts", "files": ["server/middleware/security.js"], "tests": ["the CSP has no exceptions: no inline styles, no third-party hosts, Trusted Types required"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "REST APIs", "status": "Built", "how": "Versioned API under /api/v1", "files": ["server/routes/business.js"], "tests": ["every role against every route (RBAC matrix)"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "API security", "status": "Built", "how": "Authentication, permissions, strict schemas, CSRF, rate limits and idempotency", "files": ["server/app.js", "server/lib/tx.js"], "tests": ["a signed-in change needs the CSRF token", "requests from another site, or with no Origin, are blocked", "an order needs an Idempotency-Key"] },
-    { "deck": "SSD Lec1", "slide": "8, 16", "concept": "File security and malicious uploads", "status": "Built", "how": "Signature check, 2 MB limit, random name, outside the web root, nosniff", "files": ["server/services/photos.js"], "tests": ["scripts, SVG, HTML and disguised files are refused and recorded", "a file over 2 MB is refused", "a real image is stored outside the web root under a random name, and served safely"] },
-    { "deck": "SSD Lec1", "slide": "8", "concept": "Error messages leaking information", "status": "Built", "how": "Central handler: generic message and a request ID", "files": ["server/app.js"], "tests": ["broken JSON gives a clean error with no stack trace"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Code review", "status": "Built", "how": "Pull request security checklist and a dated review log", "files": [".github/pull_request_template.md", "docs/security/SECURITY-REQUIREMENTS.md"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "SAST", "status": "Built", "how": "ESLint security rules, Semgrep and CodeQL", "files": ["eslint.config.js", ".github/workflows/ci.yml", "docs/security/SCAN-RESULTS.md"], "tests": ["CI runs every tool the plan names"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "DAST and OWASP ZAP", "status": "Built", "how": "ZAP baseline against the running production stack", "files": [".zap/rules.tsv", ".github/workflows/ci.yml", "docs/security/SCAN-RESULTS.md"], "tests": ["CI runs every tool the plan names"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Burp Suite", "status": "Manual", "how": "A step-by-step test script for a person to run", "files": ["docs/security/BURP-TEST-SCRIPT.md"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Dependency scanning", "status": "Built", "how": "npm audit, Trivy and Dependabot", "files": [".github/dependabot.yml", ".github/workflows/ci.yml"], "tests": ["the packages npm audit flagged are on fixed versions (finding 17)"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Docker", "status": "Built", "how": "Multi-stage, non-root, read-only image", "files": ["Dockerfile", "deploy/docker-compose.yml"], "tests": ["runs on a pinned, minimal base as an unprivileged user", "every service is read-only, drops all capabilities and cannot gain privileges"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "CI/CD", "status": "Built", "how": "GitHub Actions on every push, with pinned actions", "files": [".github/workflows/ci.yml", ".github/workflows/release.yml"], "tests": ["every action is pinned to a commit, and the default token is read-only"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "HTTPS and TLS", "status": "Built", "how": "Caddy certificates, HSTS, https required in production", "files": ["deploy/Caddyfile", "server/config.js"], "tests": ["HSTS is sent when the site uses TLS", "production requires https"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Secrets management", "status": "Built", "how": "Validated at start-up, key IDs for rotation, never in git or the image", "files": ["server/config.js", "scripts/setup-env.js"], "tests": ["refuses to start without secrets", "error messages never contain secret values", "installs locked production packages only and copies no secrets, tests or git history"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Monitoring", "status": "Built", "how": "Redacted logs with request IDs, alert rules and an Admin Security page", "files": ["server/services/alerts.js", "server/lib/logger.js", "public/security.html"], "tests": ["failed sign-ins, denials, exports, number views and refunds each raise an alert", "logs hold no cookies, tokens, passwords or codes"] },
-    { "deck": "SSD Lec1", "slide": "16", "concept": "Incident response", "status": "Documented", "how": "Runbook with roles, playbooks and the 72-hour breach steps", "files": ["docs/security/INCIDENT-RESPONSE.md"] },
-
-    { "deck": "Week 2", "slide": "8-9", "concept": "Confidentiality", "status": "Built", "how": "Each role receives only its own fields; personal data encrypted", "files": ["server/routes/business.js", "server/lib/crypto.js"], "tests": ["the snapshot holds only that role's data", "name, phone and notes are encrypted at rest"] },
-    { "deck": "Week 2", "slide": "10-11", "concept": "Integrity, hashing and version control", "status": "Built", "how": "Server-side rules, transactions, SHA-256 audit chain, Git", "files": ["server/services/auditLog.js", "server/lib/tx.js"], "tests": ["if any step fails, nothing is saved", "detects edited details, a changed actor and a changed time"] },
-    { "deck": "Week 2", "slide": "12-13", "concept": "Availability, redundancy and failover", "status": "Built", "how": "Throttling, health checks, graceful shutdown; multi-member database is a deployment choice", "files": ["server/app.js", "server/lifecycle.js", "docs/DEPLOYMENT.md"], "tests": ["the public health checks reveal status only (finding 18)", "a request in progress finishes, then the database closes and the process exits cleanly"] },
-    { "deck": "Week 2", "slide": "14-15", "concept": "Accountability and non-repudiation", "status": "Built", "how": "Actor taken from the session; entries signed with Ed25519", "files": ["server/services/auditLog.js"], "tests": ["the recorded waiter is always the signed-in person", "detects a recalculated hash, because the attacker cannot sign it"] },
-    { "deck": "Week 2", "slide": "16-17", "concept": "Authentication", "status": "Built", "how": "Password plus MFA", "files": ["server/routes/auth.js"], "tests": ["a correct password alone gives no session (MFA is mandatory)"] },
-    { "deck": "Week 2", "slide": "22-23", "concept": "Least privilege", "status": "Built", "how": "Permission table, role-filtered data, restricted database account, no container capabilities", "files": ["server/lib/permissions.js", "server/lib/dbRoles.js"], "tests": ["what each role receives (least privilege)", "the app account can add audit entries but cannot change or delete them"] },
-    { "deck": "Week 2", "slide": "24-25", "concept": "Defence in depth", "status": "Built", "how": "Independent layers: CSP, validation, RBAC, ownership, encryption, limits, audit", "files": ["docs/security/THREAT-MODEL.md", "server/app.js"], "tests": ["every role against every route (RBAC matrix)", "name, phone and notes are encrypted at rest"] },
-    { "deck": "Week 2", "slide": "26-27", "concept": "Fail-secure defaults", "status": "Built", "how": "Default-deny routes, refuses to start without secrets, generic errors", "files": ["server/config.js", "server/app.js"], "tests": ["fail-secure when the database is down", "if the audit entry fails, the action it describes does not happen", "refuses to start without secrets"] },
-    { "deck": "Week 2", "slide": "28-29", "concept": "Economy of mechanism", "status": "Built", "how": "Standard reviewed libraries and one module per responsibility", "files": ["server/lib/crypto.js", "server/lib/passwords.js"], "tests": ["passwords are stored only as Argon2id hashes"] },
-    { "deck": "Week 2", "slide": "30-31", "concept": "Complete mediation", "status": "Built", "how": "Session and permission checked on every request", "files": ["server/middleware/auth.js"], "tests": ["every route has a guard, so none can be left open by accident (complete mediation)", "disabling a user or changing their role takes effect on the next request"] },
-    { "deck": "Week 2", "slide": "32-33", "concept": "Open design", "status": "Built", "how": "Published algorithms; only keys are secret; audit public keys can be shared", "files": ["server/lib/crypto.js", "server/services/auditLog.js"], "tests": ["detects a recalculated hash, because the attacker cannot sign it"] },
-    { "deck": "Week 2", "slide": "34-35", "concept": "Separation of privilege", "status": "Built", "how": "Second person for large refunds and Admin changes; fresh code for sensitive actions", "files": ["server/services/approvals.js"], "tests": ["a large refund waits for a different person with a fresh code", "one Admin alone cannot create another Admin; a second Admin must approve"] },
-    { "deck": "Week 2", "slide": "36-37", "concept": "Least common mechanism", "status": "Built", "how": "Separate collections, no shared browser cache, separate per-person limits and sessions", "files": ["server/db.js", "server/app.js"], "tests": ["each signed-in person has a limit, so one person cannot use up a shared cafe address", "the device list shows only your sessions, and you can revoke only your own"] },
-    { "deck": "Week 2", "slide": "18 (1)", "concept": "Scenario: denied beyond permission level", "status": "Built", "how": "Permission checks after authentication", "files": ["server/middleware/auth.js"], "tests": ["each role can open only its own pages"] },
-    { "deck": "Week 2", "slide": "18 (2)", "concept": "Scenario: an extra factor at sign-in", "status": "Built", "how": "Authenticator code", "files": ["server/services/mfa.js"], "tests": ["a correct password alone gives no session (MFA is mandatory)"] },
-    { "deck": "Week 2", "slide": "18 (3)", "concept": "Scenario: log timestamps altered", "status": "Built", "how": "Time is part of the signed hash", "files": ["server/services/auditLog.js"], "tests": ["detects edited details, a changed actor and a changed time"] },
-    { "deck": "Week 2", "slide": "18 (4)", "concept": "Scenario: 99.9% uptime guarantee", "status": "Out of scope", "how": "Depends on the hosting provider", "files": ["docs/security/OUT-OF-SCOPE.md"] },
-    { "deck": "Week 2", "slide": "18 (5)", "concept": "Scenario: encrypted transaction records", "status": "Built", "how": "Customer details on bills encrypted; amounts stay readable for reports", "files": ["server/services/billing.js"], "tests": ["stored encrypted, and masked in every response"] },
-    { "deck": "Week 2", "slide": "19 (6)", "concept": "Scenario: sensitive email encrypted automatically", "status": "Out of scope", "how": "The app sends no email; messages hold no personal data", "files": ["docs/security/OUT-OF-SCOPE.md"], "tests": ["a paid bill with a phone queues a receipt holding no phone number"] },
-    { "deck": "Week 2", "slide": "19 (7), 20 (14)", "concept": "Scenario: unusual access in logs, all record access reviewed", "status": "Built", "how": "Address and browser recorded; full-number views logged; alert rules", "files": ["server/services/auditLog.js", "server/services/alerts.js"], "tests": ["only a Manager or Admin can see the full number, and it is logged", "one password tried against many usernames from one address raises an alert (password spraying)"] },
-    { "deck": "Week 2", "slide": "19 (8), (10)", "concept": "Scenario: code signing and verifying a download's hash", "status": "Built", "how": "Locked packages with npm ci, pinned images and actions, SHA-256 release checksums", "files": [".github/workflows/release.yml", "Dockerfile", "package-lock.json"], "tests": ["runs on a pinned, minimal base as an unprivileged user", "every action is pinned to a commit, and the default token is read-only"] },
-    { "deck": "Week 2", "slide": "19 (9)", "concept": "Scenario: account lockout", "status": "Built", "how": "Lock after 3 failures for 15 minutes; Admin can unlock", "files": ["server/routes/auth.js"], "tests": ["3 failures lock the account, and the right password is then refused", "an Admin can unlock an account"] },
-    { "deck": "Week 2", "slide": "20 (11)", "concept": "Scenario: biometric access", "status": "Out of scope", "how": "Physical security of a site", "files": ["docs/security/OUT-OF-SCOPE.md"] },
-    { "deck": "Week 2", "slide": "20 (12)", "concept": "Scenario: disaster recovery test", "status": "Built", "how": "Backup, destroy and restore drill in CI", "files": [".github/workflows/ci.yml", "docs/DEPLOYMENT.md"], "tests": ["CI runs every tool the plan names", "a restore brings back every record, and the audit chain still verifies"] },
-    { "deck": "Week 2", "slide": "20 (13)", "concept": "Scenario: complex passwords", "status": "Built", "how": "12+ characters, mixed types, common words refused", "files": ["server/lib/passwords.js"], "tests": ["a common word dressed up with capitals, digits and symbols does not pass"] },
-    { "deck": "Week 2", "slide": "20 (15)", "concept": "Scenario: device list with revoke", "status": "Built", "how": "Account page lists active sessions, each revocable", "files": ["server/routes/auth.js", "public/js/account.js"], "tests": ["the device list shows only your sessions, and you can revoke only your own"] },
-
-    { "deck": "Week 4", "slide": "5-6", "concept": "Stakeholders and business needs", "status": "Documented", "how": "Stakeholder and asset table", "files": ["docs/security/SECURITY-REQUIREMENTS.md"] },
-    { "deck": "Week 4", "slide": "7", "concept": "Functional security requirements", "status": "Documented", "how": "SR-01 to SR-19, each traced to code and tests", "files": ["docs/security/SECURITY-REQUIREMENTS.md", "docs/security/TRACEABILITY.md"], "tests": ["every requirement traces to a threat or regulation, to code that exists and to tests that exist"] },
-    { "deck": "Week 4", "slide": "8", "concept": "Non-functional requirements and performance under attack", "status": "Built", "how": "Load test of staff requests during a flood", "files": ["scripts/load-test.js", "docs/security/LOAD-TEST.md"], "tests": ["one address can send only a limited number of requests"] },
-    { "deck": "Week 4", "slide": "9", "concept": "Regulatory: right to be forgotten", "status": "Built", "how": "Erase-customer endpoint and 90-day retention", "files": ["server/services/customers.js"], "tests": ["erasing removes the person but keeps the bill totals, and needs a fresh code", "retention removes personal data after 90 days, and keeps recent data"] },
-    { "deck": "Week 4", "slide": "9", "concept": "Regulatory: breach notification within 72 hours", "status": "Documented", "how": "Breach steps in the runbook, supported by tamper alerts", "files": ["docs/security/INCIDENT-RESPONSE.md", "server/workers.js"], "tests": ["the Admin screen can verify, and a broken chain raises an alert"] },
-    { "deck": "Week 4", "slide": "10", "concept": "Use cases and misuse cases", "status": "Documented", "how": "A misuse case per module, each linked to a test", "files": ["docs/security/traceability.json", "docs/security/TRACEABILITY.md"], "tests": ["every requirement traces to a threat or regulation, to code that exists and to tests that exist"] },
-    { "deck": "Week 4", "slide": "12-13", "concept": "Risk-based prioritisation and balance", "status": "Documented", "how": "Priorities from WSES and RPN; security balanced against a busy shift", "files": ["docs/security/SECURITY-REQUIREMENTS.md", "docs/security/risk-register.json"] },
-    { "deck": "Week 4", "slide": "14-15", "concept": "Clear documentation and traceability", "status": "Built", "how": "Matrix linking requirement, threat, code and test, checked by a script", "files": ["scripts/check-traceability.js", "docs/security/TRACEABILITY.md"], "tests": ["a broken link is caught: a missing test, a missing file and an uncovered threat"] },
-    { "deck": "Week 4", "slide": "16-17", "concept": "Continuous review, validation and verification", "status": "Documented", "how": "Dated review log; tests prove each control", "files": ["docs/security/SECURITY-REQUIREMENTS.md", "docs/security/SCAN-RESULTS.md"] },
-    { "deck": "Week 4", "slide": "20-25", "concept": "Assets, attackers, threats, vulnerabilities, mitigations", "status": "Documented", "how": "Each covered in the threat model", "files": ["docs/security/THREAT-MODEL.md"] },
-    { "deck": "Week 4", "slide": "31", "concept": "Transaction verification", "status": "Built", "how": "Signed callback checked against the stored amount, accepted once", "files": ["server/services/gateway.js", "server/services/billing.js"], "tests": ["forged, old, wrong-amount and malformed callbacks are refused", "a copied gateway callback is accepted only once"] },
-    { "deck": "Week 4", "slide": "35-41", "concept": "The six-step threat modelling process", "status": "Documented", "how": "One section per step", "files": ["docs/security/THREAT-MODEL.md"] },
-    { "deck": "Week 4", "slide": "43, 47-51", "concept": "STRIDE", "status": "Documented", "how": "Six questions for each component; every threat carries a category", "files": ["docs/security/THREAT-MODEL.md", "docs/security/traceability.json"], "tests": ["every STRIDE category has at least one threat, and every threat is met by a requirement"] },
-    { "deck": "Week 4", "slide": "44, 52-70", "concept": "PASTA, all seven stages", "status": "Documented", "how": "Worked for the card payment flow", "files": ["docs/security/THREAT-MODEL.md"] },
-    { "deck": "Week 4", "slide": "45, 73-79", "concept": "OCTAVE, three phases", "status": "Documented", "how": "Critical assets, infrastructure weaknesses, strategy", "files": ["docs/security/THREAT-MODEL.md"] },
-    { "deck": "Week 4", "slide": "46", "concept": "VAST", "status": "Documented", "how": "A threat diagram per user story", "files": ["docs/security/THREAT-MODEL.md"] },
-
-    { "deck": "Attackers", "slide": "5", "concept": "Insider threats", "status": "Built", "how": "Export limits and alerts, masked data, second person, signed audit trail", "files": ["server/routes/business.js", "server/services/alerts.js"], "tests": ["exports are logged, limited per person, and safe to open in a spreadsheet", "a large refund waits for a different person with a fresh code"] },
-    { "deck": "Attackers", "slide": "4", "concept": "Cybercriminals, ransomware and card skimming", "status": "Built", "how": "MFA, no third-party scripts, no card data, encrypted backups", "files": ["server/middleware/security.js", "server/lib/backup.js"], "tests": ["no page uses inline styles or third-party resources (findings 21, 22)", "approved card payment is paid, with no card details anywhere"] },
-    { "deck": "Attackers", "slide": "7", "concept": "Script kiddies", "status": "Built", "how": "Rate limits, lockout and security headers", "files": ["server/app.js", "server/middleware/security.js"], "tests": ["the auth rate limit stops rapid guessing across accounts", "are present on pages and API responses"] },
-    { "deck": "Attackers", "slide": "3", "concept": "Hacktivists and defacement", "status": "Built", "how": "Read-only containers, only listed files served, strict CSP", "files": ["deploy/docker-compose.yml", "server/app.js"], "tests": ["every service is read-only, drops all capabilities and cannot gain privileges", "project files cannot be downloaded (finding 15)"] },
-    { "deck": "Attackers", "slide": "8, 15", "concept": "Nation-state actors and poisoned updates", "status": "Built", "how": "Locked packages, pinned images and actions, scanning, signed audit", "files": ["package-lock.json", ".github/dependabot.yml", "Dockerfile"], "tests": ["every action is pinned to a commit, and the default token is read-only"] },
-    { "deck": "Attackers", "slide": "6", "concept": "Cyber terrorists", "status": "Documented", "how": "Very low relevance to a cafe; accepted risk with a reason", "files": ["docs/security/THREAT-MODEL.md", "docs/security/RESIDUAL-RISKS.md"] },
-
-    { "deck": "WSES", "slide": "4-5, 12", "concept": "WSES formula, parameters and weights", "status": "Built", "how": "wses() function, with other weights and scales supported", "files": ["server/lib/risk.js"], "tests": ["works with other weights and scales, as in the telemedicine exercise (4/5/3/2 and 1/5/8)"] },
-    { "deck": "WSES", "slide": "16-19", "concept": "Worked examples 40, 24 and 8 and ranking", "status": "Built", "how": "Reproduced exactly", "files": ["server/lib/risk.js"], "tests": ["reproduces the slides: login portal 40, order API 24, inventory 8", "ranks the slides' components in the same order"] },
-    { "deck": "WSES", "slide": "3", "concept": "Prioritising CafeMS's own components", "status": "Built", "how": "Risk register on the Admin risk page and CSV", "files": ["docs/security/risk-register.json", "server/services/riskRegister.js", "public/risk.html"], "tests": ["shows scores worked out by the server, and the export is recorded"] },
-
-    { "deck": "FMEA", "slide": "5-7", "concept": "Severity, occurrence, detection and the scoring guide", "status": "Built", "how": "rpn() with ratings from 1 to 10", "files": ["server/lib/risk.js"], "tests": ["ratings must be whole numbers from 1 to 10"] },
-    { "deck": "FMEA", "slide": "8-11", "concept": "Worked failures 648, 288 and 72", "status": "Built", "how": "Reproduced and ranked", "files": ["server/lib/risk.js"], "tests": ["reproduces the slides: 648, 288 and 72, ranked in that order"] },
-    { "deck": "FMEA", "slide": "12-18", "concept": "Corrective action, test and recalculation (648 to 54)", "status": "Built", "how": "Before and after ratings, each linked to the test that proves it", "files": ["docs/security/risk-register.json", "docs/security/RISK-AND-FAILURE-ANALYSIS.md"], "tests": ["recalculates after the corrective action: 648 falls to 54 while severity stays 9", "every control it claims is proved by a test that exists"] },
-    { "deck": "FMEA", "slide": "8", "concept": "Unauthorized access", "status": "Built", "how": "Ownership checks, audit and alerts", "files": ["server/services/orders.js"], "tests": ["one waiter cannot see or change another waiter's order"] },
-    { "deck": "FMEA", "slide": "9", "concept": "Duplicate submissions", "status": "Built", "how": "Idempotency keys", "files": ["server/lib/tx.js"], "tests": ["a double click creates one order and takes stock once"] },
-    { "deck": "FMEA", "slide": "10", "concept": "Lost notifications", "status": "Built", "how": "Outbox with retries and an Admin alert", "files": ["server/services/outbox.js"], "tests": ["failures retry with growing gaps, then raise one Admin alert"] },
-
-    { "deck": "Dependency Matrix", "slide": "2-6", "concept": "Matrix codes 2, 1, 1A and 0", "status": "Built", "how": "Validated by code", "files": ["server/lib/dependencies.js", "docs/security/dependency-matrix.json"], "tests": ["refuses codes the course does not define, and self-dependencies"] },
-    { "deck": "Dependency Matrix", "slide": "7-13", "concept": "Worked example ShopMini and its degrees", "status": "Built", "how": "Reproduced", "files": ["server/lib/dependencies.js"], "tests": ["reproduces ShopMini's degrees: AUTH in 2 out 0, ORD in 1 out 3, PAY in 1 out 0"] },
-    { "deck": "Dependency Matrix", "slide": "7", "concept": "Soft sync: Pending Payment on timeout", "status": "Built", "how": "3-second timeout, then a Pending Payment bill and retry", "files": ["server/services/billing.js", "server/services/gateway.js"], "tests": ["a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged"] },
-    { "deck": "Dependency Matrix", "slide": "3", "concept": "Soft async: queued messages", "status": "Built", "how": "Outbox collection and background worker", "files": ["server/services/outbox.js", "server/workers.js"], "tests": ["a delivered message is sent once", "stock falling to its reorder level queues one message, without blocking the order"] },
-    { "deck": "Dependency Matrix", "slide": "13, 20, 23", "concept": "Degrees, graph styles and single points of failure", "status": "Built", "how": "Report script and Admin risk page", "files": ["scripts/dependency-report.js", "public/js/risk.js"], "tests": ["CafeMS's own matrix is valid and names the database as its main single point of failure"] },
-
-    { "deck": "Failures", "slide": "6", "concept": "Hardware failures", "status": "Built", "how": "Encrypted backup and tested restore", "files": ["server/lib/backup.js"], "tests": ["a restore brings back every record, and the audit chain still verifies"] },
-    { "deck": "Failures", "slide": "7", "concept": "Software bugs and glitches", "status": "Built", "how": "Automated tests of every control", "files": ["package.json"], "tests": ["CI runs every tool the plan names"] },
-    { "deck": "Failures", "slide": "8", "concept": "Configuration errors", "status": "Built", "how": "Settings validated at start-up", "files": ["server/config.js"], "tests": ["refuses weak or wrongly sized keys", "uploads cannot be stored inside the web root"] },
-    { "deck": "Failures", "slide": "9", "concept": "Network failures", "status": "Built", "how": "Timeouts and safe handling of unfinished payments", "files": ["server/services/gateway.js"], "tests": ["a gateway crash is treated the same as a timeout"] },
-    { "deck": "Failures", "slide": "10", "concept": "Human errors", "status": "Built", "how": "Second person, confirmations and an audit trail", "files": ["server/services/approvals.js"], "tests": ["the last active Admin cannot be removed, even if a request gets through"] },
-    { "deck": "Failures", "slide": "11", "concept": "Interdependency failures", "status": "Built", "how": "Hard and soft dependencies, failing closed", "files": ["server/lib/dependencies.js"], "tests": ["a failure spreads along hard dependencies: the database takes down the web server, inventory and front end", "sign-in fails closed and reveals nothing"] },
-    { "deck": "Failures", "slide": "13", "concept": "Noise that hides real attacks", "status": "Built", "how": "Repeat alerts are merged", "files": ["server/services/alerts.js"], "tests": ["a flood updates one alert instead of creating many"] },
-    { "deck": "Failures", "slide": "16-17", "concept": "Testing, monitoring, failover, training and patching", "status": "Documented", "how": "Each strategy mapped to what CafeMS does", "files": ["docs/security/RISK-AND-FAILURE-ANALYSIS.md"] },
-    { "deck": "Failures", "slide": "18-25", "concept": "Dependency mapping and failure propagation", "status": "Built", "how": "Script showing what each component's failure affects", "files": ["scripts/dependency-report.js", "server/lib/dependencies.js"], "tests": ["a soft payment failure leaves orders working; a hard login failure stops them"] },
-
-    { "deck": "Week 2", "slide": "25", "concept": "Firewalls and intrusion detection", "status": "Out of scope", "how": "Handled by the hosting platform; the database network is already private", "files": ["docs/security/OUT-OF-SCOPE.md"] },
-    { "deck": "Week 2", "slide": "13", "concept": "Cloud-scale DDoS protection", "status": "Out of scope", "how": "The app adds limits; real flood protection needs a provider such as Cloudflare", "files": ["docs/security/OUT-OF-SCOPE.md", "docs/security/LOAD-TEST.md"] }
+    {
+      "deck": "SSD Lec1",
+      "slide": "2-3, 8",
+      "concept": "Attack surface created by each feature",
+      "status": "Documented",
+      "how": "Every feature is analysed for how it can be abused",
+      "files": [
+        "docs/security/THREAT-MODEL.md",
+        "docs/security/TRACEABILITY.md"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "7, 9",
+      "concept": "Secure SDLC: security throughout, because late fixes cost more",
+      "status": "Built",
+      "how": "Requirements, threat model, code, tests, scans and CI run together on every change",
+      "files": [
+        ".github/workflows/ci.yml",
+        "docs/security/SECURITY-REQUIREMENTS.md"
+      ],
+      "tests": [
+        "CI runs every tool the plan names"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Web architecture",
+      "status": "Built",
+      "how": "Browser, API, database and proxy tiers, with a guarded route for everything",
+      "files": [
+        "server/app.js",
+        "deploy/docker-compose.yml"
+      ],
+      "tests": [
+        "every route has a guard, so none can be left open by accident (complete mediation)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Git and version control",
+      "status": "Built",
+      "how": "Feature branch, reviewed commits and secret scanning of the whole history",
+      "files": [
+        ".gitleaksignore",
+        ".github/pull_request_template.md",
+        ".github/workflows/ci.yml"
+      ],
+      "tests": [
+        "generated secrets stay out of git"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Registration",
+      "status": "Built",
+      "how": "Admin invitation with a single-use, 24-hour link that sets a password and MFA",
+      "files": [
+        "server/services/users.js",
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "the whole flow: invite, set password, enrol, sign in",
+        "a link works once, and only its hash is stored"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "Password hashing",
+      "status": "Built",
+      "how": "Argon2id",
+      "files": [
+        "server/lib/passwords.js"
+      ],
+      "tests": [
+        "passwords are stored only as Argon2id hashes"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "Login and logout",
+      "status": "Built",
+      "how": "Server-side sign-in and revocable sign-out",
+      "files": [
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "a wrong password is refused, even though it meets the rules (finding 1)",
+        "sign-out ends the session on the server, so a copied cookie stops working"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "Sessions",
+      "status": "Built",
+      "how": "Server session record checked on every request; 5-minute idle and 8-hour limits",
+      "files": [
+        "server/services/sessions.js"
+      ],
+      "tests": [
+        "5 idle minutes end the session",
+        "the 8-hour limit applies however active the session is"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "JWT",
+      "status": "Built",
+      "how": "Signed token with a pinned algorithm and key ID",
+      "files": [
+        "server/services/sessions.js"
+      ],
+      "tests": [
+        "forged tokens are refused: alg none, wrong key, no server record"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "MFA",
+      "status": "Built",
+      "how": "TOTP for all staff, with single-use recovery codes",
+      "files": [
+        "server/services/mfa.js"
+      ],
+      "tests": [
+        "a correct password alone gives no session (MFA is mandatory)",
+        "a code cannot be used twice",
+        "a recovery code works exactly once"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "Secure cookies",
+      "status": "Built",
+      "how": "__Host- prefix, HttpOnly, Secure, SameSite=Strict",
+      "files": [
+        "server/services/sessions.js"
+      ],
+      "tests": [
+        "a correct code creates a session and sets a hardened cookie"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "27",
+      "concept": "Brute-force protection",
+      "status": "Built",
+      "how": "Per-account lockout, per-address rate limit, alerts",
+      "files": [
+        "server/routes/auth.js",
+        "server/app.js"
+      ],
+      "tests": [
+        "3 failures lock the account, and the right password is then refused",
+        "the auth rate limit stops rapid guessing across accounts"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "28",
+      "concept": "Roles and RBAC",
+      "status": "Built",
+      "how": "One permission table",
+      "files": [
+        "server/lib/permissions.js"
+      ],
+      "tests": [
+        "every role against every route (RBAC matrix)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "28",
+      "concept": "Middleware",
+      "status": "Built",
+      "how": "requireAuth, requirePermission and requireStepUp on the routes",
+      "files": [
+        "server/middleware/auth.js"
+      ],
+      "tests": [
+        "every route has a guard, so none can be left open by accident (complete mediation)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "28",
+      "concept": "Least privilege",
+      "status": "Built",
+      "how": "Role-filtered responses and a restricted database account",
+      "files": [
+        "server/routes/business.js",
+        "server/lib/dbRoles.js"
+      ],
+      "tests": [
+        "the snapshot holds only that role's data",
+        "the app account can add audit entries but cannot change or delete them"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "28, 31",
+      "concept": "Resource-level authorization",
+      "status": "Built",
+      "how": "Ownership inside every query",
+      "files": [
+        "server/services/orders.js"
+      ],
+      "tests": [
+        "one waiter cannot see or change another waiter's order"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16, 29",
+      "concept": "Prepared statements and SQL injection",
+      "status": "Built",
+      "how": "MongoDB's equivalent: typed filters from strictly validated input, so query operators cannot be injected",
+      "files": [
+        "server/lib/schemas.js",
+        "server/middleware/auth.js"
+      ],
+      "tests": [
+        "NoSQL operator objects are refused"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "29",
+      "concept": "Encryption",
+      "status": "Built",
+      "how": "AES-256-GCM field encryption with key IDs",
+      "files": [
+        "server/lib/crypto.js"
+      ],
+      "tests": [
+        "name, phone and notes are encrypted at rest",
+        "the data cannot be read after being moved to another record",
+        "a shortened GCM authentication tag is refused, so forged values cannot be accepted"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "29",
+      "concept": "Secure database access",
+      "status": "Built",
+      "how": "Database requires a login, on a private network, with a least-privilege account",
+      "files": [
+        "server/lib/dbRoles.js",
+        "scripts/db-setup.js",
+        "deploy/docker-compose.yml"
+      ],
+      "tests": [
+        "only Caddy is reachable from outside, and the database network has no route out",
+        "production refuses a database connection with no username and password (least privilege)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "29",
+      "concept": "Backup",
+      "status": "Built",
+      "how": "Encrypted backup with a checksum and a tested restore",
+      "files": [
+        "server/lib/backup.js"
+      ],
+      "tests": [
+        "a restore brings back every record, and the audit chain still verifies",
+        "the backup file holds no readable data"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "31",
+      "concept": "Integrity: total changed from Rs 2,500 to 250",
+      "status": "Built",
+      "how": "Totals worked out on the server from stored prices",
+      "files": [
+        "server/services/billing.js",
+        "server/lib/domain.js"
+      ],
+      "tests": [
+        "the total is calculated on the server; the browser cannot set it (Rs 2,500 to 250)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "31",
+      "concept": "Confidentiality: another customer's address",
+      "status": "Built",
+      "how": "Encryption, masking and ownership checks",
+      "files": [
+        "server/services/reservations.js"
+      ],
+      "tests": [
+        "stored encrypted, and masked in every response"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "31",
+      "concept": "Availability: thousands of requests",
+      "status": "Built",
+      "how": "Limits per address, per person and for pages; body limits; timeouts",
+      "files": [
+        "server/app.js",
+        "server/index.js",
+        "scripts/load-test.js"
+      ],
+      "tests": [
+        "the general API rate limit applies",
+        "oversized bodies are refused"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "XSS",
+      "status": "Built",
+      "how": "All text rendered as text, never as HTML",
+      "files": [
+        "public/js/common.js"
+      ],
+      "tests": [
+        "script text in a name is stored as plain text, and shown as plain text"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "DOM security",
+      "status": "Built",
+      "how": "No innerHTML anywhere, enforced by Trusted Types",
+      "files": [
+        "public/js/common.js",
+        "server/middleware/security.js"
+      ],
+      "tests": [
+        "no browser script writes HTML from strings or stores business data on the device (findings 14, 20, 30)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "CSP",
+      "status": "Built",
+      "how": "Strict policy with no inline code or outside hosts",
+      "files": [
+        "server/middleware/security.js"
+      ],
+      "tests": [
+        "the CSP has no exceptions: no inline styles, no third-party hosts, Trusted Types required"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "REST APIs",
+      "status": "Built",
+      "how": "Versioned API under /api/v1",
+      "files": [
+        "server/routes/business.js"
+      ],
+      "tests": [
+        "every role against every route (RBAC matrix)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "API security",
+      "status": "Built",
+      "how": "Authentication, permissions, strict schemas, CSRF, rate limits and idempotency",
+      "files": [
+        "server/app.js",
+        "server/lib/tx.js"
+      ],
+      "tests": [
+        "a signed-in change needs the CSRF token",
+        "requests from another site, or with no Origin, are blocked",
+        "an order needs an Idempotency-Key"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "8, 16",
+      "concept": "File security and malicious uploads",
+      "status": "Built",
+      "how": "Signature check, 2 MB limit, random name, outside the web root, nosniff",
+      "files": [
+        "server/services/photos.js"
+      ],
+      "tests": [
+        "scripts, SVG, HTML and disguised files are refused and recorded",
+        "a file over 2 MB is refused",
+        "a real image is stored outside the web root under a random name, and served safely"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "8",
+      "concept": "Error messages leaking information",
+      "status": "Built",
+      "how": "Central handler: generic message and a request ID",
+      "files": [
+        "server/app.js"
+      ],
+      "tests": [
+        "broken JSON gives a clean error with no stack trace"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Code review",
+      "status": "Documented",
+      "how": "Dated independent review with every finding and outcome, and a pull request security checklist",
+      "files": [
+        "docs/security/CODE-REVIEW.md",
+        ".github/pull_request_template.md"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "SAST",
+      "status": "Built",
+      "how": "ESLint security rules, Semgrep and CodeQL",
+      "files": [
+        "eslint.config.js",
+        ".github/workflows/ci.yml",
+        "docs/security/SCAN-RESULTS.md"
+      ],
+      "tests": [
+        "CI runs every tool the plan names"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "DAST and OWASP ZAP",
+      "status": "Built",
+      "how": "Passive scan, plus an active scan of the signed-in API against the running stack",
+      "files": [
+        ".zap/rules.tsv",
+        ".zap/sign-in.js",
+        "scripts/openapi.js",
+        ".github/workflows/ci.yml",
+        "docs/security/SCAN-RESULTS.md"
+      ],
+      "tests": [
+        "CI runs every tool the plan names"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Burp Suite",
+      "status": "Manual",
+      "how": "A step-by-step test script for a person to run",
+      "files": [
+        "docs/security/BURP-TEST-SCRIPT.md"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Dependency scanning",
+      "status": "Built",
+      "how": "npm audit, Trivy and Dependabot",
+      "files": [
+        ".github/dependabot.yml",
+        ".github/workflows/ci.yml"
+      ],
+      "tests": [
+        "the packages npm audit flagged are on fixed versions (finding 17)"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Docker",
+      "status": "Built",
+      "how": "Multi-stage, non-root, read-only image",
+      "files": [
+        "Dockerfile",
+        "deploy/docker-compose.yml"
+      ],
+      "tests": [
+        "runs on a pinned, minimal base as an unprivileged user",
+        "every service is read-only, drops all capabilities and cannot gain privileges"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "CI/CD",
+      "status": "Built",
+      "how": "GitHub Actions on every push, with pinned actions",
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml"
+      ],
+      "tests": [
+        "every action is pinned to a commit, and the default token is read-only"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "HTTPS and TLS",
+      "status": "Built",
+      "how": "Caddy certificates, HSTS, https required in production",
+      "files": [
+        "deploy/Caddyfile",
+        "server/config.js"
+      ],
+      "tests": [
+        "HSTS is sent when the site uses TLS",
+        "production requires https"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Secrets management",
+      "status": "Built",
+      "how": "Validated at start-up, key IDs for rotation, never in git or the image",
+      "files": [
+        "server/config.js",
+        "scripts/setup-env.js"
+      ],
+      "tests": [
+        "refuses to start without secrets",
+        "error messages never contain secret values",
+        "installs locked production packages only and copies no secrets, tests or git history"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Monitoring",
+      "status": "Built",
+      "how": "Redacted logs with request IDs, alert rules and an Admin Security page",
+      "files": [
+        "server/services/alerts.js",
+        "server/lib/logger.js",
+        "public/security.html"
+      ],
+      "tests": [
+        "failed sign-ins, denials, exports, number views and refunds each raise an alert",
+        "logs hold no cookies, tokens, passwords or codes"
+      ]
+    },
+    {
+      "deck": "SSD Lec1",
+      "slide": "16",
+      "concept": "Incident response",
+      "status": "Documented",
+      "how": "Runbook with roles, playbooks and the 72-hour breach steps",
+      "files": [
+        "docs/security/INCIDENT-RESPONSE.md"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "8-9",
+      "concept": "Confidentiality",
+      "status": "Built",
+      "how": "Each role receives only its own fields; personal data encrypted",
+      "files": [
+        "server/routes/business.js",
+        "server/lib/crypto.js"
+      ],
+      "tests": [
+        "the snapshot holds only that role's data",
+        "name, phone and notes are encrypted at rest"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "10-11",
+      "concept": "Integrity, hashing and version control",
+      "status": "Built",
+      "how": "Server-side rules, transactions, SHA-256 audit chain, Git",
+      "files": [
+        "server/services/auditLog.js",
+        "server/lib/tx.js"
+      ],
+      "tests": [
+        "if any step fails, nothing is saved",
+        "detects edited details, a changed actor and a changed time"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "12-13",
+      "concept": "Availability, redundancy and failover",
+      "status": "Built",
+      "how": "Throttling, health checks, graceful shutdown, and a three-member database option proved by a failover drill",
+      "files": [
+        "server/app.js",
+        "server/lifecycle.js",
+        "deploy/docker-compose.ha.yml",
+        ".github/workflows/ci.yml"
+      ],
+      "tests": [
+        "the public health checks reveal status only (finding 18)",
+        "a request in progress finishes, then the database closes and the process exits cleanly",
+        "the three-member database option has three members, and the app can reach them all"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "14-15",
+      "concept": "Accountability and non-repudiation",
+      "status": "Built",
+      "how": "Actor taken from an MFA-verified session; entries signed with Ed25519 by the server (personal signatures are a listed residual risk)",
+      "files": [
+        "server/services/auditLog.js",
+        "docs/security/RESIDUAL-RISKS.md"
+      ],
+      "tests": [
+        "the recorded waiter is always the signed-in person",
+        "detects a recalculated hash, because the attacker cannot sign it"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "16-17",
+      "concept": "Authentication",
+      "status": "Built",
+      "how": "Password plus MFA",
+      "files": [
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "a correct password alone gives no session (MFA is mandatory)"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "22-23",
+      "concept": "Least privilege",
+      "status": "Built",
+      "how": "Permission table, role-filtered data, restricted database account, no container capabilities",
+      "files": [
+        "server/lib/permissions.js",
+        "server/lib/dbRoles.js"
+      ],
+      "tests": [
+        "what each role receives (least privilege)",
+        "the app account can add audit entries but cannot change or delete them"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "24-25",
+      "concept": "Defence in depth",
+      "status": "Built",
+      "how": "Independent layers: CSP, validation, RBAC, ownership, encryption, limits, audit",
+      "files": [
+        "docs/security/THREAT-MODEL.md",
+        "server/app.js"
+      ],
+      "tests": [
+        "every role against every route (RBAC matrix)",
+        "name, phone and notes are encrypted at rest"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "26-27",
+      "concept": "Fail-secure defaults",
+      "status": "Built",
+      "how": "Default-deny routes, refuses to start without secrets, generic errors",
+      "files": [
+        "server/config.js",
+        "server/app.js"
+      ],
+      "tests": [
+        "fail-secure when the database is down",
+        "if the audit entry fails, the action it describes does not happen",
+        "refuses to start without secrets"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "28-29",
+      "concept": "Economy of mechanism",
+      "status": "Built",
+      "how": "Standard reviewed libraries and one module per responsibility",
+      "files": [
+        "server/lib/crypto.js",
+        "server/lib/passwords.js"
+      ],
+      "tests": [
+        "passwords are stored only as Argon2id hashes"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "30-31",
+      "concept": "Complete mediation",
+      "status": "Built",
+      "how": "Session and permission checked on every request",
+      "files": [
+        "server/middleware/auth.js"
+      ],
+      "tests": [
+        "every route has a guard, so none can be left open by accident (complete mediation)",
+        "disabling a user or changing their role takes effect on the next request"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "32-33",
+      "concept": "Open design",
+      "status": "Built",
+      "how": "Published algorithms; only keys are secret; audit public keys can be shared",
+      "files": [
+        "server/lib/crypto.js",
+        "server/services/auditLog.js"
+      ],
+      "tests": [
+        "detects a recalculated hash, because the attacker cannot sign it"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "34-35",
+      "concept": "Separation of privilege",
+      "status": "Built",
+      "how": "Second person for large refunds and Admin changes; fresh code for sensitive actions",
+      "files": [
+        "server/services/approvals.js"
+      ],
+      "tests": [
+        "a large refund waits for a different person with a fresh code",
+        "one Admin alone cannot create another Admin; a second Admin must approve"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "36-37",
+      "concept": "Least common mechanism",
+      "status": "Built",
+      "how": "Separate collections, no shared browser cache, separate per-person limits and sessions",
+      "files": [
+        "server/db.js",
+        "server/app.js"
+      ],
+      "tests": [
+        "each signed-in person has a limit, so one person cannot use up a shared cafe address",
+        "the device list shows only your sessions, and you can revoke only your own"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "18 (1)",
+      "concept": "Scenario: denied beyond permission level",
+      "status": "Built",
+      "how": "Permission checks after authentication",
+      "files": [
+        "server/middleware/auth.js"
+      ],
+      "tests": [
+        "each role can open only its own pages"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "18 (2)",
+      "concept": "Scenario: an extra factor at sign-in",
+      "status": "Built",
+      "how": "Authenticator code",
+      "files": [
+        "server/services/mfa.js"
+      ],
+      "tests": [
+        "a correct password alone gives no session (MFA is mandatory)"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "18 (3)",
+      "concept": "Scenario: log timestamps altered",
+      "status": "Built",
+      "how": "Time is part of the signed hash",
+      "files": [
+        "server/services/auditLog.js"
+      ],
+      "tests": [
+        "detects edited details, a changed actor and a changed time"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "18 (4)",
+      "concept": "Scenario: 99.9% uptime guarantee",
+      "status": "Out of scope",
+      "how": "Depends on the hosting provider",
+      "files": [
+        "docs/security/OUT-OF-SCOPE.md"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "18 (5)",
+      "concept": "Scenario: encrypted transaction records",
+      "status": "Built",
+      "how": "Customer details on bills encrypted; amounts stay readable for reports",
+      "files": [
+        "server/services/billing.js"
+      ],
+      "tests": [
+        "stored encrypted, and masked in every response"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "19 (6)",
+      "concept": "Scenario: sensitive email encrypted automatically",
+      "status": "Out of scope",
+      "how": "The app sends no email; messages hold no personal data",
+      "files": [
+        "docs/security/OUT-OF-SCOPE.md"
+      ],
+      "tests": [
+        "a paid bill with a phone queues a receipt holding no phone number"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "19 (7), 20 (14)",
+      "concept": "Scenario: unusual access in logs, all record access reviewed",
+      "status": "Built",
+      "how": "Address and browser recorded; full-number views logged; alert rules",
+      "files": [
+        "server/services/auditLog.js",
+        "server/services/alerts.js"
+      ],
+      "tests": [
+        "only a Manager or Admin can see the full number, and it is logged",
+        "one password tried against many usernames from one address raises an alert (password spraying)"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "19 (8), (10)",
+      "concept": "Scenario: code signing and verifying a download's hash",
+      "status": "Built",
+      "how": "Signed build attestations and SHA-256 checksums on releases; locked packages, pinned images and actions",
+      "files": [
+        ".github/workflows/release.yml",
+        "Dockerfile",
+        "package-lock.json"
+      ],
+      "tests": [
+        "releases carry a signed provenance attestation and checksums",
+        "runs on a pinned, minimal base as an unprivileged user",
+        "every action is pinned to a commit, and the default token is read-only"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "19 (9)",
+      "concept": "Scenario: account lockout",
+      "status": "Built",
+      "how": "Lock after 3 failures for 15 minutes; Admin can unlock",
+      "files": [
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "3 failures lock the account, and the right password is then refused",
+        "an Admin can unlock an account"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "20 (11)",
+      "concept": "Scenario: biometric access",
+      "status": "Out of scope",
+      "how": "Physical security of a site",
+      "files": [
+        "docs/security/OUT-OF-SCOPE.md"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "20 (12)",
+      "concept": "Scenario: disaster recovery test",
+      "status": "Built",
+      "how": "Backup, destroy and restore drill in CI",
+      "files": [
+        ".github/workflows/ci.yml",
+        "docs/DEPLOYMENT.md"
+      ],
+      "tests": [
+        "CI runs every tool the plan names",
+        "a restore brings back every record, and the audit chain still verifies"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "20 (13)",
+      "concept": "Scenario: complex passwords",
+      "status": "Built",
+      "how": "12+ characters, mixed types, common words refused",
+      "files": [
+        "server/lib/passwords.js"
+      ],
+      "tests": [
+        "a common word dressed up with capitals, digits and symbols does not pass"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "20 (15)",
+      "concept": "Scenario: device list with revoke",
+      "status": "Built",
+      "how": "Account page lists active sessions, each revocable",
+      "files": [
+        "server/routes/auth.js",
+        "public/js/account.js"
+      ],
+      "tests": [
+        "the device list shows only your sessions, and you can revoke only your own"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "5-6",
+      "concept": "Stakeholders and business needs",
+      "status": "Documented",
+      "how": "Stakeholder and asset table",
+      "files": [
+        "docs/security/SECURITY-REQUIREMENTS.md"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "7",
+      "concept": "Functional security requirements",
+      "status": "Documented",
+      "how": "SR-01 to SR-19, each traced to code and tests",
+      "files": [
+        "docs/security/SECURITY-REQUIREMENTS.md",
+        "docs/security/TRACEABILITY.md"
+      ],
+      "tests": [
+        "every requirement traces to a threat or regulation, to code that exists and to tests that exist"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "8",
+      "concept": "Non-functional requirements and performance under attack",
+      "status": "Built",
+      "how": "Load test of staff requests during a flood",
+      "files": [
+        "scripts/load-test.js",
+        "docs/security/LOAD-TEST.md"
+      ],
+      "tests": [
+        "one address can send only a limited number of requests"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "9",
+      "concept": "Regulatory: right to be forgotten",
+      "status": "Built",
+      "how": "Erase-customer endpoint and 90-day retention",
+      "files": [
+        "server/services/customers.js"
+      ],
+      "tests": [
+        "erasing removes the person but keeps the bill totals, and needs a fresh code",
+        "retention removes personal data after 90 days, and keeps recent data"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "9",
+      "concept": "Regulatory: breach notification within 72 hours",
+      "status": "Documented",
+      "how": "Breach steps in the runbook, supported by tamper alerts",
+      "files": [
+        "docs/security/INCIDENT-RESPONSE.md",
+        "server/workers.js"
+      ],
+      "tests": [
+        "the Admin screen can verify, and a broken chain raises an alert"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "10",
+      "concept": "Use cases and misuse cases",
+      "status": "Documented",
+      "how": "A misuse case per module, each linked to a test",
+      "files": [
+        "docs/security/traceability.json",
+        "docs/security/TRACEABILITY.md"
+      ],
+      "tests": [
+        "every requirement traces to a threat or regulation, to code that exists and to tests that exist"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "12-13",
+      "concept": "Risk-based prioritisation and balance",
+      "status": "Documented",
+      "how": "Priorities from WSES and RPN; security balanced against a busy shift",
+      "files": [
+        "docs/security/SECURITY-REQUIREMENTS.md",
+        "docs/security/risk-register.json"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "14-15",
+      "concept": "Clear documentation and traceability",
+      "status": "Built",
+      "how": "Matrix linking requirement, threat, code and test, checked by a script",
+      "files": [
+        "scripts/check-traceability.js",
+        "docs/security/TRACEABILITY.md"
+      ],
+      "tests": [
+        "a broken link is caught: a missing test, a missing file and an uncovered threat"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "16-17",
+      "concept": "Continuous review, validation and verification",
+      "status": "Documented",
+      "how": "Dated review log; tests prove each control",
+      "files": [
+        "docs/security/SECURITY-REQUIREMENTS.md",
+        "docs/security/SCAN-RESULTS.md"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "20-25",
+      "concept": "Assets, attackers, threats, vulnerabilities, mitigations",
+      "status": "Documented",
+      "how": "Each covered in the threat model",
+      "files": [
+        "docs/security/THREAT-MODEL.md"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "31",
+      "concept": "Transaction verification",
+      "status": "Built",
+      "how": "Signed callback checked against the stored amount, accepted once",
+      "files": [
+        "server/services/gateway.js",
+        "server/services/billing.js"
+      ],
+      "tests": [
+        "forged, old, wrong-amount and malformed callbacks are refused",
+        "a copied gateway callback is accepted only once"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "35-41",
+      "concept": "The six-step threat modelling process",
+      "status": "Documented",
+      "how": "One section per step",
+      "files": [
+        "docs/security/THREAT-MODEL.md"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "43, 47-51",
+      "concept": "STRIDE",
+      "status": "Documented",
+      "how": "Six questions for each component; every threat carries a category",
+      "files": [
+        "docs/security/THREAT-MODEL.md",
+        "docs/security/traceability.json"
+      ],
+      "tests": [
+        "every STRIDE category has at least one threat, and every threat is met by a requirement"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "44, 52-70",
+      "concept": "PASTA, all seven stages",
+      "status": "Documented",
+      "how": "Worked for the card payment flow",
+      "files": [
+        "docs/security/THREAT-MODEL.md"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "45, 73-79",
+      "concept": "OCTAVE, three phases",
+      "status": "Documented",
+      "how": "Critical assets, infrastructure weaknesses, strategy",
+      "files": [
+        "docs/security/THREAT-MODEL.md"
+      ]
+    },
+    {
+      "deck": "Week 4",
+      "slide": "46",
+      "concept": "VAST",
+      "status": "Documented",
+      "how": "A threat diagram per user story",
+      "files": [
+        "docs/security/THREAT-MODEL.md"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "5",
+      "concept": "Insider threats",
+      "status": "Built",
+      "how": "Export limits and alerts, masked data, second person, signed audit trail",
+      "files": [
+        "server/routes/business.js",
+        "server/services/alerts.js"
+      ],
+      "tests": [
+        "exports are logged, limited per person, and safe to open in a spreadsheet",
+        "a large refund waits for a different person with a fresh code"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "4",
+      "concept": "Cybercriminals, ransomware and card skimming",
+      "status": "Built",
+      "how": "MFA, no third-party scripts, no card data, encrypted backups",
+      "files": [
+        "server/middleware/security.js",
+        "server/lib/backup.js"
+      ],
+      "tests": [
+        "no page uses inline styles or third-party resources (findings 21, 22)",
+        "approved card payment is paid, with no card details anywhere"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "7",
+      "concept": "Script kiddies",
+      "status": "Built",
+      "how": "Rate limits, lockout and security headers",
+      "files": [
+        "server/app.js",
+        "server/middleware/security.js"
+      ],
+      "tests": [
+        "the auth rate limit stops rapid guessing across accounts",
+        "are present on pages and API responses"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "3",
+      "concept": "Hacktivists and defacement",
+      "status": "Built",
+      "how": "Read-only containers, only listed files served, strict CSP",
+      "files": [
+        "deploy/docker-compose.yml",
+        "server/app.js"
+      ],
+      "tests": [
+        "every service is read-only, drops all capabilities and cannot gain privileges",
+        "project files cannot be downloaded (finding 15)"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "8, 15",
+      "concept": "Nation-state actors and poisoned updates",
+      "status": "Built",
+      "how": "Locked packages, pinned images and actions, scanning, signed audit",
+      "files": [
+        "package-lock.json",
+        ".github/dependabot.yml",
+        "Dockerfile"
+      ],
+      "tests": [
+        "every action is pinned to a commit, and the default token is read-only"
+      ]
+    },
+    {
+      "deck": "Attackers",
+      "slide": "6",
+      "concept": "Cyber terrorists",
+      "status": "Out of scope",
+      "how": "Very low relevance to a cafe; accepted risk with a reason",
+      "files": [
+        "docs/security/OUT-OF-SCOPE.md",
+        "docs/security/THREAT-MODEL.md",
+        "docs/security/RESIDUAL-RISKS.md"
+      ]
+    },
+    {
+      "deck": "WSES",
+      "slide": "4-5, 12",
+      "concept": "WSES formula, parameters and weights",
+      "status": "Built",
+      "how": "wses() function, with other weights and scales supported",
+      "files": [
+        "server/lib/risk.js"
+      ],
+      "tests": [
+        "works with other weights and scales, as in the telemedicine exercise (4/5/3/2 and 1/5/8)"
+      ]
+    },
+    {
+      "deck": "WSES",
+      "slide": "16-19",
+      "concept": "Worked examples 40, 24 and 8 and ranking",
+      "status": "Built",
+      "how": "Reproduced exactly",
+      "files": [
+        "server/lib/risk.js"
+      ],
+      "tests": [
+        "reproduces the slides: login portal 40, order API 24, inventory 8",
+        "ranks the slides' components in the same order"
+      ]
+    },
+    {
+      "deck": "WSES",
+      "slide": "3",
+      "concept": "Prioritising CafeMS's own components",
+      "status": "Built",
+      "how": "Risk register on the Admin risk page and CSV",
+      "files": [
+        "docs/security/risk-register.json",
+        "server/services/riskRegister.js",
+        "public/risk.html"
+      ],
+      "tests": [
+        "shows scores worked out by the server, and the export is recorded"
+      ]
+    },
+    {
+      "deck": "FMEA",
+      "slide": "5-7",
+      "concept": "Severity, occurrence, detection and the scoring guide",
+      "status": "Built",
+      "how": "rpn() with ratings from 1 to 10",
+      "files": [
+        "server/lib/risk.js"
+      ],
+      "tests": [
+        "ratings must be whole numbers from 1 to 10"
+      ]
+    },
+    {
+      "deck": "FMEA",
+      "slide": "8-11",
+      "concept": "Worked failures 648, 288 and 72",
+      "status": "Built",
+      "how": "Reproduced and ranked",
+      "files": [
+        "server/lib/risk.js"
+      ],
+      "tests": [
+        "reproduces the slides: 648, 288 and 72, ranked in that order"
+      ]
+    },
+    {
+      "deck": "FMEA",
+      "slide": "12-18",
+      "concept": "Corrective action, test and recalculation (648 to 54)",
+      "status": "Built",
+      "how": "Before and after ratings, each linked to the test that proves it",
+      "files": [
+        "docs/security/risk-register.json",
+        "docs/security/RISK-AND-FAILURE-ANALYSIS.md"
+      ],
+      "tests": [
+        "recalculates after the corrective action: 648 falls to 54 while severity stays 9",
+        "every control it claims is proved by a test that exists"
+      ]
+    },
+    {
+      "deck": "FMEA",
+      "slide": "8",
+      "concept": "Unauthorized access",
+      "status": "Built",
+      "how": "Ownership checks, audit and alerts",
+      "files": [
+        "server/services/orders.js"
+      ],
+      "tests": [
+        "one waiter cannot see or change another waiter's order"
+      ]
+    },
+    {
+      "deck": "FMEA",
+      "slide": "9",
+      "concept": "Duplicate submissions",
+      "status": "Built",
+      "how": "Idempotency keys",
+      "files": [
+        "server/lib/tx.js"
+      ],
+      "tests": [
+        "a double click creates one order and takes stock once"
+      ]
+    },
+    {
+      "deck": "FMEA",
+      "slide": "10",
+      "concept": "Lost notifications",
+      "status": "Built",
+      "how": "Outbox with retries and an Admin alert",
+      "files": [
+        "server/services/outbox.js"
+      ],
+      "tests": [
+        "failures retry with growing gaps, then raise one Admin alert"
+      ]
+    },
+    {
+      "deck": "Dependency Matrix",
+      "slide": "2-6",
+      "concept": "Matrix codes 2, 1, 1A and 0",
+      "status": "Built",
+      "how": "Validated by code",
+      "files": [
+        "server/lib/dependencies.js",
+        "docs/security/dependency-matrix.json"
+      ],
+      "tests": [
+        "refuses codes the course does not define, and self-dependencies"
+      ]
+    },
+    {
+      "deck": "Dependency Matrix",
+      "slide": "7-13",
+      "concept": "Worked example ShopMini and its degrees",
+      "status": "Built",
+      "how": "Reproduced",
+      "files": [
+        "server/lib/dependencies.js"
+      ],
+      "tests": [
+        "reproduces ShopMini's degrees: AUTH in 2 out 0, ORD in 1 out 3, PAY in 1 out 0"
+      ]
+    },
+    {
+      "deck": "Dependency Matrix",
+      "slide": "7",
+      "concept": "Soft sync: Pending Payment on timeout",
+      "status": "Built",
+      "how": "3-second timeout, then a Pending Payment bill and retry",
+      "files": [
+        "server/services/billing.js",
+        "server/services/gateway.js"
+      ],
+      "tests": [
+        "a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged"
+      ]
+    },
+    {
+      "deck": "Dependency Matrix",
+      "slide": "3",
+      "concept": "Soft async: queued messages",
+      "status": "Built",
+      "how": "Outbox collection and background worker",
+      "files": [
+        "server/services/outbox.js",
+        "server/workers.js"
+      ],
+      "tests": [
+        "a delivered message is sent once",
+        "stock falling to its reorder level queues one message, without blocking the order"
+      ]
+    },
+    {
+      "deck": "Dependency Matrix",
+      "slide": "13, 20, 23",
+      "concept": "Degrees, graph styles and single points of failure",
+      "status": "Built",
+      "how": "Report script and an Admin page graph drawn with solid, dashed and dotted edges",
+      "files": [
+        "scripts/dependency-report.js",
+        "public/js/risk.js",
+        "public/risk.html"
+      ],
+      "tests": [
+        "CafeMS's own matrix is valid and names the database as its main single point of failure",
+        "each edge carries the slides' line style: solid, dashed or dotted"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "6",
+      "concept": "Hardware failures",
+      "status": "Built",
+      "how": "Encrypted backup and tested restore",
+      "files": [
+        "server/lib/backup.js"
+      ],
+      "tests": [
+        "a restore brings back every record, and the audit chain still verifies"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "7",
+      "concept": "Software bugs and glitches",
+      "status": "Built",
+      "how": "Automated tests of every control",
+      "files": [
+        "package.json"
+      ],
+      "tests": [
+        "CI runs every tool the plan names"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "8",
+      "concept": "Configuration errors",
+      "status": "Built",
+      "how": "Settings validated at start-up",
+      "files": [
+        "server/config.js"
+      ],
+      "tests": [
+        "refuses weak or wrongly sized keys",
+        "uploads cannot be stored inside the web root"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "9",
+      "concept": "Network failures",
+      "status": "Built",
+      "how": "Timeouts and safe handling of unfinished payments",
+      "files": [
+        "server/services/gateway.js"
+      ],
+      "tests": [
+        "a gateway crash is treated the same as a timeout"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "10",
+      "concept": "Human errors",
+      "status": "Built",
+      "how": "Second person, confirmations and an audit trail",
+      "files": [
+        "server/services/approvals.js"
+      ],
+      "tests": [
+        "the last active Admin cannot be removed, even if a request gets through"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "11",
+      "concept": "Interdependency failures",
+      "status": "Built",
+      "how": "Hard and soft dependencies, failing closed",
+      "files": [
+        "server/lib/dependencies.js"
+      ],
+      "tests": [
+        "a failure spreads along hard dependencies: the database takes down the web server, inventory and front end",
+        "sign-in fails closed and reveals nothing"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "13",
+      "concept": "Noise that hides real attacks",
+      "status": "Built",
+      "how": "Repeat alerts are merged",
+      "files": [
+        "server/services/alerts.js"
+      ],
+      "tests": [
+        "a flood updates one alert instead of creating many"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "16-17",
+      "concept": "Testing, monitoring, failover and patching",
+      "status": "Documented",
+      "how": "Each strategy mapped to what CafeMS does",
+      "files": [
+        "docs/security/RISK-AND-FAILURE-ANALYSIS.md"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "17",
+      "concept": "User training",
+      "status": "Documented",
+      "how": "A short guide for staff on passwords, phones, phishing, refunds and reporting problems",
+      "files": [
+        "docs/STAFF-SECURITY-GUIDE.md"
+      ]
+    },
+    {
+      "deck": "Failures",
+      "slide": "18-25",
+      "concept": "Dependency mapping and failure propagation",
+      "status": "Built",
+      "how": "Script showing what each component's failure affects",
+      "files": [
+        "scripts/dependency-report.js",
+        "server/lib/dependencies.js"
+      ],
+      "tests": [
+        "a soft payment failure leaves orders working; a hard login failure stops them"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "25",
+      "concept": "Firewalls and intrusion detection",
+      "status": "Out of scope",
+      "how": "Handled by the hosting platform; the database network is already private",
+      "files": [
+        "docs/security/OUT-OF-SCOPE.md"
+      ]
+    },
+    {
+      "deck": "Week 2",
+      "slide": "13",
+      "concept": "Cloud-scale DDoS protection",
+      "status": "Out of scope",
+      "how": "The app adds limits; real flood protection needs a provider such as Cloudflare",
+      "files": [
+        "docs/security/OUT-OF-SCOPE.md",
+        "docs/security/LOAD-TEST.md"
+      ]
+    }
   ]
 }

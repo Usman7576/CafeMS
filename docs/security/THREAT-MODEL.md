@@ -79,6 +79,7 @@ The audit of the prototype found 33 findings, and the review of Phases 1 to 4 fo
 | A shared cafe device keeps a session for up to 5 idle minutes | A shorter limit would sign staff out mid-order | Sign-out on the device, session list with revoke |
 | Rate limits are kept in the server's memory | One server instance is enough for a cafe | The stack runs one app container; a shared store is needed before adding more |
 | Payment gateway and SMS are simulated | A real one needs a merchant account | Interfaces are signed and timed out as a real one would be |
+| Anyone who knows a username can lock that account for 15 minutes | The course requires lockout after 3 failures, and it stops password guessing | Another Admin can unlock at once; the server's operator can recover an Admin; each lock raises an alert |
 | A Manager can refund up to Rs 5,000 alone | A second person for every refund would stall service | Refund-spike alert, audit log, fresh code for every refund |
 
 ## Step 4: Assess and prioritise threats
@@ -100,8 +101,8 @@ Each threat is met by at least one of the 28 requirements. The controls are laye
 1. The permission table, which keeps waiters away from full numbers.
 2. Masking in every response.
 3. Encryption at rest, so a stolen database is unreadable.
-4. A rate limit and an audit entry for each full view.
-5. An alert when someone views many numbers.
+4. A rate limit and an audit entry for each full view, and for each search by number.
+5. An alert when someone views or searches many numbers.
 
 ## Step 6: Validate and test the mitigations
 
@@ -110,7 +111,7 @@ Each threat is met by at least one of the 28 requirements. The controls are laye
 | 300+ automated tests, including attack tests | Each control works and the old attack fails | `tests/`, run by `npm test` |
 | Traceability check | No requirement has lost its code or its tests | `npm run trace -- --check` |
 | Failure injection | Stopped database, gateway timeout, failed messages, blocked audit writes, edited audit rows | `tests/resilience.test.js`, `tests/hardening.test.js` |
-| Static and dynamic scanners | ESLint, Semgrep, CodeQL, gitleaks, OWASP ZAP and Trivy | [SCAN-RESULTS.md](SCAN-RESULTS.md), and CI on every push |
+| Static and dynamic scanners | ESLint, Semgrep, CodeQL, gitleaks, Trivy, and OWASP ZAP (passive and active, signed in) | [SCAN-RESULTS.md](SCAN-RESULTS.md), and CI on every push |
 | Load test | Staff keep working during a flood | [LOAD-TEST.md](LOAD-TEST.md) |
 | Manual testing with Burp Suite | What the scanners miss | Phase 7 script, run by the student |
 
@@ -161,7 +162,7 @@ OCTAVE looks at the cafe as an organisation: what it cannot afford to lose, and 
 | Staff accounts | Takeover | Very high | MFA for everyone, lockout, session list with revoke |
 | Audit log | Tampering | Very high | Signed chain, append-only database account, 15-minute verification |
 | Customer details | Exposure | High | Encryption, masking, export limits, 90-day retention |
-| Service | Outage | High | Backups, rate limits, soft dependencies on outside services; a multi-member replica set in production |
+| Service | Outage | High | Backups, rate limits, soft dependencies on outside services; the three-member database option, which CI proves by killing the primary |
 
 ## VAST: visual threat models per user story
 

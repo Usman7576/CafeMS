@@ -107,7 +107,7 @@
     refundNo = no;
     CMS.clearError(document.getElementById("refundErr"));
     document.getElementById("refundTitle").textContent = "Refund " + no + "?";
-    document.getElementById("refundSub").textContent = "Table " + b.table + " · " + CMS.money(b.total) + " · " + (b.method === "Wallet" ? "Mobile wallet" : b.method) + ". Refunded amounts are removed from today's revenue.";
+    document.getElementById("refundSub").textContent = "Table " + b.table + " · " + CMS.money(b.total) + " · " + (b.method === "Wallet" ? "Mobile wallet" : b.method) + ". Refunded amounts are removed from the revenue of the day the bill was paid.";
     document.getElementById("refundReason").value = "";
     CMS.openModal("refundModal");
     setTimeout(function () { document.getElementById("refundReason").focus(); }, 50);

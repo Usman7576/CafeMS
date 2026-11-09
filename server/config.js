@@ -83,6 +83,7 @@ function loadConfig(env) {
     uploadDir,
     retentionDays: 90,
     refundApprovalLimit: 5000,
+    refundWindowDays: 30,
     limits: Object.freeze({
       jsonBody: "100kb",
       photoBody: "2mb",

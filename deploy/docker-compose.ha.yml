@@ -1,0 +1,69 @@
+# Redundancy: a three-member MongoDB replica set, so the database survives losing a member.
+# If the primary stops, the other two elect a new one within seconds and the app reconnects by itself.
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ha.yml up -d --build --wait
+#
+# On one server this protects against a database process or disk volume failing. To survive losing the
+# whole machine, run the members on separate servers or use a managed database. See docs/DEPLOYMENT.md.
+# Start with this file on a new deployment; adding it later needs the members joined by hand.
+
+x-member: &member
+  image: mongo:7@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
+  read_only: true
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  entrypoint:
+    - bash
+    - -c
+    - install -m 400 -o mongodb -g mongodb /run/secrets/mongo_keyfile /tmp/keyfile && exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth --keyFile /tmp/keyfile
+  secrets: [mongo_keyfile]
+  tmpfs: [/tmp]
+  networks: [backend]
+
+x-uri: &uri mongodb://${MONGODB_APP_USERNAME}:${MONGODB_APP_PASSWORD}@mongo:27017,mongo2:27017,mongo3:27017/${MONGODB_DB:-cafems}?replicaSet=rs0&authSource=${MONGODB_DB:-cafems}
+
+services:
+  mongo2:
+    <<: *member
+    volumes:
+      - mongo2-data:/data/db
+      - mongo2-config:/data/configdb
+
+  mongo3:
+    <<: *member
+    volumes:
+      - mongo3-data:/data/db
+      - mongo3-config:/data/configdb
+
+  mongo:
+    depends_on:
+      mongo2: { condition: service_started }
+      mongo3: { condition: service_started }
+    healthcheck:
+      test: >
+        mongosh --quiet -u "$${MONGO_INITDB_ROOT_USERNAME}" -p "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval
+        "try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017', priority: 2 }, { _id: 1, host: 'mongo2:27017' }, { _id: 2, host: 'mongo3:27017' }] }) }; if (!db.hello().isWritablePrimary) quit(1)"
+      interval: 5s
+      timeout: 10s
+      retries: 40
+      start_period: 30s
+
+  app:
+    environment:
+      MONGODB_URI: *uri
+
+  backup:
+    environment:
+      MONGODB_URI: *uri
+
+  restore:
+    environment:
+      MONGODB_URI: *uri
+
+volumes:
+  mongo2-data:
+  mongo2-config:
+  mongo3-data:
+  mongo3-config:

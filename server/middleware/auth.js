@@ -65,7 +65,7 @@ function createAuthMiddleware(config, db, sessions, { userLimiter } = {}) {
 const TARGET = Object.freeze({ body: "body", params: "validParams", query: "validQuery" });
 
 function validate(schema, source = "body") {
-  return function validateInput(req, _res, next) {
+  const check = function validateInput(req, _res, next) {
     const result = schema.safeParse(req[source]);
     if (!result.success) {
       const friendly = result.error.issues.find((issue) => String(issue.message).startsWith("!"));
@@ -74,6 +74,10 @@ function validate(schema, source = "body") {
     req[TARGET[source]] = result.data;
     return next();
   };
+  // Lets scripts/openapi.js describe each route from the schema that actually guards it
+  check.schema = schema;
+  check.source = source;
+  return check;
 }
 
 module.exports = { guard, publicRoute, createAuthMiddleware, validate };

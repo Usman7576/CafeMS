@@ -8,7 +8,7 @@
 | --- | --- |
 | **Connect a real payment gateway, or take cash only** | The payment gateway is simulated, so Card and Wallet payments are marked Paid without any money moving |
 | **Connect a real SMS or email provider if you want messages sent** | Receipts and staff notices are queued and logged, but nothing is actually delivered |
-| **Decide how the database survives a server failure** | The stack runs one database on one server. Keep off-site backups, or use a three-member replica set or a managed database |
+| **Decide how the database survives a failure** | The default stack runs one database. Use the three-member option below, keep off-site backups, and use separate servers or a managed database to survive losing the whole machine |
 | **Consider flood protection such as Cloudflare** | The app limits requests, but a large attack needs protection before traffic reaches the server |
 
 ## Deploy
@@ -33,13 +33,31 @@ docker run --rm -v "$PWD:/app" -w /app node:24-trixie-slim node scripts/setup-en
 docker compose -f deploy/docker-compose.yml up -d --build --wait
 ```
 
-5. Create the first Admin, using your own username and name. It prints a link that works once, within 24 hours:
+5. Create **two** Admins for two different people, running this once for each. Each run prints a link that works once, within 24 hours. Two are needed because any change to an Admin needs a second Admin, and the command refuses after two:
 
 ```bash
 docker compose -f deploy/docker-compose.yml run --rm app scripts/create-admin.js owner "Cafe Owner"
 ```
 
-6. Open the link, set a password and enrol an authenticator app. Save the recovery codes somewhere safe. Then add your menu and invite your staff from the Admin screens.
+6. Open each link, set a password and enrol an authenticator app. Save the recovery codes somewhere safe. Then add your menu and invite your staff from the Admin screens.
+
+An Admin can disable another Admin at once if that account is stolen. If an Admin is locked out or was wrongly disabled, whoever controls the server can restore them. This replaces their password and authenticator, and is recorded in the audit log:
+
+```bash
+docker compose -f deploy/docker-compose.yml run --rm app scripts/create-admin.js --recover owner
+```
+
+Give [STAFF-SECURITY-GUIDE.md](STAFF-SECURITY-GUIDE.md) to everyone who gets an account.
+
+## Three database members (recommended)
+
+Start a new deployment with the extra file below. If the primary stops, the other two elect a new one and the app carries on; in testing this took about 10 seconds. On one machine it covers a failed database process or volume. To survive losing the machine, put the members on separate servers or use a managed database.
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.ha.yml up -d --build --wait
+```
+
+Use both `-f` options on every later `docker compose` command too.
 
 ## Back up, and test the backup
 
@@ -57,7 +75,7 @@ To run it every night at 03:00, add this line with `crontab -e`, using the full 
 0 3 * * * cd /home/you/CafeMS && docker compose -f deploy/docker-compose.yml run --rm -T backup
 ```
 
-Copy the backups off the server regularly. They are encrypted, so they are safe to store elsewhere:
+Each run deletes backups older than 30 days from this folder, so erased customer data does not live on in them. Delete your off-site copies on the same schedule. Copy the backups off the server regularly. They are encrypted, so they are safe to store elsewhere:
 
 ```bash
 docker run --rm -v cafems-prod_backups:/from:ro -v "$PWD/offsite:/to" node:24-trixie-slim cp -r /from/. /to/
@@ -75,7 +93,7 @@ docker compose -f deploy/docker-compose.yml run --rm restore /backups/YOUR-FILE.
 docker compose -f deploy/docker-compose.yml restart app
 ```
 
-The same `deploy/.env` must be in place, because it holds the keys that decrypt the data. CI practises this whole recovery on every run.
+The same `deploy/.env` must be in place, because it holds the keys that decrypt the data. The restore fails if the audit chain does not verify. If you erased a customer's data after that backup was made, erase it again. CI practises this whole recovery on every run.
 
 ## Update
 
@@ -90,6 +108,20 @@ Render or Railway with MongoDB Atlas also works, since the `Dockerfile` runs any
 - Set the same variables as `deploy/.env`, with `NODE_ENV=production` and `TRUST_PROXY=1`.
 - In Atlas, create a custom role with the privileges listed in `server/lib/dbRoles.js`, and a database user with only that role. Put its connection string in `MONGODB_URI`.
 - Uploaded photos need a persistent disk mounted at `/data/uploads`.
+
+## Using Cloudflare or another CDN
+
+A service in front of Caddy adds a second proxy, and every visitor would otherwise appear to come from its few addresses, so one attacker could use up everyone's rate limit. Make two changes:
+
+1. In `deploy/Caddyfile`, add this inside the block at the top, replacing the addresses with your provider's published ranges:
+
+```
+servers {
+	trusted_proxies static 173.245.48.0/20 103.21.244.0/22
+}
+```
+
+2. Add `TRUST_PROXY=2` to `deploy/.env`, then run the update command above.
 
 ## Checking a running server
 

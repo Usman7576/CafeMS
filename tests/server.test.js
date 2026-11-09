@@ -188,10 +188,11 @@ describe("limits and errors", () => {
   });
 
   test("audit text cannot forge extra log lines", async () => {
+    const { clean } = require("../server/services/auditLog");
+    assert.equal(clean("evil\nFake entry"), "evil Fake entry");
     const name = "evil\nFake entry";
     await browser(app).post("/api/v1/auth/login", { username: name, password: "Wrong-Password-99!" });
-    const event = await db.collection("audit_events").findOne({ actor: /^evil/ });
-    assert.ok(!event.actor.includes("\n"));
+    assert.equal(await db.collection("audit_events").countDocuments({ details: /\n/ }), 0);
   });
 });
 

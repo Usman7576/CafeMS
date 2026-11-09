@@ -136,7 +136,7 @@ describe("menu", () => {
     assert.match((await bad({ price: 1 })).message, /between Rs 50/);
     assert.match((await bad({ price: 99.5 })).message, /whole number/);
     assert.match((await bad({ name: "x" })).message, /2-40/);
-    assert.equal((await bad({ recipe: [] })).code, "invalid_input");
+    assert.equal((await bad({ recipe: [{ ing: "x", qty: 1 }] })).code, "invalid_input");
     assert.equal((await bad({ _id: 1 })).code, "invalid_input");
     assert.equal((await bad({ name: { $gt: "" } })).code, "invalid_input");
   });
@@ -326,7 +326,7 @@ describe("staff administration", () => {
     const [a, b] = [await as("Admin"), await as("Admin")];
     const target = await as("Admin");
     await stepUp(a);
-    for (const [path, body] of [["role", { role: "Waiter" }], ["status", { status: "Disabled" }], ["reset-link", {}]]) {
+    for (const [path, body] of [["role", { role: "Waiter" }], ["reset-link", {}]]) {
       const res = await a.post(`${API}/users/${target.user.username}/${path}`, body);
       assert.equal(res.status, 202, path);
     }
@@ -334,7 +334,7 @@ describe("staff administration", () => {
     assert.equal((await a.post(`${API}/users/${promote.user.username}/role`, { role: "Admin" })).status, 202);
     assert.equal((await db.collection("users").findOne({ username: promote.user.username })).role, "Waiter");
     assert.equal((await db.collection("users").findOne({ username: target.user.username })).role, "Admin");
-    assert.ok((await b.get(`${API}/approvals`)).body.approvals.length >= 4);
+    assert.ok((await b.get(`${API}/approvals`)).body.approvals.length >= 3);
   });
 
   test("the target of a request cannot approve it", async () => {
@@ -345,15 +345,15 @@ describe("staff administration", () => {
     assert.equal((await target.post(`${API}/approvals/${approvalId}/approve`, {})).body.error.code, "same_person");
   });
 
-  test("two Admins alone cannot remove each other: nobody is left to approve", async () => {
+  test("two Admins alone cannot change each other's role: nobody is left to approve", async () => {
     const [a, target] = [await as("Admin"), await as("Admin")];
     await stepUp(a);
-    const { approvalId } = (await a.post(`${API}/users/${target.user.username}/status`, { status: "Disabled" })).body;
+    const { approvalId } = (await a.post(`${API}/users/${target.user.username}/role`, { role: "Waiter" })).body;
     await stepUp(a);
     await stepUp(target);
     assert.equal((await a.post(`${API}/approvals/${approvalId}/approve`, {})).body.error.code, "same_person");
     assert.equal((await target.post(`${API}/approvals/${approvalId}/approve`, {})).body.error.code, "same_person");
-    assert.equal((await db.collection("users").findOne({ username: target.user.username })).status, "Active");
+    assert.equal((await db.collection("users").findOne({ username: target.user.username })).role, "Admin");
   });
 
   test("the last active Admin cannot be removed, even if a request gets through", async () => {

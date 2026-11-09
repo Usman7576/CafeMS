@@ -102,15 +102,15 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
         await audit(db, req, { actor: "payment-gateway", action: "Gateway callback refused", details: "Bad signature, old timestamp or bad data", severity: "high" });
         throw new AppError(401, "bad_signature", "This callback was refused.");
       }
-      // Each signed callback is accepted once. A copy sent again within the time window is refused.
+      // Each signed callback is accepted once. The record commits with the result, so a callback that
+      // fails part-way can still be retried, while a copy of one that succeeded is refused.
       try {
-        await db.collection("gateway_callbacks").insertOne({ _id: hashToken(req.get("x-gateway-signature")), reference: parsed.data.reference, expiresAt: new Date(Date.now() + 15 * 60 * 1000) });
+        await billing.recordGatewayResult(req, parsed.data.reference, parsed.data, "payment-gateway", hashToken(req.get("x-gateway-signature")));
       } catch (error) {
         if (error.code !== 11000) throw error;
         await audit(db, req, { actor: "payment-gateway", action: "Gateway callback replayed", details: parsed.data.reference, severity: "high" });
         throw new AppError(409, "replayed", "This callback was already received.");
       }
-      await billing.recordGatewayResult(req, parsed.data.reference, parsed.data, "payment-gateway");
       res.status(204).end();
     } catch (error) {
       next(error);
@@ -123,14 +123,21 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
 
   api.use("/auth", createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }));
   // Limits one person's sensitive reads, such as bulk exports (keyed by user, not by address)
-  const personalLimiter = (name, perHour) => rateLimit({
-    windowMs: 60 * 60 * 1000,
-    limit: perHour,
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-    keyGenerator: (req) => `${name}:${req.auth.user.username}`,
-    handler: (_req, _res, next) => next(new AppError(429, "rate_limited", "You have reached the hourly limit for this action."))
-  });
+  // One limiter per name, so a limit such as "export" is shared across every route that uses it
+  const personalLimiters = new Map();
+  const personalLimiter = (name, perHour) => {
+    if (!personalLimiters.has(name)) {
+      personalLimiters.set(name, rateLimit({
+        windowMs: 60 * 60 * 1000,
+        limit: perHour,
+        standardHeaders: "draft-7",
+        legacyHeaders: false,
+        keyGenerator: (req) => `${name}:${req.auth.user.username}`,
+        handler: (_req, _res, next) => next(new AppError(429, "rate_limited", "You have reached the hourly limit for this action."))
+      }));
+    }
+    return personalLimiters.get(name);
+  };
   api.use("/public", createPublicRouter({ config, services }));
   api.use("/users", createUsersRouter({ db, middleware, services }));
   api.use(createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit: config.limits.photoBody }));
@@ -196,6 +203,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
       // Errors raised by Express and its body parser or static file handler
       if (err.type === "entity.too.large") error = new AppError(413, "too_large", "That request is too large.");
       else if (err.status === 400) error = new AppError(400, "invalid_input", "That request could not be read.");
+      else if (err.status === 415) error = new AppError(415, "unsupported_type", "That content type is not supported.");
       else if (err.status === 403) error = new AppError(403, "forbidden", "You do not have permission to do that.");
       else if (err.status === 404) error = new AppError(404, "not_found", "Not found.");
     }

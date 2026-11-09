@@ -6,8 +6,8 @@
 # Only Caddy is reachable from outside. The database sits on an internal network with no route out,
 # requires a login, and the app signs in with a least-privilege account created by the one-off db-init
 # service. The administrator password is given to the database and db-init only, never to the app.
-# Every container drops all Linux capabilities, cannot gain new privileges, and runs with a read-only
-# file system except for its data volumes.
+# Every container starts with no Linux capabilities and adds back only what it needs (the app and db-init
+# need none). None can gain new privileges, and each has a read-only file system except its data volumes.
 
 name: cafems-prod
 
@@ -34,7 +34,7 @@ services:
   mongo:
     <<: *hardening
     image: mongo:7@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
-    # MongoDB needs to change ownership of the key file once, so it keeps those two capabilities
+    # MongoDB's start-up changes the key file's owner and drops to its own user, which needs these five
     cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
     entrypoint:
       - bash
@@ -84,8 +84,9 @@ services:
       <<: *app-keys
       NODE_ENV: production
       APP_ORIGIN: ${APP_ORIGIN:?}
-      # One proxy (Caddy) sits in front, so the client address comes from its X-Forwarded-For header
-      TRUST_PROXY: "1"
+      # One proxy (Caddy) sits in front, so the client address comes from its X-Forwarded-For header.
+      # Set TRUST_PROXY=2 in deploy/.env only if a CDN sits in front of Caddy: see docs/DEPLOYMENT.md.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
       MONGODB_DB: ${MONGODB_DB:-cafems}
       MONGODB_URI: mongodb://${MONGODB_APP_USERNAME}:${MONGODB_APP_PASSWORD}@mongo:27017/${MONGODB_DB:-cafems}?replicaSet=rs0&authSource=${MONGODB_DB:-cafems}
     tmpfs: [/tmp]

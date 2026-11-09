@@ -30,9 +30,15 @@ async function readUploads(uploadDir) {
 async function createBackup({ db, key, directory, uploadDir }) {
   const collections = Object.create(null);
   const counts = Object.create(null);
-  for (const { name } of await db.listCollections({}, { nameOnly: true }).toArray()) {
-    collections[name] = await db.collection(name).find().toArray();
-    counts[name] = collections[name].length;
+  // One point-in-time view of every collection, so a backup taken while the cafe is open is consistent
+  const snapshot = db.client.startSession({ snapshot: true });
+  try {
+    for (const { name } of await db.listCollections({}, { nameOnly: true }).toArray()) {
+      collections[name] = await db.collection(name).find({}, { session: snapshot }).toArray();
+      counts[name] = collections[name].length;
+    }
+  } finally {
+    await snapshot.endSession();
   }
   const createdAt = new Date().toISOString();
   const plain = Buffer.from(BSON.EJSON.stringify({ createdAt, collections, uploads: uploadDir ? await readUploads(uploadDir) : {} }, { relaxed: false }));
@@ -49,6 +55,21 @@ async function createBackup({ db, key, directory, uploadDir }) {
   await fs.writeFile(backupPath, file, { mode: 0o600 });
   await fs.writeFile(`${backupPath}.manifest.json`, JSON.stringify({ file: `${base}.bak`, sha256: sha256(file), createdAt, counts }, null, 2), { mode: 0o600 });
   return { path: backupPath, sha256: sha256(file), counts };
+}
+
+// Removes backups older than the retention period, so erased customer data does not live on in them.
+// Only files with this tool's own names are ever touched.
+async function pruneBackups(directory, keepDays, now = Date.now()) {
+  const removed = [];
+  for (const name of await fs.readdir(directory).catch(() => [])) {
+    if (!/^cafems-[0-9TZ-]+\.bak(?:\.manifest\.json)?$/.test(name)) continue;
+    const file = path.join(directory, name);
+    if (now - (await fs.stat(file)).mtimeMs > keepDays * 24 * 60 * 60 * 1000) {
+      await fs.rm(file, { force: true });
+      removed.push(name);
+    }
+  }
+  return removed;
 }
 
 async function readBackup(backupPath, key) {
@@ -93,4 +114,4 @@ async function restoreBackup({ backupPath, key, db, uploadDir }) {
   return manifest;
 }
 
-module.exports = { createBackup, readBackup, restoreBackup, parseBackupKey };
+module.exports = { createBackup, readBackup, restoreBackup, parseBackupKey, pruneBackups };

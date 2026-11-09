@@ -102,11 +102,12 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
   }
 
   // Records the gateway's answer. The amount must match the stored bill, whatever the gateway says.
-  async function recordGatewayResult(req, no, result, actorName) {
+  async function recordGatewayResult(req, no, result, actorName, callbackId) {
     const actor = req.auth ? req.auth.user : { username: actorName, role: "" };
     let mismatch = null;
     let conflict = null;
     return inTransaction(db, async (session) => {
+      if (callbackId) await db.collection("gateway_callbacks").insertOne({ _id: callbackId, reference: no, expiresAt: new Date(Date.now() + 15 * 60 * 1000) }, { session });
       const bill = await bills.findOne({ _id: no }, { session });
       if (!bill) throw new AppError(404, "not_found", "Bill not found.");
       if (!OPEN_FOR_PAYMENT.includes(bill.status)) {
@@ -238,6 +239,9 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     if (!bill) throw new AppError(404, "not_found", "Bill not found.");
     if (bill.status === "Refunded") throw new AppError(409, "already_refunded", `${no} has already been refunded.`);
     if (bill.status !== "Paid") throw new AppError(409, "not_paid", `${no} has not been paid, so there is nothing to refund.`);
+    if (Date.now() - bill.createdAt.getTime() > config.refundWindowDays * 24 * 60 * 60 * 1000) {
+      throw new AppError(409, "refund_window", `Bills can be refunded for ${config.refundWindowDays} days. ${no} is older than that.`);
+    }
     if (bill.refundPending) {
       // An approval that expired undecided must not leave the bill stuck
       const live = await db.collection("approvals").findOne({ type: "refund", "payload.no": no, status: "Pending", expiresAt: { $gt: new Date() } }, { session });
@@ -250,6 +254,26 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     await bills.updateOne({ _id: no, status: "Paid" }, { $set: { refundPending: true } }, { session });
     const approvalId = await approvals.create(req, "refund", { no, reason }, `Refund ${no} · Rs ${bill.total}`, session);
     return { status: 202, body: { approvalId, message: `Refunds over Rs ${config.refundApprovalLimit.toLocaleString()} need a second person to approve.` } };
+  }
+
+  // A card or wallet refund must also reach the gateway. It runs after the refund has committed, and only
+  // once per bill. If the gateway cannot do it, a person is alerted to return the money by hand.
+  async function reversePayment(req, no) {
+    const bill = await bills.findOneAndUpdate(
+      { _id: no, status: "Refunded", method: { $ne: "Cash" }, "refund.reversalStartedAt": null },
+      { $set: { "refund.reversalStartedAt": new Date() } },
+      { returnDocument: "after" }
+    );
+    if (!bill) return;
+    const actor = req.auth.user;
+    try {
+      const result = await withTimeout(Promise.resolve().then(() => gateway.refund({ reference: no, amount: bill.total, gatewayRef: bill.gatewayRef })), config.gateway.timeoutMs);
+      await bills.updateOne({ _id: no }, { $set: { "refund.reversedAt": new Date(), "refund.gatewayRef": result.gatewayRef || null } });
+      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund sent to gateway", details: `${no} · Rs ${bill.total}` });
+    } catch (error) {
+      if (logger) logger.warn({ err: error, bill: no }, "Refund could not reach the gateway");
+      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund reversal failed", details: `${no} · Rs ${bill.total}: return this to the customer by hand`, severity: "high" });
+    }
   }
 
   // Daily paid revenue, oldest first, for the reports trend chart
@@ -300,7 +324,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     };
   }
 
-  return { openTables, pay, settle, retryPayment, recordGatewayResult, list, get, revealPhone, refund, applyRefund, salesReport, trend };
+  return { openTables, pay, settle, retryPayment, recordGatewayResult, list, get, revealPhone, refund, applyRefund, reversePayment, salesReport, trend };
 }
 
 module.exports = { createBillingService };

@@ -98,7 +98,7 @@ Why the less obvious cells are what they are:
 | NOTIFY (external) | – | QUEUE (retries, then an Admin alert) | – |
 
 **Single points of failure, and what reduces each one:**
-- **DB**, with 4 hard callers, stops 5 services. It has encrypted backups with a tested restore. It runs as a replica set with one member, so it cannot fail over: surviving a server failure needs three members or a managed database, as `docs/DEPLOYMENT.md` explains.
+- **DB**, with 4 hard callers, stops 5 services. It has encrypted backups with a tested restore. The default stack has one member. `deploy/docker-compose.ha.yml` runs three, and CI kills the primary to prove the app recovers; here it took about 10 seconds. Surviving the loss of the whole machine needs members on separate servers or a managed database.
 - **AUDIT** stops 3. This is accepted, because the fail-secure rule outweighs availability here. It shares the database's replica set, so in practice it fails only when the database does.
 - **AUTH** stops 2. It has no outside dependency, and its sessions are stored in the database.
 
@@ -108,7 +108,7 @@ As the Failures deck notes, a failure is not always an attack, but an attacker c
 
 | Failure type | Example in CafeMS | Control | Proved by |
 | --- | --- | --- | --- |
-| Hardware | The database disk fails | Encrypted, checksummed backups with a tested restore; a multi-member replica set in production | "a restore brings back every record, and the audit chain still verifies" |
+| Hardware | The database disk fails | Encrypted, checksummed backups with a tested restore; the three-member database option | "a restore brings back every record, and the audit chain still verifies" |
 | Software bug | A bug lets a waiter edit another waiter's order | Ownership in every query; 300+ automated tests | "one waiter cannot see or change another waiter's order" |
 | Configuration error | Server started with a weak key or no database login | Settings checked at start-up; the server refuses to run | "refuses weak or wrongly sized keys" |
 | Network | The payment gateway stops answering | 3-second timeout, then Pending Payment and retry | "a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged" |
@@ -122,6 +122,6 @@ As the Failures deck notes, a failure is not always an attack, but an attacker c
 | Regular testing and maintenance | `npm test` runs every control; CI runs it on every push and weekly |
 | Automated monitoring and alerts | Alert rules on the audit log every minute; audit chain verified every 15 minutes |
 | Noise that hides attacks | Repeats update one open alert instead of creating new ones, so a flood of minor events cannot bury a real attack |
-| Redundancy and failover | Soft dependencies on the gateway and message provider; a three-member replica set or managed database is the owner's choice at deployment |
-| Training and access control | Least-privilege roles, masked data and the role notes on each screen |
+| Redundancy and failover | Soft dependencies on the gateway and message provider; a three-member database option, proved by a failover drill in CI |
+| Training and access control | The staff security guide (`docs/STAFF-SECURITY-GUIDE.md`), least-privilege roles and masked data |
 | Consistent patching | `npm audit` and Trivy run in CI; Dependabot proposes updates weekly; base images are pinned by digest |

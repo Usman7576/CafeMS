@@ -9,6 +9,6 @@
 | 99.9% uptime guarantee (Week 2, scenario 4) | Uptime depends on the host, power and network | The hosting provider | Health checks, automatic restarts, graceful shutdown, and backups with a tested restore |
 | Biometrics and physical security (Week 2, scenario 11) | They control access to a place, and a cafe web app has no such hardware | The cafe's owner | Authenticator-based MFA for every member of staff |
 | Encrypted email (Week 2, scenario 6) | The app sends no email | Not applicable | Queued messages hold a reference only, never a name or number |
-| Cyber terrorism (Attackers, slide 6) | A cafe is not critical infrastructure | Recorded as an accepted risk in [RESIDUAL-RISKS.md](RESIDUAL-RISKS.md) | The general controls still apply |
+| Cyber terrorism (Attackers, slide 6) | A cafe is not critical infrastructure, so there is nothing specific to build | Recorded as an accepted risk in [RESIDUAL-RISKS.md](RESIDUAL-RISKS.md) | The general controls still apply |
 
 **Simulated services.** The payment gateway and SMS or email delivery are simulated, because real ones need a merchant or provider account. Their boundaries are built as a real integration needs them: timeouts, signed single-use callbacks, retries and alerts. `docs/DEPLOYMENT.md` says what must be connected before real customers use the site.

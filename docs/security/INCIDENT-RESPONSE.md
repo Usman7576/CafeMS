@@ -38,7 +38,7 @@ Keep a written timeline from the first minute: what was seen, what was done, by 
 
 ## The six stages
 
-1. **Prepare.** Keep `deploy/.env` and off-site backups separate from the server. Make sure at least two people hold Admin accounts. Practise a restore: CI does so on every run.
+1. **Prepare.** Keep `deploy/.env` and off-site backups separate from the server. Make sure two different people hold Admin accounts, created with `create-admin` as `docs/DEPLOYMENT.md` describes. Practise a restore: CI does so on every run.
 2. **Identify.** Confirm the alert in the audit log. Note who, what, when and from which address. Run the chain check from the Audit page.
 3. **Contain.** Use the playbook below. Save the evidence **before** changing anything:
 
@@ -63,8 +63,8 @@ Keep a written timeline from the first minute: what was seen, what was done, by 
 4. Use a reset link so the person sets a new password and enrols a new authenticator, then enable the account.
 
 ### An Admin account is taken over
-1. A second Admin disables it. Any change affecting an Admin needs a second Admin, so one stolen account cannot quietly add another.
-2. If no Admin can sign in, stop the app with `C stop app caddy`, then investigate the database directly.
+1. The other Admin disables it from Staff & roles. This takes effect at once and raises an alert. Every other change affecting an Admin needs a second Admin, so one stolen account cannot quietly add another.
+2. If no Admin can sign in, or an honest Admin was disabled or locked out, the server's operator runs `C run --rm app scripts/create-admin.js --recover <username>`. It replaces that person's password and authenticator and prints a one-time link.
 3. Check for pending approvals and reject any you do not recognise.
 
 ### Suspected insider
@@ -83,12 +83,12 @@ Follow the [72-hour steps](#personal-data-breach-the-72-hour-steps) below, after
 ### Ransomware, or a server or database lost
 1. Disconnect the server. Do not pay, and do not reuse the machine.
 2. Build a new server from `docs/DEPLOYMENT.md`, using the saved `deploy/.env`.
-3. Restore the latest good off-site backup; backups are encrypted and carry a checksum, so a damaged or altered file is refused.
+3. Restore the latest good off-site backup; backups are encrypted and carry a checksum, so a damaged or altered file is refused, and the restore fails if the audit chain does not verify. Then repeat any customer erasures made since that backup.
 4. Rotate every key and password, because the old server's secrets must be assumed stolen.
 
 ### Site overwhelmed by traffic
 1. Check `C ps` and the logs. Staff requests have their own per-person limit.
-2. Put a service such as Cloudflare in front of the domain, or ask the host to filter the traffic.
+2. Put a service such as Cloudflare in front of the domain, using the proxy settings in `docs/DEPLOYMENT.md` so that rate limits still see each visitor's own address. Or ask the host to filter the traffic.
 
 ### A vulnerable dependency is announced
 1. Check Dependabot and the CI scan results.

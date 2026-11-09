@@ -222,6 +222,7 @@
       if (b.status === "Paid" || b.status === "Refunded") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Receipt", "aria-label": "Show receipt " + b.no, onclick: function () { showReceipt(b); } }));
       if (b.phone && role === "Manager") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Number", "aria-label": "Show customer number for " + b.no, onclick: function () { CMS.showPhone(function () { return Store.billPhone(b.no); }); } }));
       if (b.status === "Pending Payment" || b.status === "Payment Failed") actions.appendChild(h("button", { class: "btn btn-secondary btn-sm", text: "Retry", "aria-label": "Retry payment for " + b.no, onclick: function (e) { retry(b, e.currentTarget); } }));
+      if (b.status === "Payment Failed") actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Take cash", "aria-label": "Take cash for " + b.no, onclick: function (e) { takeCash(b, e.currentTarget); } }));
       if (b.status === "Paid" && !b.refundPending) actions.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Refund", "aria-label": "Refund " + b.no, onclick: function () { requestRefund(b); } }));
       body.appendChild(h("tr", null, [
         h("td", null, [h("span", { class: "mono", text: b.no })]), h("td", { text: "T" + b.table }),
@@ -231,6 +232,16 @@
         h("td", null, [h("span", { class: "pill " + (b.status === "Paid" ? "pill-ready" : b.status === "Pending Payment" ? "pill-preparing" : "pill-cancelled"), text: b.status })]),
         h("td", { class: "actions" }, [actions])
       ]));
+    });
+  }
+
+  // A declined card or wallet payment can be settled in cash for the exact amount instead
+  async function takeCash(b, button) {
+    const ok = await CMS.confirm({ title: "Take " + CMS.money(b.total) + " in cash?", message: b.no + " will be marked paid in cash for the exact amount.", okText: "Record cash", icon: "cash" });
+    if (!ok) return;
+    await CMS.busy(button, async function () {
+      const bill = await CMS.attempt(function () { return Store.retryPayment(b.no, { method: "Cash", tendered: b.total }); });
+      if (bill) CMS.toast(b.no + " paid in cash", "ok");
     });
   }
 

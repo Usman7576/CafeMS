@@ -18,6 +18,9 @@ const RULES = Object.freeze([
   { id: "refund-spike", title: "Unusual number of refunds", actions: ["Refund issued"], windowMs: 60 * MINUTE, threshold: 3, severity: "high" },
   { id: "account-locked", title: "Account locked after failed attempts", actions: ["Account locked"], windowMs: 60 * MINUTE, threshold: 1, severity: "warning" },
   { id: "failed-sign-ins-address", title: "Many failed sign-ins from one network address", actions: ["Sign-in failed", "MFA failed"], windowMs: 10 * MINUTE, threshold: 10, severity: "high", groupBy: "ip" },
+  { id: "phone-searches", title: "Many searches by customer number", actions: ["Customer number searched"], windowMs: 60 * MINUTE, threshold: 15, severity: "high" },
+  { id: "admin-disabled", title: "An Admin account was disabled", actions: ["Admin account disabled", "Admin recovered from the server"], windowMs: 24 * 60 * MINUTE, threshold: 1, severity: "high" },
+  { id: "refund-reversal", title: "A card refund could not be sent to the gateway", actions: ["Refund reversal failed"], windowMs: 24 * 60 * MINUTE, threshold: 1, severity: "high" },
   { id: "payment-conflict", title: "A bill may have been paid twice", actions: ["Payment conflict"], windowMs: 24 * 60 * MINUTE, threshold: 1, severity: "high" },
   { id: "gateway-refused", title: "Refused payment gateway callbacks", actions: ["Gateway callback refused", "Gateway callback replayed"], windowMs: 60 * MINUTE, threshold: 3, severity: "high", groupBy: "ip" }
 ]);
@@ -41,7 +44,7 @@ function createAlertService({ db, logger }) {
     const now = Date.now();
     for (const rule of RULES) {
       const groups = await db.collection("audit_events").aggregate([
-        { $match: { action: { $in: rule.actions }, at: { $gte: new Date(now - rule.windowMs) } } },
+        { $match: { seq: { $exists: true }, action: { $in: rule.actions }, at: { $gte: new Date(now - rule.windowMs) } } },
         { $group: { _id: rule.groupBy === "ip" ? "$ip" : "$actor", count: { $sum: 1 }, lastEventAt: { $max: "$at" } } },
         { $match: { count: { $gte: rule.threshold } } }
       ]).toArray();

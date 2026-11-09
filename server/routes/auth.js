@@ -1,6 +1,6 @@
 const express = require("express");
 const { z } = require("zod");
-const { randomToken, hashToken } = require("../lib/crypto");
+const { randomToken, hashToken, blindIndex } = require("../lib/crypto");
 const { hashPassword, verifyPassword, dummyVerify, passwordProblems, MAX_LENGTH } = require("../lib/passwords");
 const { AppError, invalidInput } = require("../lib/errors");
 const { publicRoute, validate } = require("../middleware/auth");
@@ -98,8 +98,14 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
       // The hash is always checked, even for a locked or unknown account, so timing reveals nothing
       const passwordOk = await verifyPassword(user ? user.passwordHash : null, password);
 
-      if (!user || user.status !== "Active" || !user.passwordHash) {
-        await audit(req, { actor: username, action: "Sign-in failed", details: user ? "Account not active" : "Unknown username", severity: "warning" });
+      if (!user) {
+        // A person may type a password into the username box, so an unknown name is never kept as text.
+        // A keyed reference still lets repeated attempts on one name be connected.
+        await audit(req, { actor: "unknown", action: "Sign-in failed", details: `Unknown username · ref ${blindIndex(username, config.blindIndexKey).slice(0, 12)}`, severity: "warning" });
+        throw failed;
+      }
+      if (user.status !== "Active" || !user.passwordHash) {
+        await audit(req, { actor: username, action: "Sign-in failed", details: "Account not active", severity: "warning" });
         throw failed;
       }
       if (isLocked(user)) {
@@ -261,6 +267,7 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   router.post("/step-up", requireAuth, authLimiter, validate(codeSchema), async (req, res, next) => {
     try {
       const { user, session } = req.auth;
+      if (isLocked(user)) throw new AppError(401, "mfa_failed", CODE_FAILED);
       if (!(await mfa.verifyCode(user, req.body.code))) {
         await audit(req, { actor: user.username, role: user.role, action: "MFA failed", details: "Step-up code rejected", severity: "warning" });
         await recordFailure(req, user);
@@ -293,6 +300,7 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
   router.post("/password", requireAuth, authLimiter, validate(changePasswordSchema), async (req, res, next) => {
     try {
       const { user, session } = req.auth;
+      if (isLocked(user)) throw new AppError(401, "sign_in_failed", "Your current password is not correct.");
       if (!(await verifyPassword(user.passwordHash, req.body.currentPassword))) {
         await audit(req, { actor: user.username, role: user.role, action: "Password change failed", details: "Wrong current password", severity: "warning" });
         await recordFailure(req, user);

@@ -5,6 +5,7 @@
 require("dotenv").config({ quiet: true });
 const { MongoClient } = require("mongodb");
 const { ensureAppRole, ensureAppUser, ROLE } = require("../server/lib/dbRoles");
+const { ensureIndexes, ensureAuditIndexes } = require("../server/db");
 
 const HOST = process.env.MONGODB_HOST || "127.0.0.1:27018";
 const need = (name) => {
@@ -45,6 +46,15 @@ async function connect(withLogin) {
     const db = client.db(dbName);
     await ensureAppRole(db);
     await ensureAppUser(db, appUser, appPassword);
+    await ensureIndexes(db);
+    await ensureAuditIndexes(db);
+    // The database itself refuses an audit entry that is not part of the signed chain
+    await db.command({
+      collMod: "audit_events",
+      validator: { $jsonSchema: { bsonType: "object", required: ["seq", "at", "prevHash", "hash", "sig", "kid"] } },
+      validationLevel: "strict",
+      validationAction: "error"
+    });
     console.log(`The app account "${appUser}" has the least-privilege role "${ROLE}" on "${dbName}".`);
   } finally {
     await client.close();

@@ -21,8 +21,16 @@
 		header_up X-Forwarded-Proto {scheme}
 	}
 
+	# Caddy already hides cookies in its logs; these request headers are hidden as well
 	log {
 		output stdout
-		format json
+		format filter {
+			fields {
+				request>headers>X-Csrf-Token delete
+				request>headers>Idempotency-Key delete
+				request>headers>X-Gateway-Signature delete
+			}
+			wrap json
+		}
 	}
 }

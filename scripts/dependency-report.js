@@ -17,6 +17,9 @@ const width = Math.max(...model.components.map((c) => c.length)) + 2;
 console.log("".padEnd(width) + model.components.map((c) => c.padEnd(width)).join(""));
 model.matrix.forEach((row, i) => console.log(model.components[i].padEnd(width) + row.map((c) => String(c).padEnd(width)).join("")));
 
+console.log("\nGraph edges (solid = 2, dashed = 1, dotted = 1A):");
+for (const e of result.edges) console.log(`  ${e.from.padEnd(8)} -> ${e.to.padEnd(8)} ${e.code.padEnd(3)} ${e.line}`);
+
 console.log("\nDegrees:");
 for (const d of result.degrees) console.log(`  ${label(d.component).padEnd(18)} in ${d.inDegree}  out ${d.outDegree}  hard callers: ${list(d.hardCallers)}`);
 
