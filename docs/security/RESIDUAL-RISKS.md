@@ -27,4 +27,4 @@
 | A menu edit from two Admin screens: the later save wins | Low | Few Admins, and each change is audited | Audit log shows both changes | If more Admins are added |
 | Reservation staff can move a booking between any open status | Low | Staff correct mistakes this way | Every change is audited; closed and erased bookings cannot change | Accepted |
 | Cyber terrorism and nation-state attack | Very low | A cafe is not a target of this kind | General controls, pinned supply chain | Accepted |
-| Manual Burp Suite test not yet run | Open | It needs a person | [BURP-TEST-SCRIPT.md](BURP-TEST-SCRIPT.md) gives the steps | Before submission |
+| Manual Burp Suite test not yet run | Open | It needs a person | All 30 listed attacks are replayed automatically against the production stack on every CI run ([ATTACK-REPLAY-RESULTS.md](ATTACK-REPLAY-RESULTS.md)); [BURP-TEST-SCRIPT.md](BURP-TEST-SCRIPT.md) gives the manual steps | Before submission |

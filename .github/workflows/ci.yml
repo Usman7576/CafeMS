@@ -157,9 +157,13 @@ jobs:
           path: zap-work/*.html
           if-no-files-found: ignore
 
+      - name: Replay the 30 attacks from the Burp test script
+        run: |
+          link=$($COMPOSE run --rm -T app scripts/create-admin.js drill "Recovery Drill" | grep -o 'https://[^ ]*')
+          NODE_EXTRA_CA_CERTS=caddy-root.crt node scripts/attack-replay.js "$link"
+
       - name: Recovery drill - back up, destroy the data, restore and compare
         run: |
-          $COMPOSE run --rm -T app scripts/create-admin.js drill "Recovery Drill" | grep -q "Invitation link"
           $COMPOSE run --rm -T backup
           file=$(docker run --rm -v cafems-prod_backups:/b --entrypoint /bin/sh "$ZAP" -c 'ls /b | grep "\.bak$" | tail -1')
           $COMPOSE stop app app-staff caddy mongo

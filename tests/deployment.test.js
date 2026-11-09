@@ -102,7 +102,7 @@ describe("pipeline", () => {
 
   test("CI runs every tool the plan names", () => {
     const ci = read(`${dir}/ci.yml`);
-    for (const tool of ["npm run lint", "npm run test:coverage", "npm audit", "semgrep", "codeql-action", "gitleaks", "aquasec/trivy", "zap-baseline.py", "zap-api-scan.py", "Recovery drill", "Failover drill", "npm run trace", "npm run concepts"]) {
+    for (const tool of ["npm run lint", "npm run test:coverage", "npm audit", "semgrep", "codeql-action", "gitleaks", "aquasec/trivy", "zap-baseline.py", "zap-api-scan.py", "attack-replay.js", "Recovery drill", "Failover drill", "npm run trace", "npm run concepts"]) {
       assert.ok(ci.includes(tool), tool);
     }
   });

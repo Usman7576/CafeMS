@@ -255,7 +255,11 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     if (allowed("billing.read")) add("staffNames", async () => Object.fromEntries((await db.collection("users").find({}, { projection: { username: 1, name: 1 } }).toArray()).map((u) => [u.username, u.name])));
     if (allowed("audit.read")) add("recentAudit", () => auditRows({ limit: 20 }));
     if (allowed("alerts.manage")) add("alerts", () => alerts.listOpen());
-    add("cafe", () => cafe.get());
+    // The kitchen needs only the cafe's name on its screen (least privilege)
+    add("cafe", async () => {
+      const details = await cafe.get();
+      return role === "Kitchen" ? { name: details.name } : details;
+    });
     res.json({ ...snapshot, ...Object.fromEntries(await Promise.all(parts)) });
   }));
 

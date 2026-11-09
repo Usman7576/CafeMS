@@ -2,6 +2,8 @@
 
 **This script takes about 45 minutes and tests what automated scanners cannot judge: whether one person can reach another person's data or skip a business rule.** Run it only on your own local copy, never on a live site.
 
+`scripts/attack-replay.js` sends these same 30 attacks automatically, and CI runs it on every push; the latest results are in [ATTACK-REPLAY-RESULTS.md](ATTACK-REPLAY-RESULTS.md). It does not replace this test, because a person can follow up on anything unexpected. To put the automated requests into Burp's HTTP history as a starting point, export Burp's CA certificate and run the script with `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY=http://127.0.0.1:8080` and `NODE_EXTRA_CA_CERTS` pointing at that certificate.
+
 ## Set up
 
 1. Start the app locally with `npm start`, after `docker compose up -d --wait`.

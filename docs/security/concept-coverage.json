@@ -474,9 +474,11 @@
       "slide": "16",
       "concept": "Burp Suite",
       "status": "Manual",
-      "how": "A step-by-step test script for a person to run",
+      "how": "A step-by-step test script for a person to run; the same 30 attacks are replayed automatically on every CI run, while the manual test itself still needs a person",
       "files": [
-        "docs/security/BURP-TEST-SCRIPT.md"
+        "docs/security/BURP-TEST-SCRIPT.md",
+        "scripts/attack-replay.js",
+        "docs/security/ATTACK-REPLAY-RESULTS.md"
       ]
     },
     {

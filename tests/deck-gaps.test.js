@@ -157,6 +157,16 @@ describe("the audit log is reviewed regularly (Week 2, scenario 14)", () => {
   });
 });
 
+describe("least privilege for the kitchen", () => {
+  test("the kitchen's data holds no prices or phone numbers of any kind", async () => {
+    await db.collection("settings").updateOne({ _id: "cafe" }, { $set: { name: "Test Cafe", phone: "03001234567" } }, { upsert: true });
+    const res = await (await as("Kitchen")).get(`${API}/snapshot`);
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(res.text, /price|phone/i);
+    assert.equal(res.body.cafe.name, "Test Cafe");
+  });
+});
+
 describe("sign-in from an unusual place (Week 2 scenario 7, Week 4 slide 26)", () => {
   test("a new network raises an alert; a known one, and a person's first sign-in, do not", async () => {
     await clearAlerts();
