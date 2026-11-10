@@ -84,6 +84,7 @@ describe("production stack", () => {
     for (const line of caddyBuild.split("\n").filter((l) => l.startsWith("FROM "))) assert.match(line, /@sha256:[0-9a-f]{64}/, line);
     assert.match(caddyBuild, /coraza-caddy\/v2@v\d+\.\d+\.\d+/);
     assert.match(caddyBuild, /caddy-ratelimit@[0-9a-f]{12}/);
+    assert.match(caddyBuild, /^USER 1000:1000$/m, "Caddy runs as a non-root user");
     assert.match(read("deploy/Caddyfile"), /admin off/);
   });
 

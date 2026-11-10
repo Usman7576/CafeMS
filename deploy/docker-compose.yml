@@ -121,7 +121,8 @@ services:
     <<: *hardening
     image: cafems-caddy:latest
     build: { context: ., dockerfile: caddy.Dockerfile }
-    cap_add: [NET_BIND_SERVICE]
+    # Lets the unprivileged Caddy user bind 80 and 443 inside this container only, with no capabilities
+    sysctls: { net.ipv4.ip_unprivileged_port_start: 0 }
     tmpfs: [/tmp]
     environment:
       DOMAIN: ${DOMAIN:?}
