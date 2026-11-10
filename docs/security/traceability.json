@@ -854,6 +854,23 @@
         "a callback from another browser, a replayed callback, a wrong nonce or a forged token is refused",
         "one organisation account cannot be linked to two people, and unlinking needs a fresh code"
       ]
+    },
+    {
+      "id": "SR-35",
+      "type": "Non-functional",
+      "priority": "High",
+      "text": "Requests shall pass a web application firewall running the OWASP Core Rule Set in blocking mode, and per-address rate limits, before reaching the app.",
+      "threats": [
+        "T-09"
+      ],
+      "source": "Week 2, slide 25: firewalls and intrusion detection; defence in depth",
+      "code": [
+        "deploy/caddy.Dockerfile",
+        "deploy/Caddyfile"
+      ],
+      "tests": [
+        "Caddy runs the OWASP Core Rule Set in blocking mode and limits requests per address"
+      ]
     }
   ],
   "misuseCases": [

@@ -1,6 +1,6 @@
 // Usage: NODE_EXTRA_CA_CERTS=<caddy root.crt> node scripts/attack-replay.js <new Admin's setup link> [--write]
 //
-// Replays all 32 attacks in docs/security/BURP-TEST-SCRIPT.md against a running throwaway production stack,
+// Replays all 35 attacks in docs/security/BURP-TEST-SCRIPT.md against a running throwaway production stack,
 // over real HTTPS, and checks that each is refused. To send the same requests through Burp Suite so that
 // they appear in its HTTP history, also set NODE_USE_ENV_PROXY=1 and HTTPS_PROXY=http://127.0.0.1:8080.
 //
@@ -228,7 +228,7 @@ function database(script) {
     for (const qty of [-5, 0, 1.5, 100, "1"]) statuses.push((await waiterA.post("/orders", { table: 6, lines: [{ id: item.id, qty }], notes: "" }, { "Idempotency-Key": key() })).status);
     record(16, "Quantity of -5, 0, 1.5, 100 and \"1\"", "400 each time", statuses.every((s) => s === 400), statuses.join(", "));
     const r = await client().post("/auth/login", { username: { $ne: null }, password: { $ne: null } });
-    record(17, "NoSQL operators in the sign-in form", "401", r.status === 401, shown(r));
+    record(17, "NoSQL operators in the sign-in form", "401, or 403 from the firewall", r.status === 401 || r.status === 403, shown(r));
   }
   await readyForBill(3);
   {
@@ -253,8 +253,11 @@ function database(script) {
     const made = await waiterA.post("/reservations", { name: payload, phone: "03001234567", date: when, time: "12:00", party: 2 }, { "Idempotency-Key": key() });
     const page = await client().call("GET", "/reservations.html");
     const csp = page.headers.get("content-security-policy") || "";
-    const safe = made.status === 201 && made.json.name === payload && (made.headers.get("content-type") || "").includes("json") && !/script-src[^;]*unsafe-inline/.test(csp);
-    record(21, "Script in a guest's name", "Stored as plain text, and the page policy forbids inline script", safe, `${made.status}; JSON response; inline script forbidden`);
+    // Behind the firewall this is blocked outright; without it, it is stored as plain text
+    const blocked = made.status === 403;
+    const stored = made.status === 201 && made.json.name === payload && (made.headers.get("content-type") || "").includes("json");
+    const safe = (blocked || stored) && !/script-src[^;]*unsafe-inline/.test(csp);
+    record(21, "Script in a guest's name", "Blocked by the firewall, or stored as plain text; inline script forbidden", safe, `${made.status}${blocked ? " (firewall)" : "; stored as text"}; inline script forbidden`);
   }
 
   // ---------- CSRF and headers ----------
@@ -278,7 +281,7 @@ function database(script) {
     const logged = (await admin.get("/audit?limit=50")).json.entries.some((e) => e.action === "Upload refused");
     record(26, "HTML uploaded as a PNG", "415, and recorded", a.status === 415 && logged, `${shown(a)}; logged: ${logged}`);
     const b = await send("image/svg+xml", Buffer.from("<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'/>"));
-    record(27, "SVG upload", "415", b.status === 415, shown(b));
+    record(27, "SVG upload", "415, or 403 from the firewall", b.status === 415 || b.status === 403, shown(b));
     const c = await send("image/png", Buffer.alloc(2 * 1024 * 1024 + 2048, 1));
     record(28, "Upload over 2 MB", "413", c.status === 413, shown(c));
   }
@@ -308,6 +311,17 @@ function database(script) {
     const first = await admin.call("POST", url, body, headers);
     const again = await admin.call("POST", url, body, headers);
     record(32, "Replay a captured signed request", "The first works; the copy gets 409", first.status === 201 && again.status === 409 && code(again) === "signature_reused", `${shown(first)}, ${shown(again)}`);
+  }
+
+  // ---------- Web application firewall (only when the stack is behind Caddy) ----------
+  {
+    const probe = async (url) => (await client().call("GET", url, undefined, { Origin: null })).status;
+    const sqli = await probe(`${API}/public/menu?category=${encodeURIComponent("1' OR '1'='1' --")}`);
+    record(33, "SQL injection pattern in a query string", "403 from the firewall", sqli === 403, sqli);
+    const traversal = await probe("/assets/..%2f..%2f..%2fetc%2fpasswd");
+    record(34, "Path traversal to a system file", "403 from the firewall", traversal === 403, traversal);
+    const xss = await probe(`/index.html?q=${encodeURIComponent("<script>alert(document.cookie)</script>")}`);
+    record(35, "Script in a query string", "403 from the firewall", xss === 403, xss);
   }
 
   // Last, because it uses up this address's sign-in allowance

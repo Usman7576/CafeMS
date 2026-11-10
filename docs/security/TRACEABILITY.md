@@ -2,7 +2,7 @@
 
 Generated from `traceability.json` by `npm run trace`; do not edit by hand. A test fails if any link below is broken or this file is out of date.
 
-34 requirements, 22 threats and 12 misuse cases. Every requirement traces to a threat or regulation, to the code that meets it and to the tests that prove it.
+35 requirements, 22 threats and 12 misuse cases. Every requirement traces to a threat or regulation, to the code that meets it and to the tests that prove it.
 
 ## Requirements
 
@@ -42,6 +42,7 @@ Generated from `traceability.json` by `npm run trace`; do not edit by hand. A te
 | SR-32 | Functional | High | A sign-in from a country not seen before for that account shall raise a high alert, using address data held locally. | T-01, Week 2, scenario 7: access from an unusual location | `server/lib/geo.js`, `server/routes/auth.js`, `server/services/alerts.js` | addresses are placed in countries locally, and private addresses in none (deck-gaps.test.js); the first country is learned quietly, and a sign-in from a new one raises a high alert (deck-gaps.test.js) |
 | SR-33 | Functional | High | Email shall be sent only over TLS 1.2 or later to a verified server, and shall carry no personal details. | T-09, Week 2, scenario 6: sensitive email encrypted automatically | `server/services/mailer.js` | a notice is sent only after the connection switches to TLS, and holds no guest details (mailer.test.js); a server that cannot encrypt receives nothing, and the message stays queued for a retry (mailer.test.js); a server whose certificate cannot be verified receives nothing (mailer.test.js) |
 | SR-34 | Functional | High | Staff may sign in with an organisation account through OpenID Connect, with PKCE, a browser-bound state, a nonce and a checked ID token signature; the cafe's own second factor is still required. | T-01, Week 2, slide 29: use standard protocols such as OAuth or OpenID Connect | `server/services/oidc.js`, `server/routes/auth.js` | a linked organisation account replaces the password, and the cafe's own code is still required (oidc.test.js); a callback from another browser, a replayed callback, a wrong nonce or a forged token is refused (oidc.test.js); one organisation account cannot be linked to two people, and unlinking needs a fresh code (oidc.test.js) |
+| SR-35 | Non-functional | High | Requests shall pass a web application firewall running the OWASP Core Rule Set in blocking mode, and per-address rate limits, before reaching the app. | T-09, Week 2, slide 25: firewalls and intrusion detection; defence in depth | `deploy/caddy.Dockerfile`, `deploy/Caddyfile` | Caddy runs the OWASP Core Rule Set in blocking mode and limits requests per address (deployment.test.js) |
 
 ## Threats by STRIDE category
 
@@ -49,7 +50,7 @@ Generated from `traceability.json` by `npm run trace`; do not edit by hand. A te
 | --- | --- | --- | --- | --- | --- |
 | T-01 | Spoofing | Sign-in | Guessing or reusing a staff password to sign in as that person | Script kiddie, cybercriminal | SR-01, SR-02, SR-03, SR-16, SR-30, SR-31, SR-32, SR-34 |
 | T-02 | Spoofing | Sessions | Forging, stealing or replaying a session cookie | Cybercriminal | SR-04, SR-23 |
-| T-09 | Spoofing | Payment callback | A forged or copied gateway callback marks an unpaid bill as paid | Cybercriminal | SR-15, SR-33 |
+| T-09 | Spoofing | Payment callback | A forged or copied gateway callback marks an unpaid bill as paid | Cybercriminal | SR-15, SR-33, SR-35 |
 | T-05 | Tampering | Orders and billing API | Changing prices, totals or quantities in a request | Insider, cybercriminal | SR-07, SR-14 |
 | T-08 | Tampering | Browser | Another website makes a signed-in member of staff submit a change (CSRF) | Cybercriminal | SR-08 |
 | T-10 | Tampering | Billing | A double click or a slow gateway charges a customer twice | None (failure), or a dishonest insider | SR-14, SR-15 |

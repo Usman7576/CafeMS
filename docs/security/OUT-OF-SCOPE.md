@@ -4,8 +4,8 @@
 
 | Topic (deck) | Why it is outside the app | Who is responsible | What CafeMS does |
 | --- | --- | --- | --- |
-| Firewalls and intrusion detection (Week 2, slide 25) | They protect the network the app runs on | The hosting provider and the server's owner | The database sits on a private network with no route out; only Caddy is reachable. `docs/DEPLOYMENT.md` says to open only ports 22, 80 and 443 |
-| Cloud-scale DDoS protection (Week 2, slide 13) | A large flood must be stopped before it reaches the server | A provider such as Cloudflare | Limits per address, per person and for pages; a short cache on public data. [LOAD-TEST.md](LOAD-TEST.md) has the measured effect |
+| Network firewall (Week 2, slide 25) | It controls which ports of the server are open | The hosting provider and the server's owner | A web application firewall with the OWASP Core Rule Set runs in Caddy; only Caddy is reachable; `docs/DEPLOYMENT.md` says to open only ports 22, 80 and 443 |
+| Cloud-scale DDoS protection (Week 2, slide 13) | A flood larger than the server's connection must be stopped before it arrives | A provider such as Cloudflare | Edge rate limits in Caddy, the app's own limits, a separate staff process and a public cache. [LOAD-TEST.md](LOAD-TEST.md) has the measured effect |
 | 99.9% uptime guarantee (Week 2, scenario 4) | Uptime depends on the host, power and network | The hosting provider | Health checks, automatic restarts, graceful shutdown, and backups with a tested restore |
 | Cyber terrorism (Attackers, slide 6) | A cafe is not critical infrastructure, so there is nothing specific to build | Recorded as an accepted risk in [RESIDUAL-RISKS.md](RESIDUAL-RISKS.md) | The general controls still apply |
 

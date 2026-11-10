@@ -116,9 +116,11 @@ services:
       <<: *app-env
       RUN_WORKERS: "false"
 
+  # Caddy with a web application firewall (OWASP Core Rule Set) and edge rate limits; see caddy.Dockerfile
   caddy:
     <<: *hardening
-    image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+    image: cafems-caddy:latest
+    build: { context: ., dockerfile: caddy.Dockerfile }
     cap_add: [NET_BIND_SERVICE]
     tmpfs: [/tmp]
     environment:

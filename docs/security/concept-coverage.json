@@ -1622,10 +1622,16 @@
       "deck": "Week 2",
       "slide": "25",
       "concept": "Firewalls and intrusion detection",
-      "status": "Out of scope",
-      "how": "Handled by the hosting platform; the database network is already private",
+      "status": "Built",
+      "how": "A web application firewall (Coraza with the OWASP Core Rule Set) in Caddy blocks and logs injection, XSS and traversal requests; the app's alerts detect intrusion patterns. Host network firewall rules stay with the server's owner",
       "files": [
-        "docs/security/OUT-OF-SCOPE.md"
+        "deploy/caddy.Dockerfile",
+        "deploy/Caddyfile",
+        "server/services/alerts.js",
+        "docs/DEPLOYMENT.md"
+      ],
+      "tests": [
+        "Caddy runs the OWASP Core Rule Set in blocking mode and limits requests per address"
       ]
     },
     {
@@ -1633,10 +1639,11 @@
       "slide": "13",
       "concept": "Cloud-scale DDoS protection",
       "status": "Out of scope",
-      "how": "The app adds limits; real flood protection needs a provider such as Cloudflare",
+      "how": "Edge rate limits in Caddy and the app's own limits are built; a flood larger than the server's connection still needs a provider such as Cloudflare",
       "files": [
         "docs/security/OUT-OF-SCOPE.md",
-        "docs/security/LOAD-TEST.md"
+        "docs/security/LOAD-TEST.md",
+        "deploy/Caddyfile"
       ]
     }
   ]

@@ -11,13 +11,13 @@
 | gitleaks | Secrets in every commit | 0 leaks, 1 reviewed false positive | Yes |
 | Trivy, project | Packages, Dockerfile, secrets | 0 HIGH or CRITICAL | Yes |
 | Trivy, app image | Everything in the shipped image | 0 HIGH or CRITICAL | Yes |
-| Trivy, Caddy and Percona MongoDB images | Third-party images | Open findings, below | No, reported |
+| Trivy, Caddy (built with the firewall) and Percona MongoDB images | Third-party images | Open findings, below | No, reported |
 | OWASP ZAP baseline | The public pages of the running app, passively, on the private container network | 0 failures, 0 warnings, 63 rules passed | Yes |
 | OWASP ZAP active API scan | Attack requests against all 66 documented API paths, signed in as an Admin; 222 URLs, capped at 15 minutes | 0 failures, 0 server errors, 119 rules passed; 2 low warnings accepted below | Yes |
 | actionlint | CI workflow files | 0 problems | No, run by hand |
 | Tests with coverage | Every control | 411 of 411 pass; 96.8% of lines | Yes |
 | Signed release v1.0.0 | Checksums and Sigstore build attestation of the published archive | `sha256sum -c` passes; `gh attestation verify` confirms it was built by `release.yml` from tag v1.0.0; a changed copy is refused | Runs on each release |
-| Attack replay | The 32 attacks in the Burp test script, over HTTPS against the production stack | All refused as expected, after one finding fixed; attacks 1-30 also sent through Burp ([results](ATTACK-REPLAY-RESULTS.md)) | Yes |
+| Attack replay | The 35 attacks in the Burp test script, over HTTPS against the production stack | All refused as expected, after one finding fixed; attacks 1-30 also sent through Burp ([results](ATTACK-REPLAY-RESULTS.md)) | Yes |
 | Recovery drill | Back up, destroy, restore, compare | Data, photo and counts restored | Yes |
 | Failover drill | Kill the database primary on the three-member stack | A new primary served writes after about 10 seconds | Yes |
 | Load test | Staff requests during a flood | No staff request failed ([details](LOAD-TEST.md)) | No, reported |

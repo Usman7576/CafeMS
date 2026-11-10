@@ -1,6 +1,6 @@
 # Concept coverage
 
-**All 116 concepts from the eight lecture decks are accounted for: 94 built and tested, 17 written analyses, 1 manual procedure and 4 that cannot be built inside a web app.**
+**All 116 concepts from the eight lecture decks are accounted for: 95 built and tested, 17 written analyses, 1 manual procedure and 3 that cannot be built inside a web app.**
 
 Generated from `concept-coverage.json` by `npm run concepts`; do not edit by hand. A test fails if a file or test named here stops existing, or if this page is out of date.
 
@@ -80,8 +80,8 @@ Generated from `concept-coverage.json` by `npm run concepts`; do not edit by han
 | 20 (12) | Scenario: disaster recovery test | Built | Backup, destroy and restore drill in CI | `.github/workflows/ci.yml`, `docs/DEPLOYMENT.md` | CI runs every tool the plan names; a restore brings back every record, and the audit chain still verifies |
 | 20 (13) | Scenario: complex passwords | Built | 12+ characters, mixed types, common words refused | `server/lib/passwords.js` | a common word dressed up with capitals, digits and symbols does not pass |
 | 20 (15) | Scenario: device list with revoke | Built | Account page lists active sessions, each revocable | `server/routes/auth.js`, `public/js/account.js` | the device list shows only your sessions, and you can revoke only your own |
-| 25 | Firewalls and intrusion detection | Out of scope | Handled by the hosting platform; the database network is already private | `docs/security/OUT-OF-SCOPE.md` | – |
-| 13 | Cloud-scale DDoS protection | Out of scope | The app adds limits; real flood protection needs a provider such as Cloudflare | `docs/security/OUT-OF-SCOPE.md`, `docs/security/LOAD-TEST.md` | – |
+| 25 | Firewalls and intrusion detection | Built | A web application firewall (Coraza with the OWASP Core Rule Set) in Caddy blocks and logs injection, XSS and traversal requests; the app's alerts detect intrusion patterns. Host network firewall rules stay with the server's owner | `deploy/caddy.Dockerfile`, `deploy/Caddyfile`, `server/services/alerts.js`, `docs/DEPLOYMENT.md` | Caddy runs the OWASP Core Rule Set in blocking mode and limits requests per address |
+| 13 | Cloud-scale DDoS protection | Out of scope | Edge rate limits in Caddy and the app's own limits are built; a flood larger than the server's connection still needs a provider such as Cloudflare | `docs/security/OUT-OF-SCOPE.md`, `docs/security/LOAD-TEST.md`, `deploy/Caddyfile` | – |
 
 ## Week 4
 

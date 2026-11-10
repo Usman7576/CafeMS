@@ -78,7 +78,12 @@ describe("production stack", () => {
   });
 
   test("third-party images are pinned by digest, and Caddy's admin interface is off", () => {
-    for (const name of ["mongo", "caddy"]) assert.match(all[name], /image: [a-z0-9:./-]+@sha256:[0-9a-f]{64}/, name);
+    assert.match(all.mongo, /image: [a-z0-9:./-]+@sha256:[0-9a-f]{64}/);
+    // Caddy is built from pinned base images and pinned modules
+    const caddyBuild = read("deploy/caddy.Dockerfile");
+    for (const line of caddyBuild.split("\n").filter((l) => l.startsWith("FROM "))) assert.match(line, /@sha256:[0-9a-f]{64}/, line);
+    assert.match(caddyBuild, /coraza-caddy\/v2@v\d+\.\d+\.\d+/);
+    assert.match(caddyBuild, /caddy-ratelimit@[0-9a-f]{12}/);
     assert.match(read("deploy/Caddyfile"), /admin off/);
   });
 
@@ -105,6 +110,18 @@ describe("pipeline", () => {
     for (const tool of ["npm run lint", "npm run test:coverage", "npm audit", "semgrep", "codeql-action", "gitleaks", "aquasec/trivy", "zap-baseline.py", "zap-api-scan.py", "attack-replay.js", "Recovery drill", "Failover drill", "npm run trace", "npm run concepts"]) {
       assert.ok(ci.includes(tool), tool);
     }
+  });
+});
+
+describe("web application firewall", () => {
+  test("Caddy runs the OWASP Core Rule Set in blocking mode and limits requests per address", () => {
+    const caddy = read("deploy/Caddyfile");
+    assert.match(caddy, /order coraza_waf first/);
+    assert.match(caddy, /load_owasp_crs/);
+    assert.match(caddy, /Include @owasp_crs\/\*\.conf/);
+    assert.match(caddy, /SecRuleEngine On/);
+    assert.match(caddy, /rate_limit \{/);
+    assert.match(read("deploy/docker-compose.yml"), /dockerfile: caddy\.Dockerfile/);
   });
 });
 

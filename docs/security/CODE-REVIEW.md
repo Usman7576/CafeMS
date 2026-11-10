@@ -9,6 +9,10 @@
 | 2026-11-09 | CodeQL findings from the first CI run | CodeQL, checked by hand | 5 fixed, 1 false positive dismissed with a reason |
 | 2026-11-04 | Phases 1 to 4 against the plan | Author, with tests on a throwaway database | 16 problems, all fixed; listed in the plan's log |
 
+## Web application firewall, 11 November 2026
+
+Firewalls and intrusion detection (Week 2, slide 25) were the last slide item outside the code. A web application firewall (Coraza with the OWASP Core Rule Set) and edge rate limits were added to Caddy. Testing it found one false positive: menu photo uploads were blocked because image bytes look like injected control characters (rules 920270 and 921150). Only the bodies of image uploads to that one route are now left unread by the firewall, because the app decodes and rebuilds every image. The end-to-end checks pass through it, and the attack replay gained three attacks the firewall now blocks (33 to 35).
+
 ## Code-only comparison with the decks, 10 November 2026
 
 Reading only the code against the slides found five things not built. All five are now built and tested:

@@ -98,6 +98,10 @@ docker compose -f deploy/docker-compose.yml restart app app-staff
 
 The same `deploy/.env` must be in place, because it holds the keys that decrypt the data. The restore fails if the audit chain does not verify. If you erased a customer's data after that backup was made, erase it again. CI practises this whole recovery on every run.
 
+## Web application firewall
+
+Caddy is built with Coraza, which runs the OWASP Core Rule Set and blocks requests that look like SQL injection, cross-site scripting or path traversal with a 403. It also limits each address to 900 requests a minute, and 60 a minute to the sign-in pages. The first build compiles Caddy and takes several minutes. Blocked requests are written to Caddy's log; see them with `docker compose -f deploy/docker-compose.yml logs caddy`. If staff are wrongly blocked, find the rule number in that log and add a narrow exception in `deploy/Caddyfile`, as is done for menu photos.
+
 ## Optional sign-in and email settings
 
 Add these to `deploy/.env` only if you use them, then run the update command:

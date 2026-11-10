@@ -18,6 +18,10 @@ updates:
     directory: /
     schedule: { interval: weekly }
     cooldown: { default-days: 7 }
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
   - package-ecosystem: docker-compose
     directory: /deploy
     schedule: { interval: weekly }

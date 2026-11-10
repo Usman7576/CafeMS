@@ -4,6 +4,9 @@
 {
 	# No admin API on the network
 	admin off
+	# The firewall looks at every request first, then the edge rate limits apply
+	order coraza_waf first
+	order rate_limit after coraza_waf
 }
 
 {$DOMAIN} {
@@ -15,6 +18,47 @@
 
 	request_body {
 		max_size 3MB
+	}
+
+	# Web application firewall: the OWASP Core Rule Set at paranoia level 1, blocking by anomaly score.
+	# Only the methods and body types this app uses are allowed. Blocked requests get 403 and are logged.
+	coraza_waf {
+		load_owasp_crs
+		directives `
+			Include @coraza.conf-recommended
+			Include @crs-setup.conf.example
+			SecAction "id:900200,phase:1,nolog,pass,t:none,setvar:'tx.allowed_methods=GET HEAD POST OPTIONS PUT DELETE'"
+			SecAction "id:900220,phase:1,nolog,pass,t:none,setvar:'tx.allowed_request_content_type=|application/json| |image/png| |image/jpeg| |image/webp|'"
+			# Menu photos are binary, so their bodies are not read as text; the app decodes and rebuilds every image
+			SecRule REQUEST_METHOD "@streq PUT" "id:1001,phase:1,pass,nolog,chain"
+				SecRule REQUEST_FILENAME "@rx ^/api/v1/menu/[0-9]+/photo$" "chain"
+				SecRule REQUEST_HEADERS:Content-Type "@rx ^image/(png|jpeg|webp)$" "ctl:requestBodyAccess=Off"
+			Include @owasp_crs/*.conf
+			SecRuleEngine On
+			SecRequestBodyLimit 3145728
+			SecResponseBodyAccess Off
+			SecAuditEngine RelevantOnly
+			SecAuditLogParts ABHZ
+			SecAuditLog /dev/stdout
+			SecAuditLogFormat JSON
+		`
+	}
+
+	# Edge rate limits per address, before requests reach the app (the app keeps its own finer limits)
+	rate_limit {
+		zone per_address {
+			key {remote_host}
+			events 900
+			window 1m
+		}
+		zone sign_in {
+			match {
+				path /api/v1/auth/login /api/v1/auth/mfa/* /api/v1/auth/oidc/*
+			}
+			key {remote_host}
+			events 60
+			window 1m
+		}
 	}
 
 	# Bulkhead: requests carrying a staff session have their own app process, so a flood at the public
