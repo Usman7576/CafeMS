@@ -760,6 +760,100 @@
         "only P-256 public keys are accepted, and private parts or markup are refused",
         "every kept signature verifies, and a changed record is found"
       ]
+    },
+    {
+      "id": "SR-30",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Staff shall be able to sign in and confirm sensitive actions with a passkey that needs the device's fingerprint, face or PIN, and that only works on this site.",
+      "threats": [
+        "T-01"
+      ],
+      "source": "Week 2, scenario 11: biometric access; phishing (Attackers deck)",
+      "code": [
+        "server/services/passkeys.js",
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "password then passkey signs in",
+        "a look-alike site, a skipped fingerprint or PIN check, a replay or someone else's passkey is refused",
+        "a passkey without the device's fingerprint or PIN check is refused when added",
+        "a passkey can confirm a sensitive action, and removing one needs that confirmation"
+      ]
+    },
+    {
+      "id": "SR-31",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Signing in with a recovery code shall also require the answer to the person's security question, stored only as an Argon2id hash.",
+      "threats": [
+        "T-01"
+      ],
+      "source": "Week 2, scenario 2: a security question as well as the password",
+      "code": [
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "a recovery code alone is not enough once a question is set",
+        "setting a question needs a fresh code, and the answer is kept only as a hash",
+        "the question is shown only after the password step"
+      ]
+    },
+    {
+      "id": "SR-32",
+      "type": "Functional",
+      "priority": "High",
+      "text": "A sign-in from a country not seen before for that account shall raise a high alert, using address data held locally.",
+      "threats": [
+        "T-01"
+      ],
+      "source": "Week 2, scenario 7: access from an unusual location",
+      "code": [
+        "server/lib/geo.js",
+        "server/routes/auth.js",
+        "server/services/alerts.js"
+      ],
+      "tests": [
+        "addresses are placed in countries locally, and private addresses in none",
+        "the first country is learned quietly, and a sign-in from a new one raises a high alert"
+      ]
+    },
+    {
+      "id": "SR-33",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Email shall be sent only over TLS 1.2 or later to a verified server, and shall carry no personal details.",
+      "threats": [
+        "T-09"
+      ],
+      "source": "Week 2, scenario 6: sensitive email encrypted automatically",
+      "code": [
+        "server/services/mailer.js"
+      ],
+      "tests": [
+        "a notice is sent only after the connection switches to TLS, and holds no guest details",
+        "a server that cannot encrypt receives nothing, and the message stays queued for a retry",
+        "a server whose certificate cannot be verified receives nothing"
+      ]
+    },
+    {
+      "id": "SR-34",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Staff may sign in with an organisation account through OpenID Connect, with PKCE, a browser-bound state, a nonce and a checked ID token signature; the cafe's own second factor is still required.",
+      "threats": [
+        "T-01"
+      ],
+      "source": "Week 2, slide 29: use standard protocols such as OAuth or OpenID Connect",
+      "code": [
+        "server/services/oidc.js",
+        "server/routes/auth.js"
+      ],
+      "tests": [
+        "a linked organisation account replaces the password, and the cafe's own code is still required",
+        "a callback from another browser, a replayed callback, a wrong nonce or a forged token is refused",
+        "one organisation account cannot be linked to two people, and unlinking needs a fresh code"
+      ]
     }
   ],
   "misuseCases": [

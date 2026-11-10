@@ -9,6 +9,20 @@
 | 2026-11-09 | CodeQL findings from the first CI run | CodeQL, checked by hand | 5 fixed, 1 false positive dismissed with a reason |
 | 2026-11-04 | Phases 1 to 4 against the plan | Author, with tests on a throwaway database | 16 problems, all fixed; listed in the plan's log |
 
+## Code-only comparison with the decks, 10 November 2026
+
+Reading only the code against the slides found five things not built. All five are now built and tested:
+
+| Slide | Added | Proved by |
+| --- | --- | --- |
+| Week 2, scenario 11 (biometrics) | Passkeys needing the device's fingerprint, face or PIN | "password then passkey signs in" |
+| Week 2, scenario 2 (security question) | Asked as well as a recovery code | "a recovery code alone is not enough once a question is set" |
+| Week 2, scenario 7 (unusual location) | Country of each sign-in, from local data | "the first country is learned quietly, and a sign-in from a new one raises a high alert" |
+| Week 2, scenario 6 (encrypted email) | Email only over verified TLS | "a server that cannot encrypt receives nothing, and the message stays queued for a retry" |
+| Week 2, slide 29 (OAuth, OpenID Connect) | Organisation-account sign-in | "a callback from another browser, a replayed callback, a wrong nonce or a forged token is refused" |
+
+Building OpenID Connect also found a weakness: the library accepted an ID token with a forged signature, relying only on TLS to the provider. Signature checks were turned on, and the test above proves a forged token is refused.
+
 ## Second comparison with the decks, 9 November 2026
 
 | Deck | Finding | Outcome | Proved by |

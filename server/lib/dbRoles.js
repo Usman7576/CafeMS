@@ -2,7 +2,7 @@
 // delete them, and it cannot create indexes on them (a time-to-live index would delete entries).
 const READ_WRITE = ["find", "insert", "update", "remove"];
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "menu", "inventory", "orders", "bills", "reservations", "tables",
-  "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks", "system_status", "signing_keys", "signed_actions"];
+  "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks", "system_status", "signing_keys", "signed_actions", "passkeys", "passkey_challenges", "oidc_flows"];
 const ROLE = "cafemsApp";
 
 function appPrivileges(dbName) {

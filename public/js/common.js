@@ -301,24 +301,38 @@
   }
 
   // ---------- Fresh authenticator code for sensitive actions ----------
+  const PASSKEY_USED = {};
   function askForCode() {
     return new Promise(function (resolve) {
       const id = "stepup-" + Date.now();
       const input = h("input", { class: "input", type: "text", inputmode: "numeric", maxlength: "6", autocomplete: "one-time-code", "aria-label": "Authenticator code", "data-autofocus": true });
       const okBtn = h("button", { class: "btn btn-primary", type: "submit", text: "Confirm" });
       const cancelBtn = h("button", { class: "btn btn-secondary", type: "button", text: "Cancel" });
+      // A passkey can confirm instead of a typed code
+      const passkeyBtn = h("button", { class: "auth-link", type: "button", text: "Use a passkey instead" });
+      passkeyBtn.hidden = !(window.PublicKeyCredential && window.SimpleWebAuthnBrowser);
       const form = h("form", { class: "modal" }, [
         h("div", { class: "modal-head" }, [
           h("div", { class: "icon-tile warn", icon: "shield", iconSize: 20 }),
           h("div", null, [h("h3", { id: id + "-t", text: "Confirm it's you" }), h("p", { text: "Enter a new code from your authenticator app. A code can be used only once, so you may need to wait for the next one." })])
         ]),
-        h("div", { class: "modal-body" }, [input]),
+        h("div", { class: "modal-body" }, [input, passkeyBtn]),
         h("div", { class: "modal-actions" }, [cancelBtn, okBtn])
       ]);
       const backdrop = h("div", { class: "modal-backdrop", id: id, role: "dialog", "aria-modal": "true", "aria-labelledby": id + "-t", "data-static": true }, [form]);
       document.body.appendChild(backdrop);
       const done = function (value) { closeModal(id); backdrop.remove(); resolve(value); };
       cancelBtn.addEventListener("click", function () { done(null); });
+      passkeyBtn.addEventListener("click", async function () {
+        try {
+          const options = await Api.call("POST", "/auth/step-up/passkey/options", {});
+          const response = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
+          await Api.call("POST", "/auth/step-up/passkey", { response: response });
+          done(PASSKEY_USED);
+        } catch (error) {
+          toast(error.userMessage || "The passkey was not used. Enter a code instead.", "err");
+        }
+      });
       form.addEventListener("submit", function (e) { e.preventDefault(); done(input.value.trim()); });
       openModal(id);
       input.focus();
@@ -338,7 +352,7 @@
       cancelled.userMessage = "Cancelled. Nothing was changed.";
       throw cancelled;
     }
-    await Api.call("POST", "/auth/step-up", { code: code });
+    if (code !== PASSKEY_USED) await Api.call("POST", "/auth/step-up", { code: code });
     return action();
   }
 

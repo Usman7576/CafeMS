@@ -1,6 +1,7 @@
 // Background jobs. One failing job is logged and never stops the others or the server.
 const { verifyChain } = require("./services/auditLog");
 const { drainOutbox, releaseStuckMessages, createSimulatedNotifier } = require("./services/outbox");
+const { createMailNotifier } = require("./services/mailer");
 const { createAlertService } = require("./services/alerts");
 const { purgeExpiredData } = require("./services/customers");
 const { watchSecuritySettings, checkBackupAge, checkLogReview } = require("./services/opsChecks");
@@ -22,7 +23,9 @@ async function checkAuditChain({ db, alerts, logger }) {
 
 function startWorkers({ config, db, logger }) {
   const alerts = createAlertService({ db, logger });
-  const notifier = createSimulatedNotifier(db);
+  // Real email for staff notices when a mail server is configured; the rest stays simulated
+  const simulated = createSimulatedNotifier(db);
+  const notifier = config.mail ? createMailNotifier(config.mail, config.appOrigin, simulated) : simulated;
   const context = { config, db, alerts, logger, notifier };
 
   const jobs = [

@@ -52,6 +52,11 @@ This document follows the Week 4 process: define requirements early, involve sta
 | SR-26 | Regulatory | High | No card or wallet details ever received or stored |
 | SR-27 | Regulatory | Medium | Breaches detectable and reportable within 72 hours; no secrets in logs |
 | SR-28 | Non-functional | High | Production runs over HTTPS as an unprivileged, read-only container; only the proxy is reachable from outside |
+| SR-30 | Functional | High | Passkeys with the device's fingerprint, face or PIN, usable only on this site |
+| SR-31 | Functional | High | A security question as well as a recovery code |
+| SR-32 | Functional | High | High alert for a sign-in from a new country |
+| SR-33 | Functional | High | Email only over verified TLS, with no personal details |
+| SR-34 | Functional | High | OpenID Connect sign-in with PKCE, state, nonce and signature checks; own second factor still required |
 | SR-29 | Functional | High | Refunds, approvals, staff changes and erasure signed by the person's own device key, kept and re-checkable (non-repudiation) |
 
 ## Use and misuse cases

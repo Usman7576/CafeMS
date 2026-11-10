@@ -68,8 +68,35 @@
     el("mfaHint").textContent = on ? "Enter one of the recovery codes you saved. Each works only once." : "Open your authenticator app and enter the 6-digit code for CafeMS.";
     el("useRecovery").textContent = on ? "Use my authenticator app" : "Lost your phone? Use a recovery code";
     el("mfaCode").value = "";
+    el("securityAnswer").value = "";
+    el("answerField").hidden = true;
+    // With a recovery code, a person who set a security question must answer it too
+    if (on) {
+      Api.call("GET", "/auth/mfa/security-question", undefined, { public: true }).then(function (result) {
+        if (result && result.question && recoveryMode) {
+          el("securityQuestion").textContent = result.question;
+          el("answerField").hidden = false;
+        }
+      }).catch(function () { /* the server still asks for the answer if one is needed */ });
+    }
   }
   el("useRecovery").addEventListener("click", function () { setRecoveryMode(!recoveryMode); el("mfaCode").focus(); });
+
+  // A passkey replaces the typed code: the device checks a fingerprint, face or PIN
+  if (window.PublicKeyCredential && window.SimpleWebAuthnBrowser) el("usePasskey").hidden = false;
+  el("usePasskey").addEventListener("click", function () {
+    busy(el("usePasskey"), async function () {
+      try {
+        const options = await Api.call("POST", "/auth/mfa/passkey/options", {}, { public: true });
+        const response = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
+        await Api.call("POST", "/auth/mfa/passkey", { response: response }, { public: true });
+        await enterWorkspace();
+      } catch (error) {
+        if (error.code === "challenge_expired") { showStep("stepPassword"); }
+        showAlert(error.userMessage || "The passkey was not used. Try again or enter your code.");
+      }
+    });
+  });
 
   el("mfaForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -77,7 +104,9 @@
     if (!value) { showAlert("Enter your code."); return; }
     busy(el("mfaBtn"), async function () {
       try {
-        await Api.call("POST", "/auth/mfa/verify", recoveryMode ? { recoveryCode: value } : { code: value }, { public: true });
+        const answer = el("securityAnswer").value.trim();
+        const body = recoveryMode ? Object.assign({ recoveryCode: value }, answer ? { answer: answer } : {}) : { code: value };
+        await Api.call("POST", "/auth/mfa/verify", body, { public: true });
         await enterWorkspace();
       } catch (error) {
         el("mfaCode").value = "";
@@ -138,9 +167,18 @@
   // ---------- On load ----------
   (async function () {
     const flash = Session.flash();
-    if (window.location.hash === "#enroll") {
+    const landing = window.location.hash;
+    if (landing === "#enroll") {
       history.replaceState(null, "", window.location.pathname);
       try { await startEnrolment(); } catch (error) { showAlert(errorText(error)); }
+    } else if (landing === "#mfa") {
+      // Back from the organisation account: the cafe's own second step still follows
+      history.replaceState(null, "", window.location.pathname);
+      setRecoveryMode(false);
+      showStep("stepMfa");
+    } else if (landing === "#oidc-failed") {
+      history.replaceState(null, "", window.location.pathname);
+      showAlert("The organisation sign-in was not accepted. Use your username and password, or ask an Admin.");
     } else {
       try {
         await enterWorkspace();
@@ -152,5 +190,6 @@
     if (flash) showAlert(flash, "info");
     // The button ships disabled so the form can't be submitted before this script is ready
     loginBtn.disabled = false;
+    Api.call("GET", "/auth/oidc/enabled", undefined, { public: true }).then(function (r) { el("oidcLink").hidden = !(r && r.enabled); }).catch(function () { /* stays hidden */ });
   })();
 })();

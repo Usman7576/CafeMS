@@ -98,6 +98,17 @@ docker compose -f deploy/docker-compose.yml restart app app-staff
 
 The same `deploy/.env` must be in place, because it holds the keys that decrypt the data. The restore fails if the audit chain does not verify. If you erased a customer's data after that backup was made, erase it again. CI practises this whole recovery on every run.
 
+## Optional sign-in and email settings
+
+Add these to `deploy/.env` only if you use them, then run the update command:
+
+| Setting | Purpose |
+| --- | --- |
+| `SMTP_URL`, `MAIL_FROM`, `STAFF_NOTIFY_EMAIL` | Email staff about new online bookings. Mail is sent only over TLS 1.2 or later to a server with a valid certificate. |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Let staff sign in with an organisation account (Google, Microsoft and others). Register `https://your-domain/api/v1/auth/oidc/callback` with the provider. Each person links their account on the Account page, and the cafe's own code or passkey is still asked for. |
+
+Staff can also add a passkey on the Account page, to sign in with a fingerprint, face or device PIN.
+
 ## Review the audit log every week
 
 The Admin opens the Audit page, reads the week's entries, follows up anything unexpected and clicks **Mark as reviewed**. The review is recorded, and a reminder appears on the Security page if none has been recorded for 7 days.

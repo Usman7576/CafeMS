@@ -715,13 +715,17 @@
       "slide": "28-29",
       "concept": "Economy of mechanism",
       "status": "Built",
-      "how": "Standard reviewed libraries and one module per responsibility",
+      "how": "Standard reviewed libraries and one module per responsibility; OpenID Connect sign-in with an organisation account, using a maintained library",
       "files": [
         "server/lib/crypto.js",
-        "server/lib/passwords.js"
+        "server/lib/passwords.js",
+        "server/services/oidc.js"
       ],
       "tests": [
-        "passwords are stored only as Argon2id hashes"
+        "passwords are stored only as Argon2id hashes",
+        "a linked organisation account replaces the password, and the cafe's own code is still required",
+        "a callback from another browser, a replayed callback, a wrong nonce or a forged token is refused",
+        "one organisation account cannot be linked to two people, and unlinking needs a fresh code"
       ]
     },
     {
@@ -802,12 +806,16 @@
       "slide": "18 (2)",
       "concept": "Scenario: an extra factor at sign-in",
       "status": "Built",
-      "how": "Authenticator code",
+      "how": "Authenticator code; a security question is also asked with a recovery code, and passkeys can be used",
       "files": [
-        "server/services/mfa.js"
+        "server/services/mfa.js",
+        "server/routes/auth.js"
       ],
       "tests": [
-        "a correct password alone gives no session (MFA is mandatory)"
+        "a correct password alone gives no session (MFA is mandatory)",
+        "a recovery code alone is not enough once a question is set",
+        "setting a question needs a fresh code, and the answer is kept only as a hash",
+        "the question is shown only after the password step"
       ]
     },
     {
@@ -850,13 +858,19 @@
       "deck": "Week 2",
       "slide": "19 (6)",
       "concept": "Scenario: sensitive email encrypted automatically",
-      "status": "Out of scope",
-      "how": "The app sends no email; messages hold no personal data",
+      "status": "Built",
+      "how": "Staff notice email is sent only over TLS 1.2 or later with a verified certificate, or not at all, and holds no personal details",
       "files": [
-        "docs/security/OUT-OF-SCOPE.md"
+        "docs/security/OUT-OF-SCOPE.md",
+        "server/services/mailer.js",
+        "server/workers.js",
+        "server/config.js"
       ],
       "tests": [
-        "a paid bill with a phone queues a receipt holding no phone number"
+        "a paid bill with a phone queues a receipt holding no phone number",
+        "a notice is sent only after the connection switches to TLS, and holds no guest details",
+        "a server that cannot encrypt receives nothing, and the message stays queued for a retry",
+        "a server whose certificate cannot be verified receives nothing"
       ]
     },
     {
@@ -864,20 +878,23 @@
       "slide": "19 (7), 20 (14)",
       "concept": "Scenario: unusual access in logs, all record access reviewed",
       "status": "Built",
-      "how": "Address and browser recorded; new networks alert; opening customer records and full-number views logged; a weekly audit log review is recorded, with a reminder when overdue",
+      "how": "Address and browser recorded; new networks alert; opening customer records and full-number views logged; a weekly audit log review is recorded, with a reminder when overdue; sign-ins from a new country raise a high alert (local public-domain IP data)",
       "files": [
         "server/services/auditLog.js",
         "server/services/alerts.js",
         "server/routes/auth.js",
         "server/services/opsChecks.js",
-        "public/js/audit.js"
+        "public/js/audit.js",
+        "server/lib/geo.js"
       ],
       "tests": [
         "only a Manager or Admin can see the full number, and it is logged",
         "one password tried against many usernames from one address raises an alert (password spraying)",
         "a new network raises an alert; a known one, and a person's first sign-in, do not",
         "opening one bill is recorded, and many views raise an alert",
-        "an overdue review raises a reminder, and recording a review clears it"
+        "an overdue review raises a reminder, and recording a review clears it",
+        "addresses are placed in countries locally, and private addresses in none",
+        "the first country is learned quietly, and a sign-in from a new one raises a high alert"
       ]
     },
     {
@@ -915,10 +932,20 @@
       "deck": "Week 2",
       "slide": "20 (11)",
       "concept": "Scenario: biometric access",
-      "status": "Out of scope",
-      "how": "Physical security of a site",
+      "status": "Built",
+      "how": "Passkeys (WebAuthn): the device's fingerprint, face or PIN check is required to sign in or confirm a sensitive action",
       "files": [
-        "docs/security/OUT-OF-SCOPE.md"
+        "docs/security/OUT-OF-SCOPE.md",
+        "server/services/passkeys.js",
+        "server/routes/auth.js",
+        "public/js/login.js",
+        "public/js/account.js"
+      ],
+      "tests": [
+        "password then passkey signs in",
+        "a look-alike site, a skipped fingerprint or PIN check, a replay or someone else's passkey is refused",
+        "a passkey without the device's fingerprint or PIN check is refused when added",
+        "a passkey can confirm a sensitive action, and removing one needs that confirmation"
       ]
     },
     {

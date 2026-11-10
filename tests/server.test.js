@@ -244,5 +244,5 @@ test("every route has a guard, so none can be left open by accident (complete me
 
   // Public routes are an explicit, reviewed list
   const open = found.filter((r) => r.guards.includes("public")).map((r) => r.path).sort();
-  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/info", "/login", "/menu", "/menu/:id/photo", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/verify", "/payments/callback", "/reservations", "/setup"].sort());
+  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/info", "/login", "/menu", "/menu/:id/photo", "/oidc/callback", "/oidc/enabled", "/oidc/start", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/passkey", "/mfa/passkey/options", "/mfa/security-question", "/mfa/verify", "/payments/callback", "/reservations", "/setup"].sort());
 });

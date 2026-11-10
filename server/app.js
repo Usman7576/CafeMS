@@ -9,6 +9,8 @@ const { securityHeaders, permissionsPolicy, requestId, noStore, limiter, csrfOri
 const { createAuthMiddleware, publicRoute } = require("./middleware/auth");
 const { createSessionService } = require("./services/sessions");
 const { createMfaService } = require("./services/mfa");
+const { createPasskeyService } = require("./services/passkeys");
+const { createOidcService } = require("./services/oidc");
 const { recordEvent } = require("./services/auditLog");
 const { createAuthRouter } = require("./routes/auth");
 const { createUsersRouter } = require("./routes/users");
@@ -46,6 +48,10 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   bindAudit(db, config);
   const sessions = createSessionService(config, db);
   const mfa = createMfaService(config, db);
+  const passkeys = createPasskeyService({ config, db });
+  const oidc = createOidcService({ config, db });
+  // Loads the country table now, so the first sign-in is not the one that waits for it
+  setImmediate(() => require("./lib/geo").countryOf("1.0.0.1"));
   const userLimiter = rateLimit({
     windowMs: 60 * 1000,
     limit: config.limits.userPerMinute,
@@ -122,7 +128,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   // Every state-changing API request passes this; signed-in requests also need the session's CSRF token
   api.use(csrfOriginProtection(config));
 
-  api.use("/auth", createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }));
+  api.use("/auth", createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middleware, authLimiter }));
   // Limits one person's sensitive reads, such as bulk exports (keyed by user, not by address)
   // One limiter per name, so a limit such as "export" is shared across every route that uses it
   const personalLimiters = new Map();

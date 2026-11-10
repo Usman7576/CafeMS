@@ -46,6 +46,23 @@
       </div>
       <div class="stack">
         <section class="panel">
+          <div class="panel-head"><div><h3>Passkeys</h3><p>Sign in with your fingerprint, face or device PIN instead of a typed code. They also cannot be used on a fake site.</p></div></div>
+          <ul class="ready-list" id="passkeyList"></ul>
+          <div class="panel-body"><button type="button" class="btn btn-secondary" id="addPasskey">Add a passkey on this device</button></div>
+        </section>
+        <section class="panel" id="oidcPanel" hidden>
+          <div class="panel-head"><div><h3>Organisation account</h3><p id="oidcStatus">Sign in with your organisation account instead of your password. Your authenticator is still asked for.</p></div></div>
+          <div class="panel-body"><button type="button" class="btn btn-secondary" id="oidcLinkBtn">Link my organisation account</button> <button type="button" class="btn btn-secondary" id="oidcUnlinkBtn">Unlink</button></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Security question</h3><p id="questionStatus">Asked as well as a recovery code, if you ever lose your phone.</p></div></div>
+          <form class="panel-body" id="questionForm" method="post" novalidate>
+            <div class="field"><label for="questionText">Question</label><input class="input" type="text" id="questionText" maxlength="100" placeholder="For example: What was the name of your first school?"></div>
+            <div class="field"><label for="questionAnswer">Answer</label><input class="input" type="text" id="questionAnswer" maxlength="100" autocomplete="off"></div>
+            <button type="submit" class="btn btn-secondary" id="questionSave">Save question</button>
+          </form>
+        </section>
+        <section class="panel">
           <div class="panel-head"><div><h3>Signed-in devices</h3><p>If you don't recognise one, sign it out and change your password.</p></div></div>
           <ul class="ready-list" id="deviceList"></ul>
         </section>
@@ -53,6 +70,7 @@
     </div>
   </main>
   <script src="js/icons.js?v=6.0"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
   <script src="js/common.js?v=6.0"></script>
   <script src="js/store.js?v=6.0"></script>
   <script src="js/app.js?v=6.0"></script>

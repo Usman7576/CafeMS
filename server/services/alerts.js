@@ -29,6 +29,7 @@ const RULES = Object.freeze([
   { id: "access-changed", title: "Staff access changed", actions: ["Role changed", "User invited", "Account reset", "Account enabled"], windowMs: DAY, threshold: 1, severity: "warning" },
   { id: "price-changes", title: "Unusual number of price changes", actions: ["Price changed"], windowMs: 60 * MINUTE, threshold: 5, severity: "high" },
   { id: "security-settings", title: "Security settings changed", actions: ["Security settings changed"], windowMs: DAY, threshold: 1, severity: "high" },
+  { id: "new-country", title: "Sign-in from a new country", actions: ["Sign-in from a new country"], windowMs: DAY, threshold: 1, severity: "high" },
   { id: "new-network", title: "Sign-in from a new network", actions: ["Sign-in from a new network"], windowMs: DAY, threshold: 1, severity: "warning" },
   { id: "record-views", title: "Many customer records opened", actions: ["Customer records viewed", "Bill viewed"], windowMs: 60 * MINUTE, threshold: 40, severity: "high" },
   { id: "payment-conflict", title: "A bill may have been paid twice", actions: ["Payment conflict"], windowMs: 24 * 60 * MINUTE, threshold: 1, severity: "high" },

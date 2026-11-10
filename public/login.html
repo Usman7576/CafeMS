@@ -61,6 +61,7 @@
               <button type="submit" class="btn btn-dark btn-lg btn-block" id="loginBtn" disabled>Sign in</button>
               <noscript><p class="field-error auth-noscript">JavaScript is required to sign in.</p></noscript>
             </form>
+            <a class="btn btn-secondary btn-lg btn-block" id="oidcLink" href="/api/v1/auth/oidc/start" hidden>Sign in with your organisation account</a>
           </section>
 
           <!-- Step 2: authenticator code -->
@@ -75,8 +76,16 @@
                   <input class="input" type="text" id="mfaCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="11" required>
                 </div>
               </div>
+              <div class="field" id="answerField" hidden>
+                <label for="securityAnswer" id="securityQuestion">Security question</label>
+                <div class="input-wrap">
+                  <i data-icon="key" data-size="18"></i>
+                  <input class="input" type="text" id="securityAnswer" autocomplete="off" spellcheck="false" maxlength="100">
+                </div>
+              </div>
               <button type="submit" class="btn btn-dark btn-lg btn-block" id="mfaBtn">Verify</button>
             </form>
+            <button type="button" class="btn btn-secondary btn-lg btn-block" id="usePasskey" hidden>Use a passkey (fingerprint, face or PIN)</button>
             <button type="button" class="auth-link" id="useRecovery">Lost your phone? Use a recovery code</button>
           </section>
 
@@ -131,6 +140,7 @@
   </div>
 
   <script src="js/icons.js?v=6.0"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
   <script src="js/common.js?v=6.0"></script>
   <script src="js/login.js?v=6.0"></script>
   <script type="module" src="js/coffee-scene.js?v=6.0"></script>

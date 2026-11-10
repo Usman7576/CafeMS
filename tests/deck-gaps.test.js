@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
-const { startDb, buildApp, createUser, signIn, freshCode, ORIGIN } = require("./helpers");
+const { startDb, buildApp, browser, createUser, signIn, freshCode, ORIGIN } = require("./helpers");
 const { createAlertService } = require("../server/services/alerts");
 const { recordEvent } = require("../server/services/auditLog");
 const { watchSecuritySettings, recordBackupSuccess, checkBackupAge, checkLogReview } = require("../server/services/opsChecks");
@@ -164,6 +164,42 @@ describe("least privilege for the kitchen", () => {
     assert.equal(res.status, 200);
     assert.doesNotMatch(res.text, /price|phone/i);
     assert.equal(res.body.cafe.name, "Test Cafe");
+  });
+});
+
+describe("sign-in from a new country (Week 2, scenario 7)", () => {
+  const { countryOf } = require("../server/lib/geo");
+  const { createApp } = require("../server/app");
+  const { createLogger } = require("../server/lib/logger");
+
+  test("addresses are placed in countries locally, and private addresses in none", () => {
+    assert.equal(countryOf("39.32.0.1"), "PK");
+    assert.equal(countryOf("1.0.16.1"), "JP");
+    assert.equal(countryOf("::ffff:1.0.4.5"), "AU");
+    assert.equal(countryOf("2001:200::1"), "JP");
+    for (const ip of ["10.0.0.1", "127.0.0.1", "::1", "", "not an address"]) assert.equal(countryOf(ip), null, ip);
+  });
+
+  test("the first country is learned quietly, and a sign-in from a new one raises a high alert", async () => {
+    await clearAlerts();
+    const proxied = createApp({ config: { ...config, trustProxy: 1 }, db, logger: createLogger(config) });
+    const user = await createUser(db, config, { role: "Waiter" });
+    const from = async (ip) => {
+      const c = browser(proxied);
+      const headers = { "X-Forwarded-For": ip };
+      assert.equal((await c.post(`${API}/auth/login`, { username: user.username, password: user.password }, { headers })).status, 200);
+      assert.equal((await c.post(`${API}/auth/mfa/verify`, { code: await freshCode(db, user) }, { headers })).status, 200);
+    };
+    await from("39.32.0.1");
+    assert.equal(await events("Sign-in from a new country", user.username), 0);
+    await from("39.32.5.9");
+    assert.equal(await events("Sign-in from a new country", user.username), 0, "same country again");
+    await from("1.0.16.1");
+    const entry = await db.collection("audit_events").findOne({ actor: user.username, action: "Sign-in from a new country" });
+    assert.match(entry.details, /^JP/);
+    await alerts.evaluate();
+    assert.ok(await db.collection("alerts").findOne({ rule: "new-country", status: "Open", severity: "high" }));
+    await clearAlerts();
   });
 });
 

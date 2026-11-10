@@ -96,6 +96,10 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-1}
       MONGODB_DB: ${MONGODB_DB:-cafems}
       MONGODB_URI: mongodb://${MONGODB_APP_USERNAME}:${MONGODB_APP_PASSWORD}@mongo:27017/${MONGODB_DB:-cafems}?replicaSet=rs0&authSource=${MONGODB_DB:-cafems}
+      # Optional: email staff notices. Delivery always uses TLS; leave these unset to keep it simulated.
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      STAFF_NOTIFY_EMAIL: ${STAFF_NOTIFY_EMAIL:-}
     tmpfs: [/tmp]
     volumes:
       - uploads:/data/uploads

@@ -9,6 +9,11 @@
 - **Keep your recovery codes somewhere safe and private**, away from your phone. Each one works once.
 - **New phone or lost phone?** Tell an Admin straight away. They will send you a new setup link and your old phone will stop working.
 
+## Passkeys and your security question
+
+- **Add a passkey** on the Account page to sign in with your fingerprint, face or device PIN. Passkeys cannot be used on a fake site, so they protect you from phishing.
+- **Set a security question** with an answer only you know. It is asked if you ever sign in with a recovery code.
+
 ## Your signature
 
 - **Refunds, approvals and staff changes are signed by your device.** Your browser makes its own key when you sign in, and it never leaves that browser. This proves the action was yours, so never let anyone use your signed-in screen.
