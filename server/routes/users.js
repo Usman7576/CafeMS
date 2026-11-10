@@ -14,10 +14,10 @@ const invitationSchema = z.object({
 
 function createUsersRouter({ db, middleware, services }) {
   const router = express.Router();
-  const { requireAuth, requirePermission, requireStepUp } = middleware;
+  const { requireAuth, requirePermission, requireStepUp, requireSignature } = middleware;
   const { userService } = services;
   const view = [requireAuth, requirePermission("users.manage")];
-  const change = [...view, requireStepUp];
+  const change = [...view, requireStepUp, requireSignature];
 
   const submit = (req, res, next, details, summary) => inTransaction(db, (session) => userService.request(req, details, summary, session))
     .then((outcome) => res.status(outcome.status).json(outcome.body))

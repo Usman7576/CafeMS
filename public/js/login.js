@@ -34,6 +34,8 @@
   async function enterWorkspace() {
     const me = await Api.me();
     Session.set({ user: me.username, name: me.name, role: me.role, loginAt: me.loginAt });
+    // Straight after signing in, this device can register its signing key without another code
+    await Signer.ensure(me.username).catch(function () { /* set up on first signed action instead */ });
     window.location.replace(HOME[me.role]);
   }
 

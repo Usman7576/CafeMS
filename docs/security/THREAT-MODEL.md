@@ -65,7 +65,7 @@ STRIDE asks six questions of each important component. The answers below are the
 **How each is answered:**
 - **Spoofing:** MFA and lockout (SR-01, SR-03), signed single-use callbacks (SR-15), single-use setup links.
 - **Tampering:** server-side totals and strict schemas (SR-07), idempotency (SR-14), CSP (SR-09).
-- **Repudiation:** a signed audit log whose actor comes from the session (SR-11).
+- **Repudiation:** a signed audit log whose actor comes from the session (SR-11), and the person's own device signature on refunds, approvals, staff changes and erasure (SR-29).
 - **Information disclosure:** encryption and masking (SR-12), ownership checks (SR-06), generic errors (SR-18).
 - **Denial of service:** rate limits (SR-20), and alerts that merge repeats so noise cannot bury a real attack (SR-16).
 - **Elevation of privilege:** one permission table checked on every route (SR-05), a second Admin for Admin changes (SR-10), least privilege in the database (SR-17).

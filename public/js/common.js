@@ -107,19 +107,76 @@
   // ---------- API client ----------
   // The real session is a signed HttpOnly cookie that scripts cannot read. Every failure carries a
   // safe message from the server in userMessage, which CMS.attempt and the forms display.
+  // ---------- Personal signing key ----------
+  // Each browser makes its own ECDSA P-256 key. The private half is created as non-exportable and kept
+  // in this browser's IndexedDB; only the public half goes to the server. Sensitive actions are signed
+  // with it, so they can be proved to come from this person's device.
+  const Signer = {
+    encode: function (text) { return new TextEncoder().encode(text); },
+    open: function () {
+      return new Promise(function (resolve, reject) {
+        const request = indexedDB.open("cms-signing", 1);
+        request.onupgradeneeded = function () { request.result.createObjectStore("keys"); };
+        request.onsuccess = function () { resolve(request.result); };
+        request.onerror = function () { reject(request.error); };
+      });
+    },
+    get: async function (user) {
+      const db = await Signer.open();
+      return new Promise(function (resolve) {
+        const request = db.transaction("keys").objectStore("keys").get(user);
+        request.onsuccess = function () { resolve(request.result || null); };
+        request.onerror = function () { resolve(null); };
+      });
+    },
+    put: async function (user, value) {
+      const db = await Signer.open();
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction("keys", "readwrite");
+        tx.objectStore("keys").put(value, user);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    },
+    register: async function (user) {
+      const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
+      const jwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+      const label = (navigator.platform || "This device") + " browser";
+      const result = await Api.call("POST", "/auth/signing-keys", { publicKey: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y }, label: label.slice(0, 60) }, { unsigned: true });
+      await Signer.put(user, { keyId: result.id, privateKey: pair.privateKey });
+    },
+    ensure: async function (user) { if (!(await Signer.get(user))) await Signer.register(user); },
+    headers: async function (method, url, bodyText) {
+      const session = Session.get();
+      if (!session || !window.crypto || !crypto.subtle || !window.indexedDB) return {};
+      const key = await Signer.get(session.user).catch(function () { return null; });
+      if (!key) return {};
+      const signedAt = String(Date.now());
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", Signer.encode(bodyText || "")));
+      const bodyHash = Array.from(digest).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      const text = ["cafems-action-v1", method, url, signedAt, bodyHash].join("\n");
+      const signature = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key.privateKey, Signer.encode(text)));
+      let binary = "";
+      signature.forEach(function (b) { binary += String.fromCharCode(b); });
+      return { "X-Signing-Key": key.keyId, "X-Signed-At": signedAt, "X-Action-Signature": btoa(binary) };
+    }
+  };
+
   const Api = {
     csrfToken: null,
     call: async function (method, path, body, opts) {
       opts = opts || {};
       const headers = Object.assign({ Accept: "application/json" }, opts.headers);
+      const bodyText = body === undefined ? undefined : JSON.stringify(body);
       if (body !== undefined) headers["Content-Type"] = "application/json";
       if (method !== "GET" && !opts.public) {
         if (!Api.csrfToken) await Api.me();
         headers["X-CSRF-Token"] = Api.csrfToken;
+        if (!opts.unsigned) Object.assign(headers, await Signer.headers(method, "/api/v1" + path, bodyText).catch(function () { return {}; }));
       }
       let response;
       try {
-        response = await fetch("/api/v1" + path, { method: method, headers: headers, credentials: "same-origin", body: body === undefined ? undefined : JSON.stringify(body) });
+        response = await fetch("/api/v1" + path, { method: method, headers: headers, credentials: "same-origin", body: bodyText });
       } catch (e) {
         const offline = new Error("Could not reach the server. Check your connection and try again.");
         offline.userMessage = offline.message;
@@ -129,6 +186,11 @@
       const data = await response.json().catch(function () { return null; });
       if (!response.ok) {
         const info = data && data.error ? data.error : {};
+        // No key on this device yet, or the old one was removed: make a new one and try once more
+        if ((info.code === "signature_required" || info.code === "signature_invalid") && !opts.retried && Session.get()) {
+          await Signer.register(Session.get().user);
+          return Api.call(method, path, body, Object.assign({}, opts, { retried: true }));
+        }
         const failure = new Error(info.message || "Something went wrong. Please try again.");
         failure.userMessage = failure.message;
         failure.status = response.status;
@@ -466,4 +528,5 @@
   };
   window.Session = Session;
   window.Api = Api;
+  window.Signer = Signer;
 })();

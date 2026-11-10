@@ -9,6 +9,11 @@
 - **Keep your recovery codes somewhere safe and private**, away from your phone. Each one works once.
 - **New phone or lost phone?** Tell an Admin straight away. They will send you a new setup link and your old phone will stop working.
 
+## Your signature
+
+- **Refunds, approvals and staff changes are signed by your device.** Your browser makes its own key when you sign in, and it never leaves that browser. This proves the action was yours, so never let anyone use your signed-in screen.
+- **New browser or cleared data?** A new key is set up for you after you sign in or confirm a code.
+
 ## On a shared device
 
 - **Sign out when you walk away.** The system signs you out after 5 idle minutes, but someone could use your account before then.

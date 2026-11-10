@@ -1,8 +1,8 @@
 # Burp Suite manual test script
 
-**This script takes about 45 minutes and tests what automated scanners cannot judge: whether one person can reach another person's data or skip a business rule.** Run it only on your own local copy, never on a live site.
+**This script of 32 tests takes about 45 minutes and tests what automated scanners cannot judge: whether one person can reach another person's data or skip a business rule.** Run it only on your own local copy, never on a live site.
 
-`scripts/attack-replay.js` sends these same 30 attacks automatically, and CI runs it on every push; the latest results are in [ATTACK-REPLAY-RESULTS.md](ATTACK-REPLAY-RESULTS.md). It does not replace this test, because a person can follow up on anything unexpected. To put the automated requests into Burp's HTTP history as a starting point, export Burp's CA certificate and run the script with `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY=http://127.0.0.1:8080` and `NODE_EXTRA_CA_CERTS` pointing at that certificate.
+`scripts/attack-replay.js` sends these same 32 attacks automatically, and CI runs it on every push; the latest results are in [ATTACK-REPLAY-RESULTS.md](ATTACK-REPLAY-RESULTS.md). It does not replace this test, because a person can follow up on anything unexpected. To put the automated requests into Burp's HTTP history as a starting point, export Burp's CA certificate and run the script with `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY=http://127.0.0.1:8080` and `NODE_EXTRA_CA_CERTS` pointing at that certificate.
 
 ## Set up
 
@@ -72,6 +72,13 @@ Use a Waiter's cookie and CSRF token unless a step says otherwise.
 | 27 | Upload an SVG with `Content-Type: image/svg+xml` | 415 |
 | 28 | Upload a body over 2 MB | 413 |
 
+### Personal signatures (as an Admin)
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 31 | On `POST /api/v1/users/invitations`, remove the `X-Action-Signature` header | 403 `signature_required` |
+| 32 | Send a captured signed request twice in Repeater | The first works; the copy gets 409 `signature_reused` |
+
 ### Payment callback
 
 | # | Do this | Expected |
@@ -81,7 +88,7 @@ Use a Waiter's cookie and CSRF token unless a step says otherwise.
 
 ## Results
 
-All 30 attacks were sent through Burp Suite Community's proxy by `scripts/attack-replay.js`, so they appear in its HTTP history. They were not typed into Repeater by a person. Add a note below for anything tested by hand.
+Attacks 1 to 30 were sent through Burp Suite Community's proxy by `scripts/attack-replay.js`, so they appear in its HTTP history. They were not typed into Repeater by a person. Add a note below for anything tested by hand.
 
 | # | Date | Result: pass or fail | Notes |
 | --- | --- | --- | --- |
@@ -115,5 +122,7 @@ All 30 attacks were sent through Burp Suite Community's proxy by `scripts/attack
 | 28 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
 | 29 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
 | 30 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 31 | 2026-11-10 | Pass | Automated replay; added after the Burp run |
+| 32 | 2026-11-10 | Pass | Automated replay; added after the Burp run |
 
 Anything that is **not** refused is a finding. Add a failing test for it, fix it, and record it in the review log in `SECURITY-REQUIREMENTS.md`.

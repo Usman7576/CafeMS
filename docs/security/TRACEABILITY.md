@@ -2,7 +2,7 @@
 
 Generated from `traceability.json` by `npm run trace`; do not edit by hand. A test fails if any link below is broken or this file is out of date.
 
-28 requirements, 22 threats and 12 misuse cases. Every requirement traces to a threat or regulation, to the code that meets it and to the tests that prove it.
+29 requirements, 22 threats and 12 misuse cases. Every requirement traces to a threat or regulation, to the code that meets it and to the tests that prove it.
 
 ## Requirements
 
@@ -36,6 +36,7 @@ Generated from `traceability.json` by `npm run trace`; do not edit by hand. A te
 | SR-25 | Regulatory | Medium | Personal data shall be kept no longer than 90 days, collected only as needed, and explained in a privacy notice. | T-12, GDPR Article 5 storage limitation and data minimisation | `server/services/customers.js`, `server/workers.js`, `public/privacy.html` | retention removes personal data after 90 days, and keeps recent data (resilience.test.js); the privacy notice tells customers what the security log keeps (hardening.test.js); an unknown username is never stored, in case a password was typed there (independent-review.test.js) |
 | SR-26 | Regulatory | High | No card or wallet details shall ever be received or stored, keeping the cafe outside card-data audit scope. | T-12, PCI DSS scope reduction | `server/services/gateway.js`, `server/lib/schemas.js` | approved card payment is paid, with no card details anywhere (resilience.test.js) |
 | SR-27 | Regulatory | Medium | A breach shall be detectable and reportable within 72 hours: tamper checks raise alerts, and logs hold no passwords, tokens or codes. *The step-by-step breach runbook is INCIDENT-RESPONSE.md, written in Phase 7.* | T-15, T-18, GDPR Article 33 breach notification within 72 hours | `server/workers.js`, `server/lib/logger.js` | the Admin screen can verify, and a broken chain raises an alert (resilience.test.js); logs hold no cookies, tokens, passwords or codes (review.test.js) |
+| SR-29 | Functional | High | Refunds, approvals, staff access changes and customer erasure shall be signed with the acting person's own device key (ECDSA P-256), which the server verifies, keeps and can check again, so the person cannot later deny the action. | T-03, Week 2, slide 15: non-repudiation through digital signatures | `server/services/signatures.js`, `server/middleware/auth.js`, `public/js/common.js` | an unsigned staff change is refused and nothing changes (signatures.test.js); a signed change goes through, and the signature is kept and recorded (signatures.test.js); a captured signed request cannot be replayed (signatures.test.js); a signature over a changed body, another person's key, a removed key or an old time is refused (signatures.test.js); refunds and approvals need a signature too (signatures.test.js); a key can be added straight after sign-in, but later only after a fresh code (signatures.test.js); only P-256 public keys are accepted, and private parts or markup are refused (signatures.test.js); every kept signature verifies, and a changed record is found (signatures.test.js) |
 
 ## Threats by STRIDE category
 
@@ -50,7 +51,7 @@ Generated from `traceability.json` by `npm run trace`; do not edit by hand. A te
 | T-14 | Tampering | Public website and staff screens | Script typed into a name or note runs in another person's browser (XSS) | Cybercriminal | SR-09 |
 | T-15 | Tampering | Audit log | Editing, deleting or re-hashing audit entries to hide misuse | Insider, cybercriminal | SR-11, SR-17, SR-27 |
 | T-21 | Tampering | Configuration | The server starts with a missing or weak key, or without database credentials | None (human error) | SR-18, SR-28 |
-| T-03 | Repudiation | Audit log | A member of staff denies a refund, discount or price change | Insider | SR-11 |
+| T-03 | Repudiation | Audit log | A member of staff denies a refund, discount or price change | Insider | SR-11, SR-29 |
 | T-06 | Information Disclosure | Orders and bills API | Changing an ID in a request to read another person's order or bill | Insider | SR-06 |
 | T-12 | Information Disclosure | Customer data | Customer names and numbers read from the screens, database or a backup | Insider, cybercriminal | SR-12, SR-24, SR-25, SR-26 |
 | T-18 | Information Disclosure | Errors and logs | Stack traces, secrets or passwords leak through errors or log files | Cybercriminal | SR-18, SR-27 |

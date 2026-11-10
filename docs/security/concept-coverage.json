@@ -634,14 +634,21 @@
       "slide": "14-15",
       "concept": "Accountability and non-repudiation",
       "status": "Built",
-      "how": "Actor taken from an MFA-verified session; entries signed with Ed25519 by the server (personal signatures are a listed residual risk)",
+      "how": "Actor taken from an MFA-verified session and an Ed25519-signed audit chain; refunds, approvals, staff changes and erasure also carry the person's own ECDSA P-256 device signature, kept and re-checkable",
       "files": [
         "server/services/auditLog.js",
-        "docs/security/RESIDUAL-RISKS.md"
+        "docs/security/RESIDUAL-RISKS.md",
+        "server/services/signatures.js",
+        "public/js/common.js"
       ],
       "tests": [
         "the recorded waiter is always the signed-in person",
-        "detects a recalculated hash, because the attacker cannot sign it"
+        "detects a recalculated hash, because the attacker cannot sign it",
+        "an unsigned staff change is refused and nothing changes",
+        "a signed change goes through, and the signature is kept and recorded",
+        "a captured signed request cannot be replayed",
+        "a signature over a changed body, another person's key, a removed key or an old time is refused",
+        "every kept signature verifies, and a changed record is found"
       ]
     },
     {

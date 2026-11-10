@@ -333,6 +333,35 @@ function createAuthRouter({ config, db, sessions, mfa, middleware, authLimiter }
     }
   });
 
+  // ---------- Personal signing keys (non-repudiation) ----------
+  const signingKeySchema = z.object({
+    publicKey: z.object({ kty: z.literal("EC"), crv: z.literal("P-256"), x: z.string().regex(/^[A-Za-z0-9_-]{43}$/), y: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict(),
+    label: z.string().trim().min(1).max(60).regex(/^[^<>]*$/)
+  }).strict();
+  const keyIdSchema = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict();
+  router.post("/signing-keys", requireAuth, validate(signingKeySchema), async (req, res, next) => {
+    try {
+      res.status(201).json(await middleware.signatures.register(req, req.body));
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get("/signing-keys", requireAuth, async (req, res, next) => {
+    try {
+      res.json({ keys: await middleware.signatures.list(req.auth.user.username) });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.delete("/signing-keys/:id", requireAuth, validate(keyIdSchema, "params"), async (req, res, next) => {
+    try {
+      await middleware.signatures.revoke(req, req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get("/sessions", requireAuth, async (req, res, next) => {
     try {
       const { user, session } = req.auth;

@@ -1,6 +1,6 @@
 // Usage: NODE_EXTRA_CA_CERTS=<caddy root.crt> node scripts/attack-replay.js <new Admin's setup link> [--write]
 //
-// Replays all 30 attacks in docs/security/BURP-TEST-SCRIPT.md against a running throwaway production stack,
+// Replays all 32 attacks in docs/security/BURP-TEST-SCRIPT.md against a running throwaway production stack,
 // over real HTTPS, and checks that each is refused. To send the same requests through Burp Suite so that
 // they appear in its HTTP history, also set NODE_USE_ENV_PROXY=1 and HTTPS_PROXY=http://127.0.0.1:8080.
 //
@@ -11,6 +11,14 @@ const path = require("path");
 const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 const totp = require("../server/lib/totp");
+
+function signHeaders(key, method, url, payload) {
+  const signedAt = String(Date.now());
+  const bodyHash = crypto.createHash("sha256").update(payload === undefined ? "" : payload).digest("hex");
+  const text = ["cafems-action-v1", method, url, signedAt, bodyHash].join("\n");
+  const signature = crypto.sign("sha256", Buffer.from(text), { key: key.privateKey, dsaEncoding: "ieee-p1363" }).toString("base64");
+  return { "X-Signing-Key": key.id, "X-Signed-At": signedAt, "X-Action-Signature": signature };
+}
 const { callbackSignature } = require("../server/services/gateway");
 
 const [link] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
@@ -29,13 +37,16 @@ function record(no, attack, expected, ok, actual) {
 function client() {
   const jar = {};
   const c = {
-    jar, csrf: null,
+    jar, csrf: null, signingKey: null,
     async call(method, url, body, extra = {}) {
       const headers = { Origin: ORIGIN, Cookie: Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; "), ...extra };
       for (const name of Object.keys(headers)) if (headers[name] === null) delete headers[name];
       if (body !== undefined && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
       if (c.csrf && method !== "GET" && extra["X-CSRF-Token"] !== null) headers["X-CSRF-Token"] = c.csrf;
       const payload = body === undefined || Buffer.isBuffer(body) || typeof body === "string" ? body : JSON.stringify(body);
+      // Signs every change with this person's device key, as the browser does
+      if (c.signingKey && method !== "GET" && extra.unsigned === undefined) Object.assign(headers, signHeaders(c.signingKey, method, url, payload));
+      delete headers.unsigned;
       const res = await fetch(ORIGIN + url, { method, headers, body: payload, redirect: "manual" });
       for (const line of res.headers.getSetCookie()) {
         const [pair] = line.split(";");
@@ -74,6 +85,12 @@ async function enrol(token, label) {
   if (confirm.status !== 200) throw new Error(`Enrolment failed for ${label}: ${confirm.status}`);
   await c.loadCsrf();
   c.secret = start.json.manualKey;
+  // Straight after enrolment the session may register a device key without another code
+  const pair = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const jwk = pair.publicKey.export({ format: "jwk" });
+  const added = await c.post("/auth/signing-keys", { publicKey: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y }, label: "Attack replay" });
+  if (added.status !== 201) throw new Error(`Signing key refused for ${label}: ${added.status}`);
+  c.signingKey = { id: added.json.id, privateKey: pair.privateKey };
   c.username = confirm.json.username;
   return c;
 }
@@ -278,6 +295,18 @@ function database(script) {
     database(`db.bills.updateOne({_id:'${largeBill.no}'},{$set:{status:'Pending Payment'}})`);
     const second = await client().call("POST", `${API}/payments/callback`, body, headers);
     record(30, "Correct signature sent twice", "204, then 409", first.status === 204 && second.status === 409, `${shown(first)}, ${shown(second)}`);
+  }
+
+  // ---------- Personal signatures ----------
+  {
+    const unsigned = await admin.post("/users/invitations", { username: "replay.unsigned", name: "Replay Unsigned", role: "Waiter" }, { unsigned: "1" });
+    record(31, "Staff change sent without the person's signature", "403 signature_required", unsigned.status === 403 && code(unsigned) === "signature_required", shown(unsigned));
+    const url = `${API}/users/invitations`;
+    const body = JSON.stringify({ username: "replay.signed", name: "Replay Signed", role: "Waiter" });
+    const headers = { ...signHeaders(admin.signingKey, "POST", url, body), "Content-Type": "application/json", unsigned: "1" };
+    const first = await admin.call("POST", url, body, headers);
+    const again = await admin.call("POST", url, body, headers);
+    record(32, "Replay a captured signed request", "The first works; the copy gets 409", first.status === 201 && again.status === 409 && code(again) === "signature_reused", `${shown(first)}, ${shown(again)}`);
   }
 
   // Last, because it uses up this address's sign-in allowance

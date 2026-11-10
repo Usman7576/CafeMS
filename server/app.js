@@ -87,7 +87,8 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const api = express.Router();
   api.use(noStore);
   api.use(limiter(60 * 1000, config.limits.apiPerMinute, "Too many requests. Please wait a moment."));
-  api.use(express.json({ limit: config.limits.jsonBody, strict: true }));
+  // The exact bytes are kept, because a personal signature covers the body as it was sent
+  api.use(express.json({ limit: config.limits.jsonBody, strict: true, verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
   // Only failures count, so staff signing in from one shared cafe network do not lock each other out
   const authLimiter = limiter(15 * 60 * 1000, config.limits.authPer15Minutes, "Too many attempts. Please wait a few minutes and try again.", { skipSuccessfulRequests: true });

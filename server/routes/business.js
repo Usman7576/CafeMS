@@ -18,7 +18,7 @@ const MAX_VIEW_KEYS = 5000;
 
 function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
   const router = express.Router();
-  const { requireAuth, requirePermission, requireStepUp } = middleware;
+  const { requireAuth, requirePermission, requireStepUp, requireSignature, signatures } = middleware;
   // Opening customer records is recorded, but screens refresh every few seconds, so the same view by the
   // same person is written once an hour. Opening many different records still adds up to an alert.
   const viewed = new Map();
@@ -135,7 +135,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   }));
   router.get("/bills/:no/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.billNo), wrap(async (req, res) => res.json({ phone: await billing.revealPhone(req, req.validParams.no) })));
   // Money leaves the business, so the manager confirms an authenticator code first
-  router.post("/bills/:no/refund", ...allow("billing.refund"), requireStepUp, params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
+  router.post("/bills/:no/refund", ...allow("billing.refund"), requireStepUp, requireSignature, params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
     const outcome = await idempotentTransaction(db, req, (session) => billing.refund(req, req.validParams.no, req.body.reason, session));
     if (outcome.status === 200) await billing.reversePayment(req, req.validParams.no);
     res.status(outcome.status).json(outcome.body);
@@ -143,12 +143,12 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
 
   // ---------- Approvals: the deciding person confirms an authenticator code first ----------
   router.get("/approvals", ...allow("approvals.read"), wrap(async (req, res) => res.json({ approvals: await approvals.listFor(req.auth.user.role) })));
-  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
+  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, requireSignature, params(schemas.params.approvalId), wrap(async (req, res) => {
     const result = await inTransaction(db, (session) => approvals.approve(req, req.validParams.id, session));
     if (result && result.refund) await billing.reversePayment(req, result.no);
     res.json(result);
   }));
-  router.post("/approvals/:id/reject", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
+  router.post("/approvals/:id/reject", ...allow("approvals.read"), requireStepUp, requireSignature, params(schemas.params.approvalId), wrap(async (req, res) => {
     await inTransaction(db, (session) => approvals.reject(req, req.validParams.id, session));
     res.status(204).end();
   }));
@@ -201,6 +201,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Audit log reviewed", details: req.body.note, severity: "info" });
     res.status(204).end();
   }));
+  router.get("/audit/signatures/verify", ...allow("audit.read"), personalLimiter("audit-verify", 60), wrap(async (_req, res) => res.json(await signatures.verifyAll())));
   router.get("/audit/public-keys", ...allow("audit.read"), wrap(async (_req, res) => res.json({ keys: publicKeys(db) })));
 
   // ---------- Security alerts and customer data rights ----------
@@ -209,7 +210,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     await alerts.acknowledge(req, req.validParams.id);
     res.status(204).end();
   }));
-  router.post("/customers/erase", ...allow("customer.erase"), requireStepUp, validate(schemas.eraseCustomer), tx((req, session) => customers.erase(req, req.body.phone, session)));
+  router.post("/customers/erase", ...allow("customer.erase"), requireStepUp, requireSignature, validate(schemas.eraseCustomer), tx((req, session) => customers.erase(req, req.body.phone, session)));
   router.get("/audit.csv", ...allow("audit.read"), personalLimiter("export", 10), validate(schemas.auditQuery, "query"), wrap(async (req, res) => {
     const entries = await auditRows(req.validQuery);
     const rows = [["Time", "User", "Role", "Action", "Details", "Severity", "IP"]].concat(entries.map((e) => [e.at.toISOString(), e.actor, e.role, e.action, e.details, e.severity, e.ip]));

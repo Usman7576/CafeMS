@@ -735,6 +735,31 @@
         "logs hold no cookies, tokens, passwords or codes"
       ],
       "note": "The step-by-step breach runbook is INCIDENT-RESPONSE.md, written in Phase 7."
+    },
+    {
+      "id": "SR-29",
+      "type": "Functional",
+      "priority": "High",
+      "text": "Refunds, approvals, staff access changes and customer erasure shall be signed with the acting person's own device key (ECDSA P-256), which the server verifies, keeps and can check again, so the person cannot later deny the action.",
+      "threats": [
+        "T-03"
+      ],
+      "source": "Week 2, slide 15: non-repudiation through digital signatures",
+      "code": [
+        "server/services/signatures.js",
+        "server/middleware/auth.js",
+        "public/js/common.js"
+      ],
+      "tests": [
+        "an unsigned staff change is refused and nothing changes",
+        "a signed change goes through, and the signature is kept and recorded",
+        "a captured signed request cannot be replayed",
+        "a signature over a changed body, another person's key, a removed key or an old time is refused",
+        "refunds and approvals need a signature too",
+        "a key can be added straight after sign-in, but later only after a fresh code",
+        "only P-256 public keys are accepted, and private parts or markup are refused",
+        "every kept signature verifies, and a changed record is found"
+      ]
     }
   ],
   "misuseCases": [

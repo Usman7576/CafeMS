@@ -52,6 +52,7 @@ This document follows the Week 4 process: define requirements early, involve sta
 | SR-26 | Regulatory | High | No card or wallet details ever received or stored |
 | SR-27 | Regulatory | Medium | Breaches detectable and reportable within 72 hours; no secrets in logs |
 | SR-28 | Non-functional | High | Production runs over HTTPS as an unprivileged, read-only container; only the proxy is reachable from outside |
+| SR-29 | Functional | High | Refunds, approvals, staff changes and erasure signed by the person's own device key, kept and re-checkable (non-repudiation) |
 
 ## Use and misuse cases
 

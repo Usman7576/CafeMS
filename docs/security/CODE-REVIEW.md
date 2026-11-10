@@ -62,6 +62,6 @@ The reviewer was told to treat this project's documents as claims and to prove f
 | DAST | Added an active, signed-in ZAP scan of the API |
 | Code review | This log; it remains limited by having one author |
 | User training | Added `docs/STAFF-SECURITY-GUIDE.md` |
-| Non-repudiation | The server signs entries, not each person; recorded in [RESIDUAL-RISKS.md](RESIDUAL-RISKS.md) |
+| Non-repudiation | Added: refunds, approvals, staff changes and erasure are signed with each person's own device key, and the kept signatures can be re-checked |
 
 The 17 inaccurate or overstated statements in the documents and comments have been corrected.
