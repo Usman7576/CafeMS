@@ -878,7 +878,7 @@
       "slide": "19 (8), (10)",
       "concept": "Scenario: code signing and verifying a download's hash",
       "status": "Built",
-      "how": "Signed build attestations and SHA-256 checksums on releases; locked packages, pinned images and actions",
+      "how": "Signed build attestations and SHA-256 checksums on releases, verified on the published v1.0.0; locked packages, pinned images and actions",
       "files": [
         ".github/workflows/release.yml",
         "Dockerfile",

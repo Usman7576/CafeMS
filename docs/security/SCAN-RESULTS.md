@@ -16,6 +16,7 @@
 | OWASP ZAP active API scan | Attack requests against all 66 documented API paths, signed in as an Admin; 222 URLs, capped at 15 minutes | 0 failures, 0 server errors, 119 rules passed; 2 low warnings accepted below | Yes |
 | actionlint | CI workflow files | 0 problems | No, run by hand |
 | Tests with coverage | Every control | 381 of 381 pass; 97.8% of lines | Yes |
+| Signed release v1.0.0 | Checksums and Sigstore build attestation of the published archive | `sha256sum -c` passes; `gh attestation verify` confirms it was built by `release.yml` from tag v1.0.0; a changed copy is refused | Runs on each release |
 | Attack replay | The 30 attacks in the Burp test script, over HTTPS against the production stack | [All refused as expected](ATTACK-REPLAY-RESULTS.md), after one finding fixed | Yes |
 | Recovery drill | Back up, destroy, restore, compare | Data, photo and counts restored | Yes |
 | Failover drill | Kill the database primary on the three-member stack | A new primary served writes after about 10 seconds | Yes |

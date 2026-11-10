@@ -58,7 +58,7 @@ The reviewer was told to treat this project's documents as claims and to prove f
 | Burp Suite | All 30 attacks in [BURP-TEST-SCRIPT.md](BURP-TEST-SCRIPT.md) sent through Burp's proxy and refused; hand testing in Repeater has not been done |
 | Redundancy and failover | Added a three-member database option and a CI drill that kills the primary |
 | Dependency graph with edge styles | Added to the Admin risk page and the report script |
-| Code signing | Added signed build attestations to releases |
+| Code signing | Added signed build attestations to releases; v1.0.0 was published and its signature verified |
 | DAST | Added an active, signed-in ZAP scan of the API |
 | Code review | This log; it remains limited by having one author |
 | User training | Added `docs/STAFF-SECURITY-GUIDE.md` |
