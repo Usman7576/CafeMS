@@ -97,7 +97,8 @@ function browser(app) {
     if (opts.headers) req = req.set(opts.headers);
     if (method !== "get" && opts.origin !== null) req = req.set("Origin", opts.origin || ORIGIN);
     if (method !== "get" && csrf && !opts.noCsrf) req = req.set("X-CSRF-Token", opts.csrf || csrf);
-    if (method !== "get" && self.signingKey && !opts.unsigned) req = req.set(signHeaders(self.signingKey, method, path, body));
+    // Sign-in requests are never signed, as in the browser
+    if (method !== "get" && self.signingKey && !opts.unsigned && !path.startsWith("/api/v1/auth/")) req = req.set(signHeaders(self.signingKey, method, path, body));
     if (body !== undefined) req = req.send(body);
     return req.then(capture);
   }

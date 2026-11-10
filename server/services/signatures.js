@@ -16,6 +16,8 @@ const SIGNATURE = /^[A-Za-z0-9+/]{86}==$/;
 const SIGNED_AT = /^\d{13}$/;
 
 const sha256 = (data) => crypto.createHash("sha256").update(data).digest("hex");
+// A short hexadecimal reference for logs, so the key ID itself is never shown
+const keyRef = (id) => sha256(`key:${id}`).slice(0, 10);
 
 // The exact text that is signed: what was done, where, when, and a hash of the request body
 function message({ method, path, signedAt, bodyHash }) {
@@ -55,7 +57,7 @@ function createSignatureService({ config, db }) {
     // Older keys beyond the limit stop working, so lost devices do not pile up
     const active = await keys.find({ username: user.username, revokedAt: null }).sort({ createdAt: -1 }).skip(MAX_KEYS_PER_PERSON).toArray();
     if (active.length) await keys.updateMany({ _id: { $in: active.map((k) => k._id) } }, { $set: { revokedAt: new Date(now) } });
-    await recordEvent(db, req, { actor: user.username, role: user.role, action: "Signing key registered", details: `${label} · key ${id.slice(0, 8)}`, severity: "warning" });
+    await recordEvent(db, req, { actor: user.username, role: user.role, action: "Signing key registered", details: `${label} · key ${keyRef(id)}`, severity: "warning" });
     return { id };
   }
 
@@ -68,7 +70,7 @@ function createSignatureService({ config, db }) {
     const { user } = req.auth;
     const result = await keys.updateOne({ _id: id, username: user.username, revokedAt: null }, { $set: { revokedAt: new Date() } });
     if (!result.matchedCount) throw new AppError(404, "not_found", "Key not found.");
-    await recordEvent(db, req, { actor: user.username, role: user.role, action: "Signing key removed", details: `key ${id.slice(0, 8)}`, severity: "warning" });
+    await recordEvent(db, req, { actor: user.username, role: user.role, action: "Signing key removed", details: `key ${keyRef(id)}`, severity: "warning" });
   }
 
   // Checks the request's signature, refuses a reused one, and keeps it so it can be checked again
@@ -93,7 +95,7 @@ function createSignatureService({ config, db }) {
       if (error.code === 11000) throw new AppError(409, "signature_reused", "This signed request was already used.");
       throw error;
     }
-    await recordEvent(db, req, { actor: user.username, role: user.role, action: "Action signed", details: `${req.method} ${req.originalUrl} · key ${keyId.slice(0, 8)}`, severity: "info" });
+    await recordEvent(db, req, { actor: user.username, role: user.role, action: "Action signed", details: `${req.method} ${req.originalUrl} · key ${keyRef(keyId)}`, severity: "info" });
   }
 
   // Re-checks every kept signature against the key it claims, so a changed record is found

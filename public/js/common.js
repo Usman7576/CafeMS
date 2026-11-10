@@ -172,7 +172,8 @@
       if (method !== "GET" && !opts.public) {
         if (!Api.csrfToken) await Api.me();
         headers["X-CSRF-Token"] = Api.csrfToken;
-        if (!opts.unsigned) Object.assign(headers, await Signer.headers(method, "/api/v1" + path, bodyText).catch(function () { return {}; }));
+        // Sign-in and account requests are not signed, so passwords are never hashed here
+        if (!opts.unsigned && path.indexOf("/auth/") !== 0) Object.assign(headers, await Signer.headers(method, "/api/v1" + path, bodyText).catch(function () { return {}; }));
       }
       let response;
       try {

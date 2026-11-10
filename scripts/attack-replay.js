@@ -45,7 +45,7 @@ function client() {
       if (c.csrf && method !== "GET" && extra["X-CSRF-Token"] !== null) headers["X-CSRF-Token"] = c.csrf;
       const payload = body === undefined || Buffer.isBuffer(body) || typeof body === "string" ? body : JSON.stringify(body);
       // Signs every change with this person's device key, as the browser does
-      if (c.signingKey && method !== "GET" && extra.unsigned === undefined) Object.assign(headers, signHeaders(c.signingKey, method, url, payload));
+      if (c.signingKey && method !== "GET" && extra.unsigned === undefined && !url.startsWith(`${API}/auth/`)) Object.assign(headers, signHeaders(c.signingKey, method, url, payload));
       delete headers.unsigned;
       const res = await fetch(ORIGIN + url, { method, headers, body: payload, redirect: "manual" });
       for (const line of res.headers.getSetCookie()) {
