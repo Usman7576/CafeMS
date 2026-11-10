@@ -57,9 +57,10 @@ function buildApp(db, limits, gateway) {
 // A small browser stand-in. It keeps cookies by hand because they are all marked Secure
 // and tests run over plain HTTP. It always sends the correct Origin unless told otherwise.
 // Signs a request as the browser does, with the person's device key
-function signHeaders(key, method, path, body) {
+// The body is digested with Web Crypto, as in the browser; this is a message digest, not password storage
+async function signHeaders(key, method, path, body) {
   const signedAt = String(Date.now());
-  const bodyHash = crypto.createHash("sha256").update(body === undefined ? "" : JSON.stringify(body)).digest("hex");
+  const bodyHash = Buffer.from(await crypto.webcrypto.subtle.digest("SHA-256", Buffer.from(body === undefined ? "" : JSON.stringify(body)))).toString("hex");
   const text = ["cafems-action-v1", method.toUpperCase(), path, signedAt, bodyHash].join("\n");
   const signature = crypto.sign("sha256", Buffer.from(text), { key: key.privateKey, dsaEncoding: "ieee-p1363" }).toString("base64");
   return { "X-Signing-Key": key.id, "X-Signed-At": signedAt, "X-Action-Signature": signature };
@@ -90,15 +91,16 @@ function browser(app) {
     return res;
   }
 
-  function send(method, path, body, opts = {}) {
+  async function send(method, path, body, opts = {}) {
+    // Sign-in requests are never signed, as in the browser
+    const signed = method !== "get" && self.signingKey && !opts.unsigned && !path.startsWith("/api/v1/auth/") ? await signHeaders(self.signingKey, method, path, body) : null;
     let req = request(app)[method](path);
     const cookie = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
     if (cookie) req = req.set("Cookie", cookie);
     if (opts.headers) req = req.set(opts.headers);
     if (method !== "get" && opts.origin !== null) req = req.set("Origin", opts.origin || ORIGIN);
     if (method !== "get" && csrf && !opts.noCsrf) req = req.set("X-CSRF-Token", opts.csrf || csrf);
-    // Sign-in requests are never signed, as in the browser
-    if (method !== "get" && self.signingKey && !opts.unsigned && !path.startsWith("/api/v1/auth/")) req = req.set(signHeaders(self.signingKey, method, path, body));
+    if (signed) req = req.set(signed);
     if (body !== undefined) req = req.send(body);
     return req.then(capture);
   }

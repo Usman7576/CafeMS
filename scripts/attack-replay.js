@@ -12,9 +12,10 @@ const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 const totp = require("../server/lib/totp");
 
-function signHeaders(key, method, url, payload) {
+// The body is digested with Web Crypto, as in the browser; this is a message digest, not password storage
+async function signHeaders(key, method, url, payload) {
   const signedAt = String(Date.now());
-  const bodyHash = crypto.createHash("sha256").update(payload === undefined ? "" : payload).digest("hex");
+  const bodyHash = Buffer.from(await crypto.webcrypto.subtle.digest("SHA-256", Buffer.from(payload === undefined ? "" : payload))).toString("hex");
   const text = ["cafems-action-v1", method, url, signedAt, bodyHash].join("\n");
   const signature = crypto.sign("sha256", Buffer.from(text), { key: key.privateKey, dsaEncoding: "ieee-p1363" }).toString("base64");
   return { "X-Signing-Key": key.id, "X-Signed-At": signedAt, "X-Action-Signature": signature };
@@ -45,7 +46,7 @@ function client() {
       if (c.csrf && method !== "GET" && extra["X-CSRF-Token"] !== null) headers["X-CSRF-Token"] = c.csrf;
       const payload = body === undefined || Buffer.isBuffer(body) || typeof body === "string" ? body : JSON.stringify(body);
       // Signs every change with this person's device key, as the browser does
-      if (c.signingKey && method !== "GET" && extra.unsigned === undefined && !url.startsWith(`${API}/auth/`)) Object.assign(headers, signHeaders(c.signingKey, method, url, payload));
+      if (c.signingKey && method !== "GET" && extra.unsigned === undefined && !url.startsWith(`${API}/auth/`)) Object.assign(headers, await signHeaders(c.signingKey, method, url, payload));
       delete headers.unsigned;
       const res = await fetch(ORIGIN + url, { method, headers, body: payload, redirect: "manual" });
       for (const line of res.headers.getSetCookie()) {
@@ -303,7 +304,7 @@ function database(script) {
     record(31, "Staff change sent without the person's signature", "403 signature_required", unsigned.status === 403 && code(unsigned) === "signature_required", shown(unsigned));
     const url = `${API}/users/invitations`;
     const body = JSON.stringify({ username: "replay.signed", name: "Replay Signed", role: "Waiter" });
-    const headers = { ...signHeaders(admin.signingKey, "POST", url, body), "Content-Type": "application/json", unsigned: "1" };
+    const headers = { ...(await signHeaders(admin.signingKey, "POST", url, body)), "Content-Type": "application/json", unsigned: "1" };
     const first = await admin.call("POST", url, body, headers);
     const again = await admin.call("POST", url, body, headers);
     record(32, "Replay a captured signed request", "The first works; the copy gets 409", first.status === 201 && again.status === 409 && code(again) === "signature_reused", `${shown(first)}, ${shown(again)}`);

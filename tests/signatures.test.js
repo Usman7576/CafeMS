@@ -56,7 +56,7 @@ describe("signed sensitive actions", () => {
     const staff = await createUser(db, config, { role: "Waiter" });
     const path = `${API}/users/${staff.username}/role`;
     const body = { role: "Cashier" };
-    const headers = signHeaders(a.signingKey, "post", path, body);
+    const headers = await signHeaders(a.signingKey, "post", path, body);
     assert.equal((await raw(a, path, body, headers)).status, 200);
     const again = await raw(a, path, { role: "Kitchen" }, headers);
     assert.equal(again.status, 403, "a signature does not cover a different body");
@@ -71,17 +71,17 @@ describe("signed sensitive actions", () => {
     const path = `${API}/users/${staff.username}/role`;
     const refusedBefore = await events("Signature refused");
 
-    const changed = await raw(a, path, { role: "Manager" }, signHeaders(a.signingKey, "post", path, { role: "Kitchen" }));
+    const changed = await raw(a, path, { role: "Manager" }, await signHeaders(a.signingKey, "post", path, { role: "Kitchen" }));
     assert.equal(changed.body.error.code, "signature_invalid");
 
     const other = await addSigningKey(db, "someone.else");
-    assert.equal((await raw(a, path, { role: "Kitchen" }, signHeaders(other, "post", path, { role: "Kitchen" }))).body.error.code, "signature_invalid");
+    assert.equal((await raw(a, path, { role: "Kitchen" }, await signHeaders(other, "post", path, { role: "Kitchen" }))).body.error.code, "signature_invalid");
 
     const old = await addSigningKey(db, a.user.username);
     await db.collection("signing_keys").updateOne({ _id: old.id }, { $set: { revokedAt: new Date() } });
-    assert.equal((await raw(a, path, { role: "Kitchen" }, signHeaders(old, "post", path, { role: "Kitchen" }))).body.error.code, "signature_invalid");
+    assert.equal((await raw(a, path, { role: "Kitchen" }, await signHeaders(old, "post", path, { role: "Kitchen" }))).body.error.code, "signature_invalid");
 
-    const stale = signHeaders(a.signingKey, "post", path, { role: "Kitchen" });
+    const stale = await signHeaders(a.signingKey, "post", path, { role: "Kitchen" });
     stale["X-Signed-At"] = String(Date.now() - 10 * 60 * 1000);
     assert.equal((await raw(a, path, { role: "Kitchen" }, stale)).body.error.code, "signature_invalid");
 
