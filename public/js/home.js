@@ -63,19 +63,25 @@
     return now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
   }
 
+  // Online booking form. The checks here match the server's, which repeats them all.
+  const reserveRules = Validate.attach(el("reserveForm"), {
+    rName: { label: "Your name", required: true, min: 2, max: 60, format: "personName", collapseSpaces: true },
+    rPhone: { label: "Mobile number", required: true, max: 13, format: "mobile" },
+    rDate: { label: "Date", required: true, format: "date", notBefore: today, notAfter: function () { return Validate.today(60); }, notAfterMessage: "Online bookings can be made up to 60 days ahead. Please call us for later dates." },
+    rTime: { label: "Time", required: true, format: "time", timeFrom: "10:00", timeTo: "23:00" },
+    rParty: { label: "Guests", required: true, number: { min: 1, max: 20 } },
+    rNotes: { label: "Notes", max: 160, collapseSpaces: true }
+  }, { summary: el("reserveErr") });
+
   el("reserveForm").addEventListener("submit", async function (e) {
     e.preventDefault();
     const err = el("reserveErr"), ok = el("reserveOk");
     CMS.clearError(err);
     ok.classList.remove("show");
-    const body = {
-      name: el("rName").value, phone: el("rPhone").value, date: el("rDate").value, time: el("rTime").value,
-      party: Number(el("rParty").value), notes: el("rNotes").value, website: el("rWebsite").value
-    };
-    if (!body.name.trim() || !body.phone.trim() || !body.date || !body.time) {
-      CMS.attempt(function () { const x = new Error(); x.userMessage = "Please fill in your name, number, date and time."; throw x; }, err);
-      return;
-    }
+    const checked = reserveRules.check();
+    if (!checked.ok) return;
+    const v = checked.values;
+    const body = { name: v.rName, phone: v.rPhone, date: v.rDate, time: v.rTime, party: Number(v.rParty), notes: v.rNotes, website: el("rWebsite").value };
     const result = await CMS.busy(el("reserveBtn"), function () {
       return CMS.attempt(function () { return Api.call("POST", "/public/reservations", body, { public: true }); }, err);
     });

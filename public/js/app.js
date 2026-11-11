@@ -84,7 +84,7 @@
 
   function signOut(msg) {
     const finish = function () {
-      Session.clear();
+      Session.wipe();
       if (msg) Session.flash(msg);
       window.location.replace("login.html");
     };
@@ -342,7 +342,7 @@
     lastHeartbeat = Date.now();
     Api.call("POST", "/auth/heartbeat").catch(function (e) {
       if (e.status !== 401) return;
-      Session.clear();
+      Session.wipe();
       Session.flash("Your session has ended. Please sign in again.");
       window.location.replace("login.html");
     });

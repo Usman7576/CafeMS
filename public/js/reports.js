@@ -4,7 +4,7 @@
   if (!window.App) return;
   const h = CMS.h, canRefund = App.session.role === "Manager";
   const COLORS = { Cash: "#3d2518", Card: "#c47a2c", Wallet: "#1d7a4b" };
-  let refundNo = null, pickedDate = null, pickedSales = null, pickedBills = [];
+  let refundNo = null, pickedDate = null, pickedSales = null, pickedBills = [], refundRules = null;
   const salesData = function () { return pickedDate ? pickedSales : Store.salesToday(); };
   const billsData = function () { return pickedDate ? pickedBills : Store.bills(); };
   const todayValue = function () { const n = new Date(); return n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0"); };
@@ -40,6 +40,9 @@
     renderTrend();
     document.getElementById("printReport").addEventListener("click", function () { window.print(); });
     document.getElementById("refundForm").addEventListener("submit", doRefund);
+    refundRules = Validate.attach(document.getElementById("refundForm"), {
+      refundReason: { label: "Reason for refund", required: true, min: 4, max: 80, collapseSpaces: true }
+    }, { summary: document.getElementById("refundErr") });
     render();
     Store.on(render);
     const m = /^#refund-(B-\d+)$/.exec(location.hash);
@@ -106,6 +109,7 @@
     if (!b || b.status !== "Paid") { CMS.toast(no + " can't be refunded.", "err"); return; }
     refundNo = no;
     CMS.clearError(document.getElementById("refundErr"));
+    refundRules.reset();
     document.getElementById("refundTitle").textContent = "Refund " + no + "?";
     document.getElementById("refundSub").textContent = "Table " + b.table + " · " + CMS.money(b.total) + " · " + (b.method === "Wallet" ? "Mobile wallet" : b.method) + ". Refunded amounts are removed from the revenue of the day the bill was paid.";
     document.getElementById("refundReason").value = "";
@@ -114,7 +118,9 @@
   }
   async function doRefund(e) {
     e.preventDefault();
-    const reason = document.getElementById("refundReason").value;
+    const checked = refundRules.check();
+    if (!checked.ok) return;
+    const reason = checked.values.refundReason;
     const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.refund(refundNo, reason); }); }, document.getElementById("refundErr"));
     if (!result) return;
     CMS.closeModal("refundModal");

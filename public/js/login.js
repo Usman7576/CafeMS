@@ -8,6 +8,11 @@
   const password = el("password");
   const loginBtn = el("loginBtn");
   let recoveryMode = false;
+  // Username and password are checked for presence and length before anything is sent
+  const loginRules = Validate.attach(el("loginForm"), {
+    username: { label: "Username", required: true, requiredMessage: "Enter your username.", min: 3, max: 30, format: "username" },
+    password: { label: "Password", required: true, requiredMessage: "Enter your password.", max: 128 }
+  }, { summary: alertBox });
 
   function showStep(id) {
     STEPS.forEach(function (s) { el(s).hidden = s !== id; });
@@ -47,8 +52,10 @@
 
   el("loginForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    const username = el("username").value.trim();
-    if (!username || !password.value) { showAlert("Enter your username and password."); return; }
+    hideAlert();
+    const checked = loginRules.check();
+    if (!checked.ok) { alertBox.className = "alert show alert-error"; return; }
+    const username = checked.values.username;
     busy(loginBtn, async function () {
       try {
         const result = await Api.call("POST", "/auth/login", { username: username, password: password.value }, { public: true });

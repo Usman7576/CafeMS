@@ -10,6 +10,7 @@
   let lastJson = "";
   let online = true;
   let started = false;
+  let timer = null;
   const listeners = [];
   const intentKeys = new Map();
   let resolveReady;
@@ -28,7 +29,7 @@
   }
 
   function sessionEnded() {
-    Session.clear();
+    Session.wipe();
     Session.flash("Your session has ended. Please sign in again.");
     window.location.replace("login.html");
   }
@@ -112,10 +113,19 @@
         if (e.status === 401) { sessionEnded(); return; }
         CMS.toast(e.userMessage || "Could not load data from the server.", "err");
       });
-      setInterval(poll, REFRESH_MS);
+      timer = setInterval(poll, REFRESH_MS);
       document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(); });
     },
     whenReady: function () { return readyPromise; },
+    // Sign-out: stops refreshing and drops the in-memory copy of the data and pending request keys
+    forget: function () {
+      if (timer) clearInterval(timer);
+      timer = null;
+      data = null;
+      lastJson = "";
+      intentKeys.clear();
+      listeners.length = 0;
+    },
     on: function (fn) { listeners.push(fn); },
     totals: totals,
 

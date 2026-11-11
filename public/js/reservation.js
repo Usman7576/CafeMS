@@ -8,6 +8,7 @@
     const date = document.getElementById("reservationDate");
     date.min = today;
     date.value = today;
+    formRules();
     document.getElementById("reservationForm").addEventListener("submit", save);
     document.getElementById("reservationForm").addEventListener("reset", function () {
       setTimeout(function () { date.value = today; document.getElementById("partySize").value = "2"; CMS.clearError(document.getElementById("reservationErr")); }, 0);
@@ -16,35 +17,28 @@
     Store.on(renderRecent);
   });
 
+  let rules = null;
+  function formRules() {
+    if (rules) return rules;
+    rules = Validate.attach(document.getElementById("reservationForm"), {
+      guestName: { label: "Guest name", required: true, min: 2, max: 60, format: "personName", collapseSpaces: true },
+      guestPhone: { label: "Mobile number", required: true, max: 13, format: "mobile" },
+      reservationDate: { label: "Reservation date", required: true, format: "date", notBefore: function () { return Validate.today(0); } },
+      reservationTime: { label: "Reservation time", required: true, format: "time", timeFrom: "10:00", timeTo: "23:00" },
+      partySize: { label: "Party size", required: true, number: { min: 1, max: 20 } },
+      reservationNotes: { label: "Notes", max: 160, collapseSpaces: true }
+    }, { summary: document.getElementById("reservationErr") });
+    return rules;
+  }
+
   async function save(e) {
     e.preventDefault();
     const err = document.getElementById("reservationErr");
     CMS.clearError(err);
-    const data = {
-      name: document.getElementById("guestName").value,
-      phone: document.getElementById("guestPhone").value,
-      date: document.getElementById("reservationDate").value,
-      time: document.getElementById("reservationTime").value,
-      party: document.getElementById("partySize").value,
-      notes: document.getElementById("reservationNotes").value
-    };
-    const name = data.name.trim();
-    const phone = data.phone.trim();
-    const date = data.date.trim();
-    const time = data.time.trim();
-    const party = Number(data.party);
-    let validationMessage = "";
-    if (!name) validationMessage = "Enter the guest name.";
-    else if (name.length < 2) validationMessage = "Guest name must be at least 2 characters.";
-    else if (!phone) validationMessage = "Enter the guest mobile number.";
-    else if (!date) validationMessage = "Select a reservation date.";
-    else if (!time) validationMessage = "Select a reservation time.";
-    else if (!Number.isInteger(party) || party < 1 || party > 20) validationMessage = "Enter a party size from 1 to 20.";
-    else if (data.notes.trim().length > 160) validationMessage = "Notes must be 160 characters or fewer.";
-    if (validationMessage) {
-      CMS.attempt(function () { const error = new Error(validationMessage); error.userMessage = validationMessage; throw error; }, err);
-      return;
-    }
+    const checked = formRules().check();
+    if (!checked.ok) return;
+    const v = checked.values;
+    const data = { name: v.guestName, phone: v.guestPhone, date: v.reservationDate, time: v.reservationTime, party: Number(v.partySize), notes: v.reservationNotes };
     const result = await CMS.busy(e.submitter || e.target.querySelector("[type=submit]"), function () {
       return CMS.attempt(function () { return Store.addReservation(data); }, err);
     });

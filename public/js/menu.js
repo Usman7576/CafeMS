@@ -3,12 +3,26 @@
 (function () {
   if (!window.App) return;
   const h = CMS.h;
-  let cat = "All", query = "", editingId = null;
+  let cat = "All", query = "", editingId = null, rules = null, photoCheck = null;
+  // Photos: PNG, JPEG or WebP, up to 2 MB, the same limit the server applies
+  const PHOTO = {
+    types: { ".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg", ".webp": "webp" },
+    mimes: ["image/png", "image/jpeg", "image/webp"],
+    maxBytes: 2 * 1024 * 1024,
+    label: "PNG, JPEG or WebP"
+  };
 
   App.ready(function () {
     document.getElementById("menuSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); renderRows(); });
     document.getElementById("addItem").addEventListener("click", function () { openForm(null); });
     document.getElementById("itemForm").addEventListener("submit", save);
+    rules = Validate.attach(document.getElementById("itemForm"), {
+      fName: { label: "Item name", required: true, min: 2, max: 40, collapseSpaces: true },
+      fCat: { label: "Category", required: true, requiredMessage: "Choose or enter a category.", min: 2, max: 24, collapseSpaces: true },
+      fPrice: { label: "Price", required: true, number: { min: 50, max: 20000 } },
+      fDesc: { label: "Description", max: 80, collapseSpaces: true }
+    }, { summary: document.getElementById("itemErr") });
+    photoCheck = Validate.attachFile(document.getElementById("fPhoto"), PHOTO);
     document.getElementById("addIngredient").addEventListener("click", function () { addRecipeRow(null); });
     const desc = document.getElementById("fDesc");
     desc.addEventListener("input", function () { document.getElementById("descCount").textContent = desc.value.length + " / 80"; });
@@ -83,7 +97,8 @@
     if (m) (m.recipe || []).forEach(addRecipeRow);
     CMS.clearError(document.getElementById("itemErr"));
     document.getElementById("itemTitle").textContent = m ? "Edit " + m.name : "Add menu item";
-    document.getElementById("fPhoto").value = "";
+    rules.reset();
+    photoCheck.reset();
     document.getElementById("fName").value = m ? m.name : "";
     document.getElementById("fCat").value = m ? m.cat : (cat !== "All" ? cat : "");
     document.getElementById("fPrice").value = m ? m.price : "";
@@ -96,10 +111,15 @@
 
   async function save(e) {
     e.preventDefault();
+    const checked = rules.check();
+    // The photo is checked again here, in case it changed on disk after it was chosen
+    const photoOk = await photoCheck.check();
+    if (!checked.ok) return;
+    if (!photoOk) { document.getElementById("fPhoto").focus(); return; }
+    const v = checked.values;
     const data = {
-      id: editingId, name: document.getElementById("fName").value, cat: document.getElementById("fCat").value,
-      price: document.getElementById("fPrice").value === "" ? NaN : Number(document.getElementById("fPrice").value),
-      desc: document.getElementById("fDesc").value, available: document.getElementById("fAvail").checked, recipeEdit: readRecipe()
+      id: editingId, name: v.fName, cat: v.fCat, price: Number(v.fPrice),
+      desc: v.fDesc, available: document.getElementById("fAvail").checked, recipeEdit: readRecipe()
     };
     const old = editingId ? Store.menuItem(editingId) : null;
     if (old && old.price !== data.price && Number.isInteger(data.price)) {

@@ -17,7 +17,7 @@ module.exports = [
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "script",
-      globals: { ...globals.browser, CMS: "writable", Api: "writable", Store: "writable", App: "writable", Session: "writable", Signer: "writable", SimpleWebAuthnBrowser: "readonly", Icons: "writable" }
+      globals: { ...globals.browser, CMS: "writable", Api: "writable", Store: "writable", App: "writable", Session: "writable", Signer: "writable", SimpleWebAuthnBrowser: "readonly", Icons: "writable", Validate: "writable" }
     }
   },
   { files: ["public/js/coffee-scene.js"], languageOptions: { sourceType: "module" } },

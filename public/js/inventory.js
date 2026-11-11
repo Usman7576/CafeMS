@@ -2,7 +2,7 @@
 (function () {
   if (!window.App) return;
   const h = CMS.h;
-  let filter = "all", query = "", current = null, mode = "restock";
+  let filter = "all", query = "", current = null, mode = "restock", stockRules = null;
 
   App.ready(function () {
     document.querySelectorAll("#stockTabs .tab").forEach(function (t) {
@@ -14,6 +14,10 @@
     });
     document.getElementById("stockSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); render(); });
     document.getElementById("stockForm").addEventListener("submit", save);
+    stockRules = Validate.attach(document.getElementById("stockForm"), {
+      stockQty: { label: "Quantity", required: true, number: { min: 0.1, max: 1000, integer: false } },
+      stockReason: { label: "Reason", required: true, min: 3, max: 60, collapseSpaces: true }
+    }, { summary: document.getElementById("stockErr") });
     render();
     Store.on(render);
     const id = Number(new URLSearchParams(location.search).get("restock"));
@@ -66,6 +70,7 @@
     if (!current) return;
     mode = m;
     CMS.clearError(document.getElementById("stockErr"));
+    stockRules.reset();
     document.getElementById("stockTitle").textContent = (m === "restock" ? "Restock " : "Write off ") + current.name.toLowerCase();
     document.getElementById("stockSub").textContent = "Currently " + CMS.qty(current.qty) + " " + current.unit + " · reorder at " + current.reorder + " " + current.unit + " · " + current.supplier;
     document.getElementById("stockQtyLabel").textContent = m === "restock" ? "Quantity received" : "Quantity to remove";
@@ -81,10 +86,11 @@
 
   async function save(e) {
     e.preventDefault();
-    const qty = Number(document.getElementById("stockQty").value);
-    const reason = document.getElementById("stockReason").value.trim();
     const errBox = document.getElementById("stockErr");
-    if (!(qty > 0)) { CMS.attempt(function () { const x = new Error(); x.userMessage = "Enter a quantity greater than zero."; throw x; }, errBox); return; }
+    const checked = stockRules.check();
+    if (!checked.ok) return;
+    const qty = Number(checked.values.stockQty);
+    const reason = checked.values.stockReason;
     const ok = await CMS.busy(document.getElementById("stockSave"), function () {
       return CMS.attempt(async function () { await Store.adjustStock(current.id, mode === "restock" ? qty : -qty, reason); return true; }, errBox);
     });

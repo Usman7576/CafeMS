@@ -4,6 +4,18 @@
   try { ["cms_db_v4", "cms_kds_heartbeat"].forEach(function (key) { localStorage.removeItem(key); }); } catch (e) { /* storage unavailable */ }
 
   // ---------- DOM helper: builds elements with textContent only, so data can never become markup ----------
+  // Nothing in this app turns a string into HTML, and the Content-Security-Policy's Trusted Types rule
+  // makes the browser refuse it if such code is ever added. Text from people always goes in through textContent or a text node.
+  // Links and image sources must be relative, http(s), mailto, tel, blob or an image data URL, so a
+  // stored "javascript:" address can never become a clickable script.
+  const SAFE_URL = /^(?:[/?#.]|https?:|mailto:|tel:|blob:|data:image\/(?:png|jpeg|webp|gif);base64,)/i;
+  const URL_ATTRS = ["href", "src", "action", "formaction", "xlink:href"];
+  function safeUrl(value) {
+    // Browsers ignore tabs, new lines and other control characters inside a scheme, so they are removed first
+    const v = Array.from(String(value)).filter(function (c) { const n = c.charCodeAt(0); return n > 32 && (n < 127 || n > 159); }).join("");
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v) && !SAFE_URL.test(v)) return "about:blank#blocked";
+    return String(value);
+  }
   function h(tag, attrs, children) {
     const el = document.createElement(tag);
     if (attrs) {
@@ -13,7 +25,9 @@
         if (k === "class") el.className = v;
         else if (k === "text" || k === "icon" || k === "iconSize") return;
         else if (k === "css") Object.assign(el.style, v);
-        else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), v);
+        // Event handlers must be functions: a string such as "alert(1)" is never turned into code
+        else if (k.indexOf("on") === 0) { if (typeof v === "function") el.addEventListener(k.slice(2), v); }
+        else if (URL_ATTRS.indexOf(k.toLowerCase()) !== -1) el.setAttribute(k, safeUrl(v));
         else el.setAttribute(k, v === true ? "" : v);
       });
       if (attrs.text !== undefined) el.textContent = attrs.text;
@@ -234,18 +248,63 @@
 
   // ---------- Display copy of the signed-in user ----------
   // Used only to draw names and menus. It is not trusted: the server checks the cookie on every request.
+  // Only these four display fields are ever written. The session cookie is HttpOnly, so no script can
+  // read it, and passwords, codes, tokens and keys are never put in browser storage.
+  const SESSION_FIELDS = ["user", "name", "role", "loginAt"];
+  // The only keys this app keeps in sessionStorage. Anything else found there or in localStorage is
+  // removed on every page load, so nothing sensitive is left behind by an old version or another tab.
+  const STORAGE_KEYS = ["cms_session", "cms_flash"];
+  function sweepStorage() {
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (STORAGE_KEYS.indexOf(key) === -1) sessionStorage.removeItem(key);
+      }
+      // This app keeps nothing in localStorage: it lasts after the browser closes
+      localStorage.clear();
+    } catch (e) { /* storage unavailable: nothing to clean */ }
+  }
+  sweepStorage();
+
   const Session = {
     KEY: "cms_session",
-    get: function () { try { return JSON.parse(sessionStorage.getItem(this.KEY)); } catch (e) { return null; } },
-    set: function (d) { try { sessionStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { /* storage unavailable: names are simply not shown */ } },
+    get: function () {
+      try {
+        const value = JSON.parse(sessionStorage.getItem(this.KEY));
+        return value && typeof value === "object" ? value : null;
+      } catch (e) { return null; }
+    },
+    set: function (d) {
+      const copy = {};
+      SESSION_FIELDS.forEach(function (k) { if (d && (typeof d[k] === "string" || typeof d[k] === "number")) copy[k] = d[k]; });
+      try { sessionStorage.setItem(this.KEY, JSON.stringify(copy)); } catch (e) { /* storage unavailable: names are simply not shown */ }
+    },
     clear: function () { try { sessionStorage.removeItem(this.KEY); } catch (e) { /* storage unavailable: nothing to clear */ } },
+    // Sign-out: removes everything this app put in the browser for the signed-in person, and the
+    // temporary state of the page, before leaving it
+    wipe: function () {
+      Session.clear();
+      Api.csrfToken = null;
+      try { sessionStorage.removeItem("cms_flash"); } catch (e) { /* storage unavailable */ }
+      sweepStorage();
+      document.querySelectorAll("form").forEach(function (f) { f.reset(); });
+      document.querySelectorAll("input[type=password], input[autocomplete=one-time-code]").forEach(function (i) { i.value = ""; });
+      document.querySelectorAll(".modal-backdrop.show").forEach(function (m) { m.classList.remove("show"); });
+      document.querySelectorAll(".toast-stack").forEach(function (t) { t.remove(); });
+      if (window.Store && typeof Store.forget === "function") Store.forget();
+    },
     flash: function (msg) {
       try {
         if (msg === undefined) { const m = sessionStorage.getItem("cms_flash"); sessionStorage.removeItem("cms_flash"); return m; }
-        sessionStorage.setItem("cms_flash", msg);
+        sessionStorage.setItem("cms_flash", String(msg).slice(0, 200));
       } catch (e) { return null; }
     }
   };
+
+  // A page brought back by the browser's Back button after sign-out must not show the old data
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted && document.body && document.body.hasAttribute("data-page") && !Session.get()) window.location.replace("login.html");
+  });
 
   // ---------- Public-site nav toggle + footer year ----------
   document.addEventListener("DOMContentLoaded", function () {
@@ -536,7 +595,7 @@
   }
 
   window.CMS = {
-    h: h, money: money, timeAgo: timeAgo, clock: clock, dateLong: dateLong, dateTime: dateTime, compact: compact, qty: qty,
+    h: h, safeUrl: safeUrl, money: money, timeAgo: timeAgo, clock: clock, dateLong: dateLong, dateTime: dateTime, compact: compact, qty: qty,
     toast: toast, openModal: openModal, closeModal: closeModal, confirm: confirmDialog,
     attempt: attempt, clearError: clearError, busy: busy, withStepUp: withStepUp, showLink: showLink, copyText: copyText, codeActions: codeActions, renderApprovals: renderApprovals, showPhone: showPhone,
     barChart: barChart, hBars: hBars, donut: donut

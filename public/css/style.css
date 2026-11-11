@@ -138,6 +138,26 @@ button { font: inherit; }
 .field-error { display: flex; align-items: center; gap: 6px; color: var(--danger); font-size: .82rem; margin-top: 6px; min-height: 0; }
 .field-error:empty { display: none; }
 .field-hint { color: var(--muted); font-size: .8rem; margin-top: 6px; }
+/* Client-side validation: a message under each field that needs fixing */
+.field-error { display: none; color: var(--danger); font-size: .8rem; font-weight: 500; margin-top: 6px; }
+.field-error.show { display: block; }
+.input.is-invalid, .textarea.is-invalid, .select.is-invalid { border-color: var(--danger); background-color: var(--danger-50); }
+.input.is-invalid:focus, .textarea.is-invalid:focus, .select.is-invalid:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.22); }
+.file-status { font-size: .8rem; color: var(--muted); margin-top: 6px; overflow-wrap: anywhere; }
+.file-status.ok { color: var(--ok); }
+/* Password strength feedback from checkPasswordStrength() */
+.pw-strength { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); }
+.pw-strength-top { display: flex; align-items: baseline; gap: 4px; font-size: .82rem; color: var(--ink-2); }
+.pw-strength-score { color: var(--muted); font-size: .78rem; }
+.pw-strength-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 8px 0 6px; }
+.pw-strength-bar i { height: 6px; border-radius: 3px; background: var(--line-2); }
+.pw-strength-msg { margin: 0; font-size: .8rem; color: var(--muted); }
+.pw-strength[data-level="weak"] .pw-strength-level { color: var(--danger); }
+.pw-strength[data-level="weak"] .pw-strength-bar i.on { background: var(--danger); }
+.pw-strength[data-level="moderate"] .pw-strength-level { color: var(--warn); }
+.pw-strength[data-level="moderate"] .pw-strength-bar i.on { background: var(--warn); }
+.pw-strength[data-level="strong"] .pw-strength-level { color: var(--ok); }
+.pw-strength[data-level="strong"] .pw-strength-bar i.on { background: var(--ok); }
 .field-warn { display: none; align-items: center; gap: 6px; color: var(--warn); font-size: .8rem; margin-top: 6px; }
 .field-warn.show { display: flex; }
 

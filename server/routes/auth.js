@@ -413,6 +413,9 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
         await audit(req, { actor: user.username, role: user.role, action: "Signed out", details: "User signed out" }, txn);
       });
       await sessions.revoke(session.jti, res);
+      // Tells the browser to drop any copies of pages it cached for this person. Storage is not
+      // listed, because the browser's own signing key is kept for the next sign-in on this device.
+      res.set("Clear-Site-Data", "\"cache\"");
       res.status(204).end();
     } catch (error) {
       next(error);

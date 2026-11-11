@@ -10,8 +10,26 @@
     sym: function (v) { return /[^A-Za-z0-9]/.test(v); }
   };
 
+  let passwordRules = null, questionRules = null;
+  // The same rules the server applies to a new password
+  function passwordProblem(v) {
+    if (!RULES.upper(v) || !RULES.lower(v) || !RULES.num(v) || !RULES.sym(v)) return "New password needs an uppercase letter, a lowercase letter, a number and a symbol.";
+    return "";
+  }
+
   App.ready(function () {
     const next = document.getElementById("newPassword");
+    passwordRules = Validate.attach(document.getElementById("passwordForm"), {
+      currentPassword: { label: "Current password", required: true, max: 128 },
+      newPassword: { label: "New password", required: true, min: 12, max: 128, custom: function (v, all) {
+        return passwordProblem(v) || (v === all.currentPassword ? "The new password must be different from the current one." : "");
+      } }
+    }, { summary: document.getElementById("passwordErr") });
+    Validate.attachStrength(next);
+    questionRules = Validate.attach(document.getElementById("questionForm"), {
+      questionText: { label: "Question", required: true, min: 10, max: 100, format: "plainText", collapseSpaces: true },
+      questionAnswer: { label: "Answer", required: true, min: 3, max: 100, collapseSpaces: true }
+    }, { summary: document.getElementById("questionErr") });
     next.addEventListener("input", function () {
       document.querySelectorAll("#pwRules li").forEach(function (li) { li.classList.toggle("met", RULES[li.getAttribute("data-rule")](next.value)); });
     });
@@ -89,9 +107,11 @@
 
   async function saveQuestion(e) {
     e.preventDefault();
-    const body = { question: document.getElementById("questionText").value.trim(), answer: document.getElementById("questionAnswer").value.trim() };
+    const checked = questionRules.check();
+    if (!checked.ok) return;
+    const body = { question: checked.values.questionText, answer: checked.values.questionAnswer };
     await CMS.busy(document.getElementById("questionSave"), async function () {
-      const ok = await CMS.attempt(function () { return CMS.withStepUp(function () { return Api.call("POST", "/auth/security-question", body); }).then(function () { return true; }); });
+      const ok = await CMS.attempt(function () { return CMS.withStepUp(function () { return Api.call("POST", "/auth/security-question", body); }).then(function () { return true; }); }, document.getElementById("questionErr"));
       if (ok) {
         document.getElementById("questionForm").reset();
         CMS.toast("Security question saved", "ok");
@@ -109,7 +129,9 @@
     e.preventDefault();
     const err = document.getElementById("passwordErr");
     CMS.clearError(err);
-    const body = { currentPassword: document.getElementById("currentPassword").value, newPassword: document.getElementById("newPassword").value };
+    const checked = passwordRules.check();
+    if (!checked.ok) return;
+    const body = { currentPassword: checked.values.currentPassword, newPassword: checked.values.newPassword };
     await CMS.busy(document.getElementById("passwordSave"), async function () {
       const ok = await CMS.attempt(async function () { await Api.call("POST", "/auth/password", body); return true; }, err);
       if (!ok) return;

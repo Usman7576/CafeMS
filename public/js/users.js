@@ -11,14 +11,20 @@
     Manager: "Inventory, reports, refunds, discounts up to 25%",
     Admin: "Users, roles, menu, prices, audit log"
   };
-  let query = "", roleTarget = null, roleChoice = null;
+  let query = "", roleTarget = null, roleChoice = null, userRules = null;
 
   App.ready(function () {
     const sel = document.getElementById("uRole");
     Store.ROLES.forEach(function (r) { sel.appendChild(h("option", { value: r, text: r })); });
     document.getElementById("userSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); renderRows(); });
+    userRules = Validate.attach(document.getElementById("userForm"), {
+      uName: { label: "Full name", required: true, min: 2, max: 60, format: "personName", collapseSpaces: true },
+      uUser: { label: "Username", required: true, min: 3, max: 30, format: "username" },
+      uRole: { label: "Role", required: true, custom: function (v) { return Store.ROLES.indexOf(v) === -1 ? "Choose a role from the list." : ""; } }
+    }, { summary: document.getElementById("userErr") });
     document.getElementById("addUser").addEventListener("click", function () {
       CMS.clearError(document.getElementById("userErr"));
+      userRules.reset();
       document.getElementById("uName").value = ""; document.getElementById("uUser").value = ""; sel.value = "Waiter";
       CMS.openModal("userModal");
       setTimeout(function () { document.getElementById("uName").focus(); }, 50);
@@ -80,7 +86,9 @@
 
   async function create(e) {
     e.preventDefault();
-    const data = { name: document.getElementById("uName").value, username: document.getElementById("uUser").value, role: document.getElementById("uRole").value };
+    const checked = userRules.check();
+    if (!checked.ok) return;
+    const data = { name: checked.values.uName, username: checked.values.uUser, role: checked.values.uRole };
     const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.inviteUser(data); }); }, document.getElementById("userErr"));
     if (!result) return;
     delete document.getElementById("uUser").dataset.touched;
