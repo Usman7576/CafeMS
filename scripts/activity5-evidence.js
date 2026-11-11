@@ -47,6 +47,8 @@ function findBrowser() {
 async function connect() {
   let targets = null;
   for (let i = 0; i < 50 && !targets; i++) {
+    // Chrome's debugging endpoint listens only on this computer's loopback address and speaks plain HTTP
+    // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request
     try { targets = await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`)).json(); } catch { await wait(200); }
   }
   const page = targets.find((t) => t.type === "page");
