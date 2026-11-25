@@ -5,12 +5,13 @@ const path = require("path");
 const schemas = require("../lib/schemas");
 const { publicRoute, validate } = require("../middleware/auth");
 const { limiter } = require("../middleware/security");
+const { inTransaction } = require("../lib/tx");
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-function createPublicRouter({ config, services }) {
+function createPublicRouter({ config, db, services }) {
   const router = express.Router();
-  const { catalog, cafe, photos, reservations, publicCache, userService, guests } = services;
+  const { catalog, cafe, photos, reservations, publicCache, userService, guests, orderService, events, settings } = services;
   const REGISTERED = { ok: true, message: "Thank you. An Admin will review your request. You can sign in once it is approved." };
   const bookingLimiter = limiter(60 * 60 * 1000, config.limits.publicBookingsPerHour, "Too many booking requests. Please try again later or call us.");
   // A visitor reads the menu and details once per visit, so this is far below the general API limit
@@ -22,7 +23,7 @@ function createPublicRouter({ config, services }) {
 
   router.get("/menu", publicRoute, wrap(async (_req, res) => {
     res.json(await publicCache.get("menu", async () => ({
-      items: (await catalog.listForSale()).map((m) => ({ id: m.id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: m.hasPhoto, available: m.available }))
+      items: (await catalog.listForSale()).map((m) => ({ id: m.id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, options: m.options, hasPhoto: m.hasPhoto, available: m.available }))
     })));
   }));
 
@@ -52,6 +53,25 @@ function createPublicRouter({ config, services }) {
     if (!website) await guests.addFeedback(req, rating);
     res.status(202).json({ ok: true, message: "Thank you for telling us how we did." });
   }));
+
+  // ---------- Ordering from the website or a table ----------
+  // What a guest may order and how: the order types open now, and the tax rate for the total shown
+  router.get("/ordering", publicRoute, (_req, res) => {
+    const s = settings.get();
+    res.json({ open: s.online.ordering, qr: s.online.qr, takeaway: s.orderTypes.takeaway, delivery: s.orderTypes.delivery, taxRate: settings.taxRate() });
+  });
+  router.get("/table/:code", publicRoute, validate(schemas.tableCode, "params"), wrap(async (req, res) => res.json(await orderService.tableFromCode(req.validParams.code))));
+  // Each address may send only a few orders an hour; staff accept each one before it is made.
+  // A filled-in hidden field marks a bot: it gets an answer with no tracking link and nothing is saved.
+  const orderLimiter = limiter(60 * 60 * 1000, config.limits.publicBookingsPerHour, "Too many orders from this connection. Please call us.");
+  router.post("/orders", publicRoute, orderLimiter, validate(schemas.guestOrder), wrap(async (req, res) => {
+    const { website, ...order } = req.body;
+    if (website) return res.status(202).json({ ok: true });
+    const placed = await inTransaction(db, (session) => orderService.placeFromGuest(req, order, session));
+    events.publish("orders");
+    return res.status(201).json({ ok: true, id: placed.id, label: placed.label, total: placed.totals.total, track: `/track.html?t=${placed.token}` });
+  }));
+  router.get("/orders/:token", publicRoute, validate(schemas.trackToken, "params"), wrap(async (req, res) => res.json(await orderService.track(req.validParams.token))));
 
   // Staff self-registration. The account waits as Pending until an Admin approves it and sets the role.
   // A filled-in hidden field marks a bot: it gets the same answer and nothing is saved.

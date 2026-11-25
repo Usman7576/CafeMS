@@ -23,6 +23,8 @@ const DEFAULTS = Object.freeze({
   // A service charge on dine-in bills, and whether a cashier must open a shift before taking money
   serviceChargePct: 0,
   requireShift: false,
+  // Guests ordering from the website, or from a QR code on their table
+  online: { ordering: true, qr: true },
   // Loyalty: points earned per Rs 100 paid, and what one point is worth when spent
   loyalty: { enabled: true, earnPer100: 1, pointValue: 1 },
   // Bookings: opening hours, the step between booking times and how long a table is held
@@ -41,6 +43,7 @@ const freeze = (s) => Object.freeze({
   receipt: Object.freeze({ ...s.receipt }),
   loyalty: Object.freeze({ ...DEFAULTS_LOYALTY, ...(s.loyalty || {}) }),
   bookings: Object.freeze({ ...DEFAULTS_BOOKINGS, ...(s.bookings || {}) }),
+  online: Object.freeze({ ordering: true, qr: true, ...(s.online || {}) }),
   categories: Object.freeze(s.categories.map((c) => Object.freeze({ ...c }))),
   orderTypes: Object.freeze({ ...s.orderTypes })
 });
@@ -87,7 +90,7 @@ function createSettingsService({ db }) {
     const numbers = next.tables.map((t) => t.no);
     if (new Set(numbers).size !== numbers.length) throw new AppError(400, "invalid_input", "Each table needs its own number.");
     next.tables = [...next.tables].sort((a, b) => a.no - b.no).map((t, i) => placed(t, i));
-    for (const key of ["loyalty", "bookings"]) if (next[key] === undefined) next[key] = current[key];
+    for (const key of ["loyalty", "bookings", "online"]) if (next[key] === undefined) next[key] = current[key];
     const catNames = next.categories.map((c) => c.name.toLowerCase());
     if (new Set(catNames).size !== catNames.length) throw new AppError(400, "invalid_input", "Each category needs its own name.");
     if (!Object.values(next.orderTypes).some(Boolean)) throw new AppError(400, "invalid_input", "Turn on at least one order type.");

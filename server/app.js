@@ -154,9 +154,9 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
     }
     return personalLimiters.get(name);
   };
-  api.use("/public", createPublicRouter({ config, services }));
+  api.use("/public", createPublicRouter({ config, db, services }));
   api.use("/users", createUsersRouter({ db, middleware, services }));
-  api.use(createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit: config.limits.photoBody }));
+  api.use(createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit: config.limits.photoBody, appOrigin: config.appOrigin }));
   api.use((_req, _res, next) => next(new AppError(404, "not_found", "Not found.")));
   app.use("/api/v1", api);
 

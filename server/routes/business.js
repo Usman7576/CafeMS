@@ -16,7 +16,7 @@ const params = (schema) => validate(schema, "params");
 const VIEW_RECORD_MS = 60 * 60 * 1000;
 const MAX_VIEW_KEYS = 5000;
 
-function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
+function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit, appOrigin }) {
   const router = express.Router();
   const { requireAuth, requirePermission, requireStepUp } = middleware;
   // Opening customer records is recorded, but screens refresh every few seconds, so the same view by the
@@ -114,6 +114,15 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.put("/orders/:id", ...allow("orders.write"), params(schemas.params.orderId), validate(schemas.updateOrder), tx((req, session) => orderService.update(req, req.validParams.id, req.body, session)));
   router.post("/orders/:id/serve", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.serve(req, req.validParams.id, session)));
   router.post("/orders/:id/cancel", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.cancel(req, req.validParams.id, session)));
+  // Orders from the website and table QR codes, waiting for someone to accept them
+  router.get("/orders/incoming", ...allow("orders.write"), wrap(async (_req, res) => res.json({ orders: await orderService.incoming() })));
+  router.post("/orders/:id/accept", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.accept(req, req.validParams.id, session)));
+  router.post("/orders/:id/decline", ...allow("orders.write"), params(schemas.params.orderId), validate(schemas.declineOrder), tx((req, session) => orderService.decline(req, req.validParams.id, req.body.reason, session)));
+  router.get("/tables/qr", ...allow("settings.write"), wrap(async (_req, res) => res.json({ tables: await orderService.tableCodes(appOrigin) })));
+  router.post("/tables/:no/qr", ...allow("settings.write"), requireStepUp, params(schemas.params.tableNo), wrap(async (req, res) => {
+    await orderService.resetTableCode(req, Number(req.validParams.no));
+    res.status(204).end();
+  }));
   router.post("/orders/:id/send", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.send(req, req.validParams.id, session)));
   router.post("/orders/:id/transfer", ...allow("orders.write"), params(schemas.params.orderId), validate(schemas.transferOrder), tx((req, session) => orderService.transfer(req, req.validParams.id, req.body.table, session)));
   // Voiding an order a station has started on throws food away, so a manager confirms a fresh code

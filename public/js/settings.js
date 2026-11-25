@@ -48,6 +48,7 @@
       categories: draft.categories.map(function (c) { return { name: String(c.name || "").trim(), station: c.station }; }),
       orderTypes: { dineIn: el("typeDineIn").checked, takeaway: el("typeTakeaway").checked, delivery: el("typeDelivery").checked },
       serviceChargePct: number("serviceCharge"),
+      online: { ordering: el("onlineOrdering").checked, qr: el("onlineQr").checked },
       requireShift: el("requireShift").checked
     };
   }
@@ -141,9 +142,30 @@
     const rows = el("categoryRows").querySelectorAll("tr");
     rows[rows.length - 1].querySelector("input").focus();
   });
-  ["typeDineIn", "typeTakeaway", "typeDelivery", "requireShift", "loyaltyOn", "bookSlot"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
+  ["typeDineIn", "typeTakeaway", "typeDelivery", "requireShift", "loyaltyOn", "bookSlot", "onlineOrdering", "onlineQr"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
   ["earnPer100", "pointValue", "bookOpen", "bookClose", "bookLength"].forEach(function (id) { el(id).addEventListener("input", markDirty); });
   el("serviceCharge").addEventListener("input", markDirty);
+
+  // Printable QR cards, one per table; a new code stops an old card from working
+  el("showQr").addEventListener("click", async function () {
+    const got = await CMS.attempt(function () { return Api.call("GET", "/tables/qr"); }, opsErr);
+    if (!got) return;
+    const sheet = h("div", { class: "qr-sheet", id: "qrSheet" }, got.tables.map(function (t) {
+      return h("div", { class: "qr-card" }, [
+        h("b", { text: Store.cafe().name }), h("img", { src: t.qr, alt: "QR code for table " + t.no, width: "160", height: "160" }),
+        h("span", { class: "qr-table", text: "Table " + t.no }), h("small", { text: "Scan to see the menu and order" }),
+        h("button", { type: "button", class: "btn btn-ghost btn-sm no-print", text: "New code", onclick: function () { resetQr(t.no); } })
+      ]);
+    }));
+    CMS.formDialog({ id: "qrModal", icon: "grid", wide: true, title: "Table QR codes", sub: "Print these and put one on each table.", fields: [sheet, h("button", { type: "button", class: "btn btn-secondary", icon: "file", text: "Print", onclick: function () { window.print(); } })], okText: "Done", submit: async function () { return true; } });
+  });
+  async function resetQr(no) {
+    const ok = await CMS.confirm({ title: "New code for table " + no + "?", message: "The old QR card stops working. Print the new one.", okText: "Make new code", icon: "grid" });
+    if (!ok) return;
+    if (await CMS.attempt(function () { return CMS.withStepUp(function () { return Api.call("POST", "/tables/" + no + "/qr", {}); }).then(function () { return true; }); })) {
+      CMS.closeModal("qrModal"); el("showQr").click(); CMS.toast("Table " + no + " has a new code", "ok");
+    }
+  }
 
   el("addTable").addEventListener("click", function () {
     const next = draft.tables.reduce(function (m, t) { return Math.max(m, Number(t.no) || 0); }, 0) + 1;
@@ -167,6 +189,8 @@
     renderCategories();
     const loyalty = draft.loyalty || { enabled: true, earnPer100: 1, pointValue: 1 };
     const bookings = draft.bookings || { open: "10:00", close: "23:00", slotMinutes: 30, durationMinutes: 90 };
+    const online = draft.online || { ordering: true, qr: true };
+    el("onlineOrdering").checked = online.ordering; el("onlineQr").checked = online.qr;
     el("loyaltyOn").checked = loyalty.enabled; el("earnPer100").value = loyalty.earnPer100; el("pointValue").value = loyalty.pointValue;
     el("bookOpen").value = bookings.open; el("bookClose").value = bookings.close; el("bookSlot").value = String(bookings.slotMinutes); el("bookLength").value = bookings.durationMinutes;
     el("typeDineIn").checked = draft.orderTypes.dineIn;

@@ -27,6 +27,7 @@
         <a href="#ordertypes"><i data-icon="package" data-size="16"></i>Order types</a>
         <a href="#floor"><i data-icon="grid" data-size="16"></i>Floor plan</a>
         <a href="#guests"><i data-icon="users" data-size="16"></i>Loyalty and bookings</a>
+        <a href="#online"><i data-icon="send" data-size="16"></i>Online ordering</a>
       </nav>
 
       <div class="stack">
@@ -109,6 +110,17 @@
               <div class="field"><label for="bookSlot">A booking time every</label><select class="select" id="bookSlot"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></div>
               <div class="field"><label for="bookLength">A booking holds the table for</label><div class="input-group"><input class="input" id="bookLength" type="number" min="30" max="240" step="15" inputmode="numeric"><span class="addon">min</span></div></div>
             </div>
+          </div>
+        </section>
+
+        <section class="panel" id="online">
+          <div class="panel-head">
+            <div><h3>Online ordering</h3><p>Guests order takeaway or delivery from the website, or from a QR code on their table. Staff accept each order first.</p></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="showQr"><i data-icon="grid" data-size="15"></i>Table QR codes</button>
+          </div>
+          <div class="panel-body">
+            <label class="setting setting-row"><div><b>Order from the website</b><small>Takeaway and delivery, as switched on under Order types.</small></div><input type="checkbox" class="switch" id="onlineOrdering"></label>
+            <label class="setting setting-row"><div><b>Order from the table</b><small>Each table's QR code opens the menu for that table.</small></div><input type="checkbox" class="switch" id="onlineQr"></label>
           </div>
         </section>
 

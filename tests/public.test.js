@@ -32,7 +32,7 @@ describe("public information", () => {
     const res = await request(app).get(`${PUBLIC}/menu`);
     assert.equal(res.status, 200);
     assert.ok(res.body.items.length >= 15);
-    assert.deepEqual(Object.keys(res.body.items[0]).sort(), ["available", "cat", "desc", "hasPhoto", "id", "name", "price"]);
+    assert.deepEqual(Object.keys(res.body.items[0]).sort(), ["available", "cat", "desc", "hasPhoto", "id", "name", "options", "price"]);
     const raw = JSON.stringify(res.body);
     for (const hidden of ["recipe", "qtyMilli", "reorder", "supplier"]) assert.ok(!raw.includes(hidden), hidden);
   });

@@ -45,7 +45,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
 
   async function openTables() {
     const [open, tableDocs, staff, openChecks] = await Promise.all([
-      orders.find(orderService.OPEN_FILTER).toArray(),
+      orders.find({ ...orderService.OPEN_FILTER, status: { $nin: ["Cancelled", "Pending"] } }).toArray(),
       tables.find().toArray(),
       users.find({}, { projection: { username: 1, name: 1 } }).toArray(),
       checks.find({ status: "Open" }).toArray()

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your order · CafeMS</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#f8f7f5">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.5">
+</head>
+<body class="site guest-order">
+  <header class="guest-bar">
+    <div class="container guest-bar-row">
+      <a href="index.html" class="brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span data-cafe-name>CafeMS</span></a>
+      <span class="pill no-dot" id="orderNo">Your order</span>
+    </div>
+  </header>
+  <main id="main" class="container track-main">
+    <section class="panel track-card" aria-live="polite">
+      <div class="panel-body" id="trackBody"><p class="muted">Loading your order…</p></div>
+    </section>
+    <p class="field-hint guest-hint">Keep this page open, or save its link: it updates by itself. Anyone with the link can see this order.</p>
+  </main>
+  <script src="js/icons.js?v=7.4"></script>
+  <script src="js/common.js?v=7.5"></script>
+  <script src="js/track.js?v=7.6"></script>
+</body>
+</html>

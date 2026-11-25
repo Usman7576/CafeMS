@@ -6,7 +6,7 @@
 // own status; the order is Ready when every station is ready.
 const { AppError } = require("../lib/errors");
 const { calculateTotals, maskPhone } = require("../lib/domain");
-const { encrypt, decrypt } = require("../lib/crypto");
+const { encrypt, decrypt, randomToken, hashToken } = require("../lib/crypto");
 const { nextSequence } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
 const { STATION_OF } = require("../lib/permissions");
@@ -118,7 +118,7 @@ function createOrderService({ config, db, catalog, settings }) {
   }
 
   // Changes are allowed while the order is held, or sent but not yet started by any station
-  const notStarted = (o) => o.status === "Held" || (o.status === "Placed" && Object.values(stationsOf(o)).every((s) => s === "Placed"));
+  const notStarted = (o) => o.status === "Held" || o.status === "Pending" || (o.status === "Placed" && Object.values(stationsOf(o)).every((s) => s === "Placed"));
 
   async function update(req, id, input, session) {
     const order = await ownOrder(req, id, session);
@@ -245,6 +245,7 @@ function createOrderService({ config, db, catalog, settings }) {
       const onTable = open.filter((o) => o.table === t.no);
       const base = { no: t.no, seats: t.seats, area: t.area };
       if (!onTable.length) return { ...base, state: "free", label: "Free" };
+      if (onTable.some((o) => o.status === "Pending")) return { ...base, state: "other", label: "Order waiting" };
       if (onTable.some((o) => o.waiter !== username)) return { ...base, state: "other", label: "Other staff" };
       const orderIds = onTable.map((o) => o._id);
       if (requested.has(t.no)) return { ...base, state: "bill", label: "Bill requested", orderIds };
@@ -265,7 +266,129 @@ function createOrderService({ config, db, catalog, settings }) {
     await audit(req, "Bill requested", `Table ${no}`, session);
   }
 
-  return { place, update, send, serve, cancel, voidOrder, transfer, kitchenUpdate, kitchenTickets, listOwn, tableStates, requestBill, lockTable, labelOf, typeOf, OPEN_FILTER };
+  // ---------- Orders from guests: the website and table QR codes ----------
+  // A guest's order waits as Pending until a member of staff accepts it, which sends it to the
+  // stations and makes them its owner, or declines it, which returns its stock. Stock is held while it
+  // waits, so the website cannot sell what has run out. The guest follows it with a private link; only
+  // a hash of the link's token is stored.
+  async function placeFromGuest(req, input, session) {
+    const online = settings.get().online;
+    let table = null;
+    let type = input.type;
+    if (input.tableCode) {
+      if (!online.qr) throw new AppError(403, "closed", "Ordering from the table is switched off. Please ask a member of staff.");
+      const doc = await tables.findOne({ qrCode: input.tableCode }, { session });
+      if (!doc || !settings.hasTable(doc._id)) throw new AppError(404, "not_found", "This table code is not valid. Please ask a member of staff.");
+      table = doc._id;
+      type = "dine-in";
+      await assertNoOpenCheck(table, session);
+    } else {
+      if (!online.ordering) throw new AppError(403, "closed", "Online ordering is closed right now. Please call us or visit.");
+      if (!settings.typeAllowed(type)) throw new AppError(400, "invalid_input", `${TYPE_LABEL[type]} is not available right now.`);
+    }
+    const { snapshot, stockUsed } = await catalog.reserveStock(mergeLines(input.lines), session);
+    const id = `ORD-${await nextSequence(db, "order", 1000, session)}`;
+    const token = randomToken(24);
+    const now = new Date();
+    const order = {
+      _id: id, type, table, items: snapshot, stockUsed, notes: input.notes, status: "Pending", stations: {}, source: table ? "qr" : "online",
+      waiter: null, createdAt: now, updatedAt: now, billed: false, version: 0, trackHash: hashToken(token)
+    };
+    const c = input.customer;
+    order.customer = { name: c.name || (table ? `Table ${table}` : "Guest") };
+    if (c.phone) { order.customer.phoneEnc = encrypt(c.phone, `order-phone:${id}`, config.data); order.customer.phoneMask = maskPhone(c.phone); }
+    if (c.address) order.customer.addressEnc = encrypt(c.address, `order-address:${id}`, config.data);
+    await orders.insertOne(order, { session });
+    await recordEvent(db, req, { actor: "online", role: "", action: table ? "Table order received" : "Online order received", details: `${id} · ${labelOf(order)} · Rs ${calculateTotals(snapshot, 0, settings.taxRate()).total}` }, { session });
+    return { id, token, label: labelOf(order), totals: calculateTotals(snapshot, 0, settings.taxRate()) };
+  }
+
+  // ---------- Table QR codes ----------
+  // Each table has a random code, printed as a QR code on the table. A new code makes the old one stop
+  // working, for example after a card is photographed or lost.
+  async function tableCodes(origin) {
+    const QRCode = require("qrcode");
+    const list = [];
+    for (const t of settings.get().tables) {
+      let doc = await tables.findOne({ _id: t.no });
+      if (!doc || !doc.qrCode) {
+        await tables.updateOne({ _id: t.no, qrCode: { $exists: false } }, { $set: { qrCode: randomToken(12) } }, { upsert: true });
+        doc = await tables.findOne({ _id: t.no });
+      }
+      const url = `${origin}/order-online.html?table=${doc.qrCode}`;
+      list.push({ no: t.no, area: t.area, seats: t.seats, url, qr: await QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 1, width: 240 }) });
+    }
+    return list;
+  }
+  async function resetTableCode(req, no) {
+    if (!settings.hasTable(no)) throw new AppError(404, "not_found", "Table not found.");
+    await tables.updateOne({ _id: no }, { $set: { qrCode: randomToken(12) } }, { upsert: true });
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Table QR code replaced", details: `Table ${no}`, severity: "warning" });
+  }
+  async function tableFromCode(code) {
+    const doc = await tables.findOne({ qrCode: code });
+    if (!doc || !settings.hasTable(doc._id)) throw new AppError(404, "not_found", "This table code is not valid. Please ask a member of staff.");
+    return { table: doc._id };
+  }
+
+  const incoming = async () => (await orders.find({ status: "Pending", billed: false }).sort({ createdAt: 1 }).limit(100).toArray()).map(waiterView);
+
+  async function accept(req, id, session) {
+    const actor = req.auth.user;
+    const order = await orders.findOne({ _id: id, status: "Pending" }, { session });
+    if (!order) throw new AppError(409, "bad_status", `${id} has already been dealt with.`);
+    if (order.table) {
+      await lockTable(order.table, session);
+      const open = await orders.find({ table: order.table, ...OPEN_FILTER, _id: { $ne: id } }, { session }).toArray();
+      if (open.some((o) => o.waiter && o.waiter !== actor.username)) throw new AppError(409, "table_taken", `Table ${order.table} is being served by someone else. Ask them to accept it.`);
+      await assertNoOpenCheck(order.table, session);
+    }
+    const result = await orders.findOneAndUpdate(
+      { _id: id, status: "Pending", version: order.version },
+      { $set: { status: "Placed", stations: stationsFor(order.items), waiter: actor.username, acceptedAt: new Date(), updatedAt: new Date() }, $inc: { version: 1 } },
+      { returnDocument: "after", session }
+    );
+    if (!result) throw new AppError(409, "bad_status", `${id} has already been dealt with.`);
+    await audit(req, "Guest order accepted", `${id} · ${labelOf(order)}`, session);
+    return waiterView(result);
+  }
+
+  async function decline(req, id, reason, session) {
+    const order = await orders.findOne({ _id: id, status: "Pending" }, { session });
+    if (!order) throw new AppError(409, "bad_status", `${id} has already been dealt with.`);
+    const result = await orders.findOneAndUpdate(
+      { _id: id, status: "Pending", version: order.version },
+      { $set: { status: "Cancelled", declined: { by: req.auth.user.username, reason, at: new Date() }, updatedAt: new Date() }, $inc: { version: 1 } },
+      { returnDocument: "after", session }
+    );
+    if (!result) throw new AppError(409, "bad_status", `${id} has already been dealt with.`);
+    await catalog.releaseStock(order.stockUsed, session);
+    await audit(req, "Guest order declined", `${id} · ${labelOf(order)} · ${reason}`, session, "warning");
+    return { id, status: "Cancelled" };
+  }
+
+  // What a guest sees on their tracking page: no staff names, no other orders
+  const GUEST_STATUS = {
+    Pending: "Waiting for the cafe to accept your order",
+    Placed: "Accepted · it will be prepared shortly",
+    Preparing: "Being prepared",
+    Ready: { "dine-in": "Ready · on its way to your table", takeaway: "Ready to collect", delivery: "Ready · leaving for delivery soon" },
+    Served: { "dine-in": "Served · enjoy!", takeaway: "Collected · enjoy!", delivery: "Handed to delivery" },
+    Cancelled: "This order was cancelled"
+  };
+  async function track(token) {
+    const o = await orders.findOne({ trackHash: hashToken(token) });
+    if (!o) throw new AppError(404, "not_found", "We could not find that order.");
+    const text = GUEST_STATUS[o.status];
+    return {
+      id: o._id, type: typeOf(o), label: typeOf(o) === "dine-in" ? `Table ${o.table}` : TYPE_LABEL[typeOf(o)], status: o.status,
+      message: typeof text === "string" ? text : text[typeOf(o)], reason: o.declined ? o.declined.reason : null, paid: Boolean(o.billed),
+      items: o.items.map((i) => ({ name: i.name, qty: i.qty, options: i.options || [], price: i.price })),
+      totals: calculateTotals(o.items, 0, settings.taxRate()), createdAt: o.createdAt, updatedAt: o.updatedAt
+    };
+  }
+
+  return { tableCodes, resetTableCode, tableFromCode, placeFromGuest, incoming, accept, decline, track, place, update, send, serve, cancel, voidOrder, transfer, kitchenUpdate, kitchenTickets, listOwn, tableStates, requestBill, lockTable, labelOf, typeOf, OPEN_FILTER };
 }
 
 module.exports = { createOrderService, overallStatus, mergeLines };

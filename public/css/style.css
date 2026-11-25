@@ -1219,3 +1219,27 @@ body[data-page="kitchen"] .avatar { background: var(--accent-50); color: var(--a
 .floor-plan .drop-cell { border-radius: var(--radius-sm); }
 .floor-plan .drop-cell.over { background: var(--accent-50); outline: 2px dashed var(--accent-300); }
 @media (max-width: 760px) { .floor-plan { grid-template-rows: repeat(8, 46px); gap: 4px; padding: 6px; } .floor-plan .tbl small { display: none; } }
+
+/* ---------- Guest ordering and tracking ---------- */
+.guest-bar { background: var(--surface); border-bottom: 1px solid var(--line); }
+.guest-bar-row { display: flex; justify-content: space-between; align-items: center; height: 64px; }
+.guest-main { padding-top: 24px; padding-bottom: 40px; }
+.guest-title { font-size: 1.6rem; margin-bottom: 14px; }
+.guest-details { padding: 12px 18px 0; border-top: 1px solid var(--line); }
+.guest-details .field { margin-bottom: 12px; }
+.pos-actions.single { grid-template-columns: 1fr; }
+.guest-hint { padding: 0 18px 16px; margin: 0; }
+.track-main { max-width: 620px; padding-top: 28px; padding-bottom: 40px; }
+.track-status { font-family: var(--font); font-size: 1.4rem; font-weight: 700; margin-bottom: 16px; }
+.track-steps { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 0; margin: 0 0 6px; }
+.track-steps li { display: grid; justify-items: center; gap: 6px; font-size: .8rem; color: var(--muted); text-align: center; }
+.track-steps .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); }
+.track-steps li.done .dot { background: var(--accent); border-color: var(--accent); }
+.track-steps li.now .dot { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-50); }
+.track-steps li.now, .track-steps li.done { color: var(--ink); font-weight: 600; }
+.qr-sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.qr-card { display: grid; justify-items: center; gap: 4px; padding: 12px; border: 1px dashed var(--line-2); border-radius: var(--radius); text-align: center; break-inside: avoid; }
+.qr-card img { width: 160px; height: 160px; }
+.qr-table { font-size: 1.2rem; font-weight: 800; }
+.qr-card small { color: var(--muted); }
+@media print { body:has(#qrModal.show) .app { display: none; } body:has(#qrModal.show) .modal { box-shadow: none; max-height: none; } }

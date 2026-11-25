@@ -84,6 +84,28 @@ module.exports = {
     phone: mobile
   }).strict(),
   customerLookup: z.object({ phone: mobile }).strict(),
+  // An order from the website or a table's QR code. A filled-in hidden field marks a bot.
+  guestOrder: z.object({
+    type: z.enum(["takeaway", "delivery"], "!Choose takeaway or delivery.").optional().default("takeaway"),
+    tableCode: z.string().regex(/^[A-Za-z0-9_-]{16,32}$/).optional(),
+    customer: z.object({
+      name: text(40, "!Your name must be 40 characters or fewer.").transform(noControl).optional().default(""),
+      phone: z.union([z.literal(""), mobile]).optional().default(""),
+      address: text(160, "!The address must be 160 characters or fewer.").transform(noControl).optional().default("")
+    }).strict(),
+    lines: z.array(line).min(1, "!Add at least one item.").max(30, "!An online order can have at most 30 lines."),
+    notes: notes.optional().default(""),
+    website: z.string().max(200).optional().default("")
+  }).strict().superRefine((o, ctx) => {
+    const fail = (message) => ctx.addIssue({ code: "custom", message, path: ["customer"] });
+    if (o.tableCode) return;
+    if (o.customer.name.length < 2) fail("!Please enter your name.");
+    if (!o.customer.phone) fail("!Please enter your mobile number, so we can reach you about the order.");
+    if (o.type === "delivery" && o.customer.address.length < 5) fail("!Please enter the delivery address.");
+  }),
+  declineOrder: z.object({ reason: text(80, "!Give a reason of 4-80 characters.").min(4, "!Give a reason of 4-80 characters.").transform(noControl) }).strict(),
+  trackToken: z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{24,64}$/) }).strict(),
+  tableCode: z.object({ code: z.string().regex(/^[A-Za-z0-9_-]{16,32}$/) }).strict(),
   voucher: z.object({
     code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,20}$/, "!A code is 3-20 letters, numbers or dashes."),
     kind: z.enum(["percent", "amount"], "!Choose percent or amount."),
@@ -307,6 +329,7 @@ module.exports = {
       earnPer100: z.number().int("!Points per Rs 100 must be a whole number.").min(0).max(20, "!Points per Rs 100 can be at most 20."),
       pointValue: z.number().min(0.1, "!A point must be worth Rs 0.10 to Rs 10.").max(10, "!A point must be worth Rs 0.10 to Rs 10.")
     }).strict().optional(),
+    online: z.object({ ordering: z.boolean(), qr: z.boolean() }).strict().optional(),
     bookings: z.object({
       open: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "!Enter the opening time as HH:MM."),
       close: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "!Enter the closing time as HH:MM."),
