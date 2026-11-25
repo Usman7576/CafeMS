@@ -10,6 +10,9 @@ const PERMISSIONS = Object.freeze({
   "kitchen.update": ["Kitchen", "Barista"],
   // A sent order can be voided only by a manager, after a fresh authenticator code
   "orders.void": ["Manager"],
+  // Each cashier runs their own shift and cash drawer; a manager sees every shift's Z-report
+  "shifts.own": ["Cashier", "Manager"],
+  "shifts.all": ["Manager", "Admin"],
   "billing.pay": ["Cashier", "Manager"],
   "billing.read": ["Cashier", "Manager", "Admin"],
   "billing.refund": ["Manager"],

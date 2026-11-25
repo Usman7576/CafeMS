@@ -274,6 +274,23 @@
     }
   });
 
+  // ---------- Printing on an 80 mm receipt printer ----------
+  // Copies one element (or the element with that id) into a print-only area, prints it on a narrow
+  // "ticket" page, then removes the copy. The rest of the screen is hidden while printing.
+  function printArea(target) {
+    const source = typeof target === "string" ? document.getElementById(target) : target;
+    if (!source) return;
+    const old = document.getElementById("printArea");
+    if (old) old.remove();
+    const area = h("div", { id: "printArea", class: "print-area" });
+    area.appendChild(source.cloneNode(true));
+    document.body.appendChild(area);
+    document.body.classList.add("printing");
+    const done = function () { document.body.classList.remove("printing"); area.remove(); window.removeEventListener("afterprint", done); };
+    window.addEventListener("afterprint", done);
+    window.print();
+  }
+
   // ---------- Run an action and show validation errors from the data layer ----------
   async function attempt(fn, errBox) {
     try { return await fn(); } catch (e) {
@@ -536,7 +553,7 @@
     h: h, safeUrl: safeUrl, money: money, timeAgo: timeAgo, clock: clock, dateLong: dateLong, dateTime: dateTime, compact: compact, qty: qty,
     toast: toast, openModal: openModal, closeModal: closeModal, confirm: confirmDialog,
     attempt: attempt, clearError: clearError, busy: busy, withStepUp: withStepUp, showLink: showLink, copyText: copyText, codeActions: codeActions, renderApprovals: renderApprovals, showPhone: showPhone,
-    barChart: barChart, hBars: hBars, donut: donut
+    barChart: barChart, hBars: hBars, donut: donut, printArea: printArea
   };
   window.Session = Session;
   window.Api = Api;

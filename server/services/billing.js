@@ -14,13 +14,22 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
   const orders = db.collection("orders");
   const tables = db.collection("tables");
   const users = db.collection("users");
+  const checks = db.collection("checks");
+  const shifts = db.collection("shifts");
+  // What the customer is charged for one bill: its part of the check plus any tip
+  const chargeOf = (b) => b.total + (b.tip || 0);
 
   // Bills always leave the server masked. Seeing a full number is a separate, logged action.
   const billView = (b) => ({
     no: b._id, table: b.table, type: b.type || "dine-in", label: b.label || `Table ${b.table}`, orderIds: b.orderIds, lines: b.lines, discountPct: b.discountPct, subtotal: b.subtotal, discount: b.discount,
-    tax: b.tax, total: b.total, method: b.method, tendered: b.tendered, change: b.change, cashier: b.cashier, createdAt: b.createdAt,
+    service: b.service || 0, tax: b.tax, total: b.total, tip: b.tip || 0, charge: chargeOf(b), checkId: b.checkId || null, part: b.part || 1, share: b.share === undefined ? 1 : b.share, method: b.method, tendered: b.tendered, change: b.change, cashier: b.cashier, createdAt: b.createdAt,
     status: b.status, phone: b.phoneMask || "", refund: b.refund || null, refundPending: Boolean(b.refundPending)
   });
+
+  const checkView = (c) => (c ? {
+    id: c._id, total: c.total, paid: c.allocated.total, remaining: c.total - c.allocated.total, parts: c.parts, discountPct: c.discountPct,
+    subtotal: c.subtotal, discount: c.discount, service: c.service, tax: c.tax, status: c.status
+  } : null);
 
   function aggregateLines(open) {
     const lines = [];
@@ -35,11 +44,13 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
   }
 
   async function openTables() {
-    const [open, tableDocs, staff] = await Promise.all([
+    const [open, tableDocs, staff, openChecks] = await Promise.all([
       orders.find(orderService.OPEN_FILTER).toArray(),
       tables.find().toArray(),
-      users.find({}, { projection: { username: 1, name: 1 } }).toArray()
+      users.find({}, { projection: { username: 1, name: 1 } }).toArray(),
+      checks.find({ status: "Open" }).toArray()
     ]);
+    const checkFor = (ref) => checkView(openChecks.find((c) => c.ref === ref));
     const names = new Map(staff.map((u) => [u.username, u.name]));
     const tabs = settings.get().tables.map((t) => {
       const onTable = open.filter((o) => o.table === t.no);
@@ -47,7 +58,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       const lines = aggregateLines(onTable);
       const doc = tableDocs.find((d) => d._id === t.no);
       return {
-        key: `t${t.no}`, type: "dine-in", label: `Table ${t.no}`, no: t.no, seats: t.seats, lines, totals: calculateTotals(lines, 0, settings.taxRate()), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
+        key: `t${t.no}`, type: "dine-in", label: `Table ${t.no}`, no: t.no, seats: t.seats, lines, totals: calculateTotals(lines, 0, settings.taxRate(), settings.serviceRate()), check: checkFor(`t${t.no}`), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
         billRequested: doc && doc.billRequestedAt ? doc.billRequestedAt : null,
         waiters: [...new Set(onTable.map((o) => names.get(o.waiter) || o.waiter))],
         since: new Date(Math.min(...onTable.map((o) => o.createdAt.getTime())))
@@ -57,7 +68,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     const counter = open.filter((o) => orderService.typeOf(o) !== "dine-in").map((o) => {
       const lines = aggregateLines([o]);
       return {
-        key: o._id, type: o.type, label: orderService.labelOf(o), no: null, orderId: o._id, lines, totals: calculateTotals(lines, 0, settings.taxRate()),
+        key: o._id, type: o.type, label: orderService.labelOf(o), no: null, orderId: o._id, lines, totals: calculateTotals(lines, 0, settings.taxRate()), check: checkFor(o._id),
         orders: [{ id: o._id, status: o.status }], allServed: o.status === "Served", billRequested: null,
         waiters: [names.get(o.waiter) || o.waiter], since: o.createdAt
       };
@@ -65,7 +76,12 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     return tabs.concat(counter);
   }
 
-  // ref is a table number, or the id of one takeaway or delivery order
+  // ref is a table number, or the id of one takeaway or delivery order.
+  //
+  // The first payment opens a check: the whole amount owed, fixed at that moment with its discount,
+  // service charge and tax. Each payment (cash, card or wallet) is then a bill for part of the check,
+  // which is how a bill is split or paid with mixed methods. The table is freed, and its orders marked
+  // billed, when the parts add up to the check.
   async function pay(req, ref, input, session) {
     const actor = req.auth.user;
     const byTable = typeof ref === "number";
@@ -86,26 +102,69 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       open = [order];
     }
     const no = byTable ? ref : null;
+    const type = byTable ? "dine-in" : open[0].type;
+    const checkRef = byTable ? `t${ref}` : ref;
 
-    const limit = settings.discountLimit(actor.role);
-    if (input.discountPct > limit) {
-      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Access denied", details: `Tried a ${input.discountPct}% discount on ${label}`, severity: "warning" });
-      throw new AppError(403, "discount_limit", `Your role can apply a discount of up to ${limit}%. Ask a manager for more.`);
+    const shift = await shifts.findOne({ cashier: actor.username, status: "Open" }, { session });
+    if (!shift && settings.get().requireShift) throw new AppError(409, "no_shift", "Open your shift before taking payments.");
+
+    let check = await checks.findOne({ ref: checkRef, status: "Open" }, { session });
+    const orderIds = open.map((o) => o._id).sort();
+    if (check) {
+      if (JSON.stringify(check.orderIds) !== JSON.stringify(orderIds)) throw new AppError(409, "check_changed", `The orders on ${label} changed after payment started. Ask a manager to void the extra order.`);
+      if (input.discountPct && input.discountPct !== check.discountPct) throw new AppError(409, "discount_locked", `The discount for ${label} was set with the first payment (${check.discountPct}%).`);
+    } else {
+      const limit = settings.discountLimit(actor.role);
+      if (input.discountPct > limit) {
+        await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Access denied", details: `Tried a ${input.discountPct}% discount on ${label}`, severity: "warning" });
+        throw new AppError(403, "discount_limit", `Your role can apply a discount of up to ${limit}%. Ask a manager for more.`);
+      }
+      const lines = aggregateLines(open);
+      const totals = calculateTotals(lines, input.discountPct, settings.taxRate(), type === "dine-in" ? settings.serviceRate() : 0);
+      check = {
+        _id: `C-${await nextSequence(db, "check", 1000, session)}`, ref: checkRef, table: no, type, label, orderIds, lines,
+        discountPct: input.discountPct, subtotal: totals.sub, discount: totals.discount, service: totals.service, tax: totals.tax, total: totals.total,
+        allocated: { total: 0, subtotal: 0, discount: 0, service: 0, tax: 0 }, parts: 0, status: "Open", cashier: actor.username, createdAt: new Date()
+      };
+      await checks.insertOne(check, { session });
+      if (input.discountPct) {
+        await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Discount applied", details: `${check._id} · ${label} · ${input.discountPct}% (Rs ${check.discount})`, severity: input.discountPct > 10 ? "high" : "warning" }, { session });
+      }
     }
 
-    const lines = aggregateLines(open);
-    const totals = calculateTotals(lines, input.discountPct, settings.taxRate());
-    let tendered = totals.total;
+    const remaining = check.total - check.allocated.total;
+    const amount = input.amount === undefined ? remaining : input.amount;
+    if (amount > remaining) throw new AppError(400, "bad_amount", `Only Rs ${remaining.toLocaleString()} is left to pay on ${label}.`);
+    const tip = input.tip || 0;
+    const charge = amount + tip;
+    let tendered = charge;
     if (input.method === "Cash") {
-      if (input.tendered === undefined || input.tendered < totals.total) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${totals.total.toLocaleString()}.`);
+      if (input.tendered === undefined || input.tendered < charge) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${charge.toLocaleString()}.`);
       tendered = input.tendered;
     }
 
+    // Each part carries its share of the discount, service charge and tax; the last part takes what
+    // is left, so the parts always add up to the check exactly
+    const last = amount === remaining;
+    const shareOf = (field) => (last ? check[field] - check.allocated[field] : Math.round((check[field] * amount) / check.total));
+    const part = { subtotal: shareOf("subtotal"), discount: shareOf("discount"), service: shareOf("service"), tax: shareOf("tax") };
     const billNo = `B-${await nextSequence(db, "bill", 5000, session)}`;
+    const updated = await checks.findOneAndUpdate(
+      { _id: check._id, status: "Open", "allocated.total": check.allocated.total },
+      {
+        $inc: { "allocated.total": amount, "allocated.subtotal": part.subtotal, "allocated.discount": part.discount, "allocated.service": part.service, "allocated.tax": part.tax, parts: 1 },
+        $push: { bills: billNo },
+        ...(last ? { $set: { status: "Closed", closedAt: new Date() } } : {})
+      },
+      { returnDocument: "after", session }
+    );
+    if (!updated) throw new AppError(409, "stale_version", `Another payment on ${label} was just recorded. Check the bill and try again.`);
+
     const bill = {
-      _id: billNo, table: no, type: byTable ? "dine-in" : open[0].type, label, orderIds: open.map((o) => o._id), lines, discountPct: input.discountPct, subtotal: totals.sub,
-      discount: totals.discount, tax: totals.tax, total: totals.total, method: input.method, tendered, change: tendered - totals.total,
-      cashier: actor.username, createdAt: new Date(), status: input.method === "Cash" ? "Paid" : "Pending Payment"
+      _id: billNo, table: no, type, label, checkId: check._id, part: updated.parts, share: amount / check.total, orderIds, lines: check.lines,
+      discountPct: check.discountPct, subtotal: part.subtotal, discount: part.discount, service: part.service, tax: part.tax, total: amount, tip,
+      method: input.method, tendered, change: tendered - charge, cashier: actor.username, shiftId: shift ? shift._id : null,
+      createdAt: new Date(), status: input.method === "Cash" ? "Paid" : "Pending Payment"
     };
     if (input.phone) {
       bill.phoneEnc = encrypt(input.phone, `bill-phone:${billNo}`, config.data);
@@ -113,18 +172,18 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       bill.phoneMask = maskPhone(input.phone);
     }
     await bills.insertOne(bill, { session });
-    await orders.updateMany({ _id: { $in: bill.orderIds } }, { $set: { billed: true, billNo } }, { session });
-    if (byTable) await tables.updateOne({ _id: no }, { $unset: { billRequestedAt: "" } }, { session });
+    if (last) {
+      await orders.updateMany({ _id: { $in: orderIds } }, { $set: { billed: true, billNo } }, { session });
+      if (byTable) await tables.updateOne({ _id: no }, { $unset: { billRequestedAt: "" } }, { session });
+    }
 
+    const partText = last && updated.parts === 1 ? "" : ` · part ${updated.parts}${last ? ", last" : ""}`;
     await recordEvent(db, req, {
       actor: actor.username, role: actor.role, action: bill.status === "Paid" ? "Payment recorded" : "Payment started",
-      details: `${billNo} · ${label} · Rs ${bill.total} · ${bill.method}`
+      details: `${billNo} · ${label} · Rs ${bill.total}${tip ? ` + Rs ${tip} tip` : ""} · ${bill.method}${partText}`
     }, { session });
     if (bill.status === "Paid" && input.phone) await enqueue(db, "receipt", { billNo }, session);
-    if (input.discountPct) {
-      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Discount applied", details: `${billNo} · ${input.discountPct}% (Rs ${bill.discount})`, severity: input.discountPct > 10 ? "high" : "warning" }, { session });
-    }
-    return billView(bill);
+    return { ...billView(bill), check: checkView(updated) };
   }
 
   // Records the gateway's answer. The amount must match the stored bill, whatever the gateway says.
@@ -144,8 +203,8 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
         }
         return bill;
       }
-      if (result.amount !== bill.total) {
-        mismatch = `${no}: expected Rs ${bill.total}, gateway reported Rs ${result.amount}`;
+      if (result.amount !== chargeOf(bill)) {
+        mismatch = `${no}: expected Rs ${chargeOf(bill)}, gateway reported Rs ${result.amount}`;
         throw new AppError(409, "amount_mismatch", "The gateway reported a different amount, so the payment was not accepted.");
       }
       const status = result.status === "approved" ? "Paid" : "Payment Failed";
@@ -156,7 +215,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       );
       await recordEvent(db, req, {
         actor: actor.username, role: actor.role, action: status === "Paid" ? "Payment recorded" : "Payment declined",
-        details: `${no} · Rs ${bill.total} · ${bill.method}`, severity: status === "Paid" ? "info" : "warning"
+        details: `${no} · Rs ${chargeOf(bill)} · ${bill.method}`, severity: status === "Paid" ? "info" : "warning"
       }, { session });
       if (status === "Paid" && bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
       return updated;
@@ -186,7 +245,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
 
     let result;
     try {
-      result = await withTimeout(gateway.charge({ reference: no, amount: bill.total, method: bill.method }), config.gateway.timeoutMs);
+      result = await withTimeout(gateway.charge({ reference: no, amount: chargeOf(bill), method: bill.method }), config.gateway.timeoutMs);
     } catch (error) {
       await release();
       if (logger) logger.warn({ err: error, bill: no }, "Payment gateway unavailable");
@@ -213,12 +272,14 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       }
       const method = input.method || bill.method;
       if (method === "Cash") {
-        if (input.tendered === undefined || input.tendered < bill.total) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${bill.total.toLocaleString()}.`);
-        await bills.updateOne({ _id: no }, { $set: { status: "Paid", method, tendered: input.tendered, change: input.tendered - bill.total, settledAt: new Date() } }, { session });
-        await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment recorded", details: `${no} · Rs ${bill.total} · Cash after retry` }, { session });
+        if (input.tendered === undefined || input.tendered < chargeOf(bill)) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${chargeOf(bill).toLocaleString()}.`);
+        // Cash goes into the drawer of whoever takes it now
+        const shift = await shifts.findOne({ cashier: actor.username, status: "Open" }, { session });
+        await bills.updateOne({ _id: no }, { $set: { status: "Paid", method, tendered: input.tendered, change: input.tendered - chargeOf(bill), settledAt: new Date(), ...(shift ? { shiftId: shift._id } : {}) } }, { session });
+        await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment recorded", details: `${no} · Rs ${chargeOf(bill)} · Cash after retry` }, { session });
         if (bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
       } else {
-        await bills.updateOne({ _id: no }, { $set: { status: "Pending Payment", method, tendered: bill.total, change: 0 } }, { session });
+        await bills.updateOne({ _id: no }, { $set: { status: "Pending Payment", method, tendered: chargeOf(bill), change: 0 } }, { session });
       }
     });
     return settle(req, no);
@@ -275,10 +336,10 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       await bills.updateOne({ _id: no }, { $unset: { refundPending: "" } }, { session });
     }
 
-    if (bill.total <= config.refundApprovalLimit) return { status: 200, body: await applyRefund(req, no, reason, actor.username, session) };
+    if (chargeOf(bill) <= config.refundApprovalLimit) return { status: 200, body: await applyRefund(req, no, reason, actor.username, session) };
 
     await bills.updateOne({ _id: no, status: "Paid" }, { $set: { refundPending: true } }, { session });
-    const approvalId = await approvals.create(req, "refund", { no, reason }, `Refund ${no} · Rs ${bill.total}`, session);
+    const approvalId = await approvals.create(req, "refund", { no, reason }, `Refund ${no} · Rs ${chargeOf(bill)}`, session);
     return { status: 202, body: { approvalId, message: `Refunds over Rs ${config.refundApprovalLimit.toLocaleString()} need a second person to approve.` } };
   }
 
@@ -293,12 +354,12 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     if (!bill) return;
     const actor = req.auth.user;
     try {
-      const result = await withTimeout(Promise.resolve().then(() => gateway.refund({ reference: no, amount: bill.total, gatewayRef: bill.gatewayRef })), config.gateway.timeoutMs);
+      const result = await withTimeout(Promise.resolve().then(() => gateway.refund({ reference: no, amount: chargeOf(bill), gatewayRef: bill.gatewayRef })), config.gateway.timeoutMs);
       await bills.updateOne({ _id: no }, { $set: { "refund.reversedAt": new Date(), "refund.gatewayRef": result.gatewayRef || null } });
-      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund sent to gateway", details: `${no} · Rs ${bill.total}` });
+      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund sent to gateway", details: `${no} · Rs ${chargeOf(bill)}` });
     } catch (error) {
       if (logger) logger.warn({ err: error, bill: no }, "Refund could not reach the gateway");
-      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund reversal failed", details: `${no} · Rs ${bill.total}: return this to the customer by hand`, severity: "high" });
+      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund reversal failed", details: `${no} · Rs ${chargeOf(bill)}: return this to the customer by hand`, severity: "high" });
     }
   }
 
@@ -330,23 +391,25 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     for (const b of paid) {
       byHour[localHour(b.createdAt)] += b.total;
       byMethod[b.method] += b.total;
+      const share = b.share === undefined ? 1 : b.share;
       for (const l of b.lines) {
-        qty += l.qty;
+        qty += l.qty * share;
         const cat = l.cat || "Other";
-        byCat.set(cat, (byCat.get(cat) || 0) + l.price * l.qty);
+        byCat.set(cat, (byCat.get(cat) || 0) + Math.round(l.price * l.qty * share));
         const entry = items.get(l.name) || { name: l.name, qty: 0, revenue: 0 };
-        entry.qty += l.qty;
-        entry.revenue += l.price * l.qty;
+        entry.qty += l.qty * share;
+        entry.revenue += Math.round(l.price * l.qty * share);
         items.set(l.name, entry);
       }
     }
     const revenue = paid.reduce((s, b) => s + b.total, 0);
     return {
-      date: day, revenue, bills: paid.length, avg: paid.length ? Math.round(revenue / paid.length) : 0, items: qty,
+      date: day, revenue, bills: paid.length, avg: paid.length ? Math.round(revenue / paid.length) : 0, items: Math.round(qty * 100) / 100,
+      tips: paid.reduce((s, b) => s + (b.tip || 0), 0), service: paid.reduce((s, b) => s + (b.service || 0), 0),
       refunds: refunded.length, refundAmount: refunded.reduce((s, b) => s + b.total, 0),
       unpaid: rows.filter((b) => OPEN_FOR_PAYMENT.includes(b.status)).length,
       discounts: paid.reduce((s, b) => s + b.discount, 0), tax: paid.reduce((s, b) => s + b.tax, 0),
-      byHour, byMethod, byCat: Object.fromEntries(byCat), top: [...items.values()].sort((a, b) => b.qty - a.qty).slice(0, 6)
+      byHour, byMethod, byCat: Object.fromEntries(byCat), top: [...items.values()].map((i) => ({ ...i, qty: Math.round(i.qty * 100) / 100 })).sort((a, b) => b.qty - a.qty).slice(0, 6)
     };
   }
 

@@ -20,6 +20,27 @@
     document.getElementById("reportDate").textContent = (pickedDate ? CMS.dateLong(new Date(pickedDate + "T12:00:00")) : CMS.dateLong(new Date())) + " · all figures in PKR";
     document.getElementById("billsTitle").textContent = pickedDate ? "Bills on this day" : "Bills today";
     render();
+    renderShifts();
+  }
+
+  // One row per shift opened on the chosen day
+  async function renderShifts() {
+    const list = await CMS.attempt(function () { return Store.shifts(pickedDate); });
+    const body = document.getElementById("shiftsBody");
+    body.replaceChildren();
+    if (!list) return;
+    if (!list.length) { body.appendChild(h("tr", null, [h("td", { colspan: "9", class: "muted", text: "No shifts were opened on this day." })])); return; }
+    list.forEach(function (z) {
+      const d = z.overShort;
+      const result = z.status === "Open" ? h("span", { class: "pill pill-preparing", text: "Open" }) : h("span", { class: "pill " + (d === 0 ? "pill-ready" : "pill-cancelled"), text: d === 0 ? "Balanced" : d > 0 ? "Over " + CMS.money(d) : "Short " + CMS.money(-d) });
+      body.appendChild(h("tr", null, [
+        h("td", null, [h("span", { class: "mono", text: z.id })]), h("td", { text: z.cashierName }),
+        h("td", { class: "hide-sm time", text: CMS.clock(new Date(z.openedAt)) }), h("td", { class: "hide-sm time", text: z.closedAt ? CMS.clock(new Date(z.closedAt)) : "—" }),
+        h("td", { class: "num", text: CMS.money(z.sales) }), h("td", { class: "num hide-sm", text: CMS.money(z.tips) }),
+        h("td", { class: "num", text: CMS.money(z.expected) }), h("td", { class: "num", text: z.counted === null ? "—" : CMS.money(z.counted) }),
+        h("td", null, [result])
+      ]));
+    });
   }
 
   async function renderTrend() {
@@ -38,6 +59,7 @@
     pick.value = todayValue();
     pick.addEventListener("change", function () { pickDate(pick.value); });
     renderTrend();
+    renderShifts();
     document.getElementById("printReport").addEventListener("click", function () { window.print(); });
     document.getElementById("refundForm").addEventListener("submit", doRefund);
     refundRules = Validate.attach(document.getElementById("refundForm"), {
@@ -73,11 +95,13 @@
 
     const tax = document.getElementById("taxSummary");
     tax.replaceChildren();
-    const gross = s.revenue - s.tax + s.discounts;
-    [["Gross sales", CMS.money(gross)], ["Discounts", "− " + CMS.money(s.discounts)], ["Net sales (before tax)", CMS.money(gross - s.discounts)], ["GST collected (16%)", CMS.money(s.tax)]].forEach(function (r) {
+    const service = s.service || 0;
+    const gross = s.revenue - s.tax - service + s.discounts;
+    [["Gross sales", CMS.money(gross)], ["Discounts", "− " + CMS.money(s.discounts)], ["Net sales (before tax)", CMS.money(gross - s.discounts)]].concat(service ? [["Service charge", CMS.money(service)]] : []).concat([["Tax collected", CMS.money(s.tax)]]).forEach(function (r) {
       tax.appendChild(h("div", { class: "row" }, [h("span", { class: "muted", text: r[0] }), h("span", { text: r[1] })]));
     });
     tax.appendChild(h("div", { class: "row total" }, [h("span", { text: "Total collected" }), h("span", { text: CMS.money(s.revenue) })]));
+    if (s.tips) tax.appendChild(h("div", { class: "row" }, [h("span", { class: "muted", text: "Tips (for staff, not sales)" }), h("span", { text: CMS.money(s.tips) })]));
 
     renderBills();
   }
@@ -128,6 +152,7 @@
     if (location.hash) history.replaceState(null, "", location.pathname);
     if (pickedDate) pickDate(pickedDate);
     renderTrend();
+    renderShifts();
   }
 
   async function exportCsv() {

@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
@@ -51,6 +51,12 @@ async function ensureIndexes(db) {
   // Staff requests: one title per owner, compared after trimming, collapsing spaces and ignoring case.
   // The database enforces it, so two requests sent at the same moment still produce one record.
   await db.collection("staff_requests").createIndex({ owner: 1, titleKey: 1 }, { unique: true, name: "one_title_per_owner" });
+  // At most one open check per table or counter order, and one open shift per person
+  await db.collection("checks").createIndex({ ref: 1 }, { unique: true, partialFilterExpression: { status: "Open" }, name: "one_open_check" });
+  await db.collection("checks").createIndex({ createdAt: -1 });
+  await db.collection("shifts").createIndex({ cashier: 1 }, { unique: true, partialFilterExpression: { status: "Open" }, name: "one_open_shift" });
+  await db.collection("shifts").createIndex({ openedAt: -1 });
+  await db.collection("bills").createIndex({ shiftId: 1 });
   await db.collection("staff_requests").createIndex({ owner: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ status: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ reviewer: 1, createdAt: -1, seq: -1 });

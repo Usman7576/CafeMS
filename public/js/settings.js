@@ -44,7 +44,9 @@
       receipt: { header: el("receiptHeader").value, footer: el("receiptFooter").value },
       tables: draft.tables.map(function (t) { return { no: Number(t.no), seats: Number(t.seats), area: String(t.area || "").trim() }; }),
       categories: draft.categories.map(function (c) { return { name: String(c.name || "").trim(), station: c.station }; }),
-      orderTypes: { dineIn: el("typeDineIn").checked, takeaway: el("typeTakeaway").checked, delivery: el("typeDelivery").checked }
+      orderTypes: { dineIn: el("typeDineIn").checked, takeaway: el("typeTakeaway").checked, delivery: el("typeDelivery").checked },
+      serviceChargePct: number("serviceCharge"),
+      requireShift: el("requireShift").checked
     };
   }
 
@@ -115,7 +117,8 @@
     const rows = el("categoryRows").querySelectorAll("tr");
     rows[rows.length - 1].querySelector("input").focus();
   });
-  ["typeDineIn", "typeTakeaway", "typeDelivery"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
+  ["typeDineIn", "typeTakeaway", "typeDelivery", "requireShift"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
+  el("serviceCharge").addEventListener("input", markDirty);
 
   el("addTable").addEventListener("click", function () {
     const next = draft.tables.reduce(function (m, t) { return Math.max(m, Number(t.no) || 0); }, 0) + 1;
@@ -139,6 +142,8 @@
     el("typeDineIn").checked = draft.orderTypes.dineIn;
     el("typeTakeaway").checked = draft.orderTypes.takeaway;
     el("typeDelivery").checked = draft.orderTypes.delivery;
+    el("serviceCharge").value = draft.serviceChargePct || 0;
+    el("requireShift").checked = Boolean(draft.requireShift);
     dirty = false;
     saveBtn.disabled = true;
     preview();

@@ -43,9 +43,24 @@
       ]),
       h("ul", { class: "kds-items" }, o.items.map(function (i) { return h("li", null, [h("b", { text: i.qty + "×" }), h("span", null, [i.name, i.options && i.options.length ? h("small", { text: i.options.join(", ") }) : null])]); })),
       o.notes ? h("div", { class: "kds-note", icon: "note", iconSize: 15 }, [h("span", { text: o.notes })]) : null,
-      h("div", { class: "kds-meta", text: "Sent " + CMS.clock(new Date(o.createdAt)) }),
+      h("div", { class: "kds-meta" }, ["Sent " + CMS.clock(new Date(o.createdAt)), h("button", { type: "button", class: "btn btn-ghost btn-sm kds-print", icon: "file", iconSize: 14, text: "Print", "aria-label": "Print ticket " + o.id, onclick: function () { printTicket(o); } })]),
       btn
     ]);
+  }
+
+  // A kitchen ticket for an 80 mm printer: big table or name, items with options, notes, no prices
+  function printTicket(o) {
+    const t = h("div", { class: "receipt kitchen-ticket" }, [
+      h("div", { class: "kt-station", text: BAR ? "BAR" : "KITCHEN" }),
+      h("div", { class: "kt-where", text: o.label }),
+      h("div", { class: "r-row" }, [h("span", { text: o.id }), h("span", { text: CMS.clock(new Date(o.createdAt)) })]),
+      h("div", { class: "r-sep" }),
+      h("div", null, o.items.map(function (i) {
+        return h("div", { class: "kt-item" }, [h("b", { text: i.qty + " × " + i.name }), i.options && i.options.length ? h("div", { class: "kt-opts", text: i.options.join(", ") }) : null]);
+      })),
+      o.notes ? h("div", { class: "kt-note", text: "NOTE: " + o.notes }) : null
+    ]);
+    CMS.printArea(t);
   }
 
   function fill(listId, countId, orders, emptyText) {

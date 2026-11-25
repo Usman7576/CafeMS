@@ -37,7 +37,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     return records;
   }
 
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
@@ -120,13 +120,20 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     const no = tableNumber(req);
     const outcome = await idempotentTransaction(db, req, async (session) => ({ status: 201, body: await billing.pay(req, no, req.body, session) }));
     const bill = await billing.settle(req, outcome.body.no);
-    res.status(bill.status === "Paid" ? 201 : 202).json(bill);
+    res.status(bill.status === "Paid" ? 201 : 202).json({ ...bill, check: outcome.body.check });
   }));
   router.post("/billing/orders/:id/pay", ...allow("billing.pay"), params(schemas.params.orderId), validate(schemas.pay), wrap(async (req, res) => {
     const outcome = await idempotentTransaction(db, req, async (session) => ({ status: 201, body: await billing.pay(req, req.validParams.id, req.body, session) }));
     const bill = await billing.settle(req, outcome.body.no);
-    res.status(bill.status === "Paid" ? 201 : 202).json(bill);
+    res.status(bill.status === "Paid" ? 201 : 202).json({ ...bill, check: outcome.body.check });
   }));
+  // ---------- Shifts and the cash drawer ----------
+  router.get("/shifts/current", ...allow("shifts.own"), wrap(async (req, res) => res.json({ shift: await shiftService.mine(req) })));
+  router.post("/shifts", ...allow("shifts.own"), validate(schemas.openShift), wrap(async (req, res) => res.status(201).json(await shiftService.open(req, req.body.float))));
+  router.post("/shifts/current/cash", ...allow("shifts.own"), validate(schemas.cashMovement), wrap(async (req, res) => res.json(await shiftService.move(req, req.body))));
+  router.post("/shifts/current/close", ...allow("shifts.own"), validate(schemas.closeShift), wrap(async (req, res) => res.json(await shiftService.close(req, req.body.counted, req.body.note))));
+  router.get("/shifts", ...allow("shifts.all"), validate(schemas.shiftQuery, "query"), wrap(async (req, res) => res.json({ shifts: await shiftService.list(req.validQuery.date) })));
+  router.get("/shifts/:id", ...allow("shifts.all"), params(schemas.params.shiftId), wrap(async (req, res) => res.json(await shiftService.get(req.validParams.id))));
   router.post("/bills/:no/retry-payment", ...allow("billing.pay"), params(schemas.params.billNo), validate(schemas.retryPayment), wrap(async (req, res) => {
     const bill = await billing.retryPayment(req, req.validParams.no, req.body);
     res.status(bill.status === "Paid" ? 200 : 202).json(bill);
@@ -269,7 +276,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     const allowed = (permission) => can(role, permission);
     const snapshot = {
       // The receipt text is only for those who print bills
-      constants: { tables: settings.get().tables, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: settings.taxRate(), discountLimit: settings.discountLimit(role), categories: settings.get().categories, orderTypes: settings.get().orderTypes, ...(allowed("billing.read") ? { receipt: settings.get().receipt } : {}) }
+      constants: { tables: settings.get().tables, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: settings.taxRate(), discountLimit: settings.discountLimit(role), serviceRate: settings.serviceRate(), requireShift: settings.get().requireShift, categories: settings.get().categories, orderTypes: settings.get().orderTypes, ...(allowed("billing.read") ? { receipt: settings.get().receipt } : {}) }
     };
     const parts = [];
     // Results are added in this fixed order, not as each query finishes, so identical data gives

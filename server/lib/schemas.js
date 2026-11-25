@@ -36,6 +36,7 @@ module.exports = {
     orderId: z.object({ id: z.string().regex(/^ORD-\d{1,12}$/) }).strict(),
     billNo: z.object({ no: z.string().regex(/^B-\d{1,12}$/) }).strict(),
     reservationId: z.object({ id: z.string().regex(/^R-\d{1,12}$/) }).strict(),
+    shiftId: z.object({ id: z.string().regex(/^S-\d{1,12}$/) }).strict(),
     requestId: z.object({ id: z.string().regex(/^SR-\d{1,12}$/) }).strict(),
     numericId: z.object({ id: z.string().regex(/^\d{1,9}$/) }).strict(),
     tableNo: z.object({ no: z.string().regex(/^\d{1,3}$/) }).strict(),
@@ -65,8 +66,22 @@ module.exports = {
     discountPct: z.number().int().min(0).max(100).optional().default(0),
     method: z.enum(["Cash", "Card", "Wallet"], "!Choose a payment method."),
     tendered: z.number().int().min(0).max(100000000).optional(),
-    phone: z.union([z.literal(""), mobile]).optional().default("")
+    phone: z.union([z.literal(""), mobile]).optional().default(""),
+    // Part of the check, for a split bill or a mixed payment; the rest by default
+    amount: z.number("!Enter the amount to pay now.").int("!Enter a whole number of rupees.").min(1, "!Enter the amount to pay now.").max(100000000).optional(),
+    tip: z.number("!A tip must be a whole number of rupees.").int("!A tip must be a whole number of rupees.").min(0, "!A tip cannot be negative.").max(100000, "!A tip can be at most Rs 100,000.").optional().default(0)
   }).strict(),
+  openShift: z.object({ float: z.number("!Enter the cash in the drawer.").int("!Enter a whole number of rupees.").min(0, "!The float cannot be negative.").max(10000000, "!That float is too large.") }).strict(),
+  cashMovement: z.object({
+    type: z.enum(["in", "out"], "!Choose cash in or cash out."),
+    amount: z.number("!Enter an amount.").int("!Enter a whole number of rupees.").min(1, "!Enter an amount.").max(10000000, "!That amount is too large."),
+    reason: text(60, "!Give a reason of 3-60 characters.").min(3, "!Give a reason of 3-60 characters.").transform(noControl)
+  }).strict(),
+  closeShift: z.object({
+    counted: z.number("!Enter the cash you counted.").int("!Enter a whole number of rupees.").min(0, "!The count cannot be negative.").max(10000000, "!That count is too large."),
+    note: text(120, "!The note must be 120 characters or fewer.").transform(noControl).optional().default("")
+  }).strict(),
+  shiftQuery: z.object({ date: isoDate().optional() }).strict(),
   retryPayment: z.object({
     method: z.enum(["Cash", "Card", "Wallet"]).optional(),
     tendered: z.number().int().min(0).max(100000000).optional()
@@ -195,6 +210,8 @@ module.exports = {
       name: text(24, "!A category name must be 1-24 characters.").min(1, "!A category name must be 1-24 characters.").transform(noControl),
       station: z.enum(["Kitchen", "Bar"], "!Choose Kitchen or Bar for each category.")
     }).strict()).min(1, "!Keep at least one category.").max(30, "!Up to 30 categories are supported."),
-    orderTypes: z.object({ dineIn: z.boolean(), takeaway: z.boolean(), delivery: z.boolean() }).strict()
+    orderTypes: z.object({ dineIn: z.boolean(), takeaway: z.boolean(), delivery: z.boolean() }).strict(),
+    serviceChargePct: z.number().min(0, "!The service charge must be between 0 and 20%.").max(20, "!The service charge must be between 0 and 20%.").multipleOf(0.5, "!The service charge can use steps of 0.5%.").optional().default(0),
+    requireShift: z.boolean().optional().default(false)
   }).strict()
 };

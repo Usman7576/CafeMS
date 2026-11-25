@@ -6,7 +6,7 @@ const { EventEmitter } = require("events");
 // The first part of an API path names the area it changes
 const TOPIC_OF = Object.freeze({
   orders: "orders", kitchen: "orders", tables: "orders",
-  billing: "bills", bills: "bills", payments: "bills", customers: "bills",
+  billing: "bills", bills: "bills", payments: "bills", customers: "bills", shifts: "bills",
   inventory: "inventory", menu: "menu", reservations: "reservations",
   users: "users", register: "users", setup: "users", settings: "settings",
   alerts: "alerts", approvals: "approvals", requests: "requests"

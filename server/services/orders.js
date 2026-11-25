@@ -71,6 +71,12 @@ function createOrderService({ config, db, catalog, settings }) {
 
   // Touching the table's record makes concurrent changes to one table run one after another
   const lockTable = (no, session) => tables.findOneAndUpdate({ _id: no }, { $inc: { rev: 1 } }, { upsert: true, returnDocument: "after", session });
+  // A table part-way through being paid takes no new orders until its check is settled
+  async function assertNoOpenCheck(no, session) {
+    if (await db.collection("checks").findOne({ ref: `t${no}`, status: "Open" }, { session })) {
+      throw new AppError(409, "table_paying", `Table ${no} is part-way through paying. Start a new order once its bill is settled.`);
+    }
+  }
   const audit = (req, action, details, session, severity = "info") => recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action, details, severity }, { session });
 
   async function place(req, input, session) {
@@ -81,6 +87,7 @@ function createOrderService({ config, db, catalog, settings }) {
       await lockTable(input.table, session);
       const open = await orders.find({ table: input.table, ...OPEN_FILTER }, { session }).toArray();
       if (open.some((o) => o.waiter !== actor.username)) throw new AppError(409, "table_taken", `Table ${input.table} is being served by someone else.`);
+      await assertNoOpenCheck(input.table, session);
     }
 
     const { snapshot, stockUsed } = await catalog.reserveStock(mergeLines(input.lines), session);
@@ -169,6 +176,7 @@ function createOrderService({ config, db, catalog, settings }) {
   async function voidOrder(req, id, reason, session) {
     const order = await orders.findOne({ _id: id, ...OPEN_FILTER }, { session });
     if (!order) throw new AppError(404, "not_found", "There is no open order with that number.");
+    if (await db.collection("checks").findOne({ orderIds: id, status: "Open" }, { session })) throw new AppError(409, "order_paying", `${id} is part-way through being paid. Refund the parts already paid before voiding it.`);
     const result = await orders.findOneAndUpdate(
       { _id: id, version: order.version, ...OPEN_FILTER },
       { $set: { status: "Cancelled", voided: { by: req.auth.user.username, reason, at: new Date(), from: order.status }, updatedAt: new Date() }, $inc: { version: 1 } },
@@ -193,6 +201,8 @@ function createOrderService({ config, db, catalog, settings }) {
     for (const no of [order.table, to].sort((a, b) => a - b)) await lockTable(no, session);
     const there = await orders.find({ table: to, ...OPEN_FILTER }, { session }).toArray();
     if (there.some((o) => o.waiter !== actor.username)) throw new AppError(409, "table_taken", `Table ${to} is being served by someone else.`);
+    await assertNoOpenCheck(to, session);
+    await assertNoOpenCheck(order.table, session);
     const result = await orders.findOneAndUpdate({ _id: id, version: order.version }, { $set: { table: to, updatedAt: new Date() }, $inc: { version: 1 } }, { returnDocument: "after", session });
     if (!result) throw new AppError(409, "stale_version", "This order changed on another screen. Reload and try again.");
     await tables.updateMany({ _id: { $in: [order.table, to] } }, { $unset: { billRequestedAt: "" } }, { session });

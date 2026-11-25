@@ -118,12 +118,14 @@
   const findMenu = function (id) { return list("menu").find(function (m) { return m.id === id; }); };
   const constants = function () { return (data && data.constants) || { tables: [], activeStatuses: [], taxRate: 0.16, discountLimit: 0 }; };
 
-  function totals(lines, discountPct) {
-    // For display while choosing. The server recalculates every amount it stores.
+  // For display while choosing. The server recalculates every amount it stores. withService adds the
+  // dine-in service charge.
+  function totals(lines, discountPct, withService) {
     const sub = lines.reduce(function (s, l) { return s + l.price * l.qty; }, 0);
     const discount = Math.round(sub * (discountPct || 0) / 100);
+    const service = withService ? Math.round((sub - discount) * (constants().serviceRate || 0)) : 0;
     const tax = Math.round((sub - discount) * constants().taxRate);
-    return { sub: sub, discount: discount, tax: tax, total: sub - discount + tax, count: lines.reduce(function (s, l) { return s + l.qty; }, 0) };
+    return { sub: sub, discount: discount, service: service, tax: tax, total: sub - discount + service + tax, count: lines.reduce(function (s, l) { return s + l.qty; }, 0) };
   }
 
   const Store = {
@@ -132,6 +134,13 @@
     get ACTIVE() { return constants().activeStatuses; },
     get discountLimit() { return constants().discountLimit; },
     get taxRate() { return constants().taxRate; },
+    get serviceRate() { return constants().serviceRate || 0; },
+    get requireShift() { return Boolean(constants().requireShift); },
+    shift: async function () { return (await Api.call("GET", "/shifts/current")).shift; },
+    openShift: function (float) { return change("POST", "/shifts", { float: float }); },
+    cashMovement: function (type, amount, reason) { return change("POST", "/shifts/current/cash", { type: type, amount: amount, reason: reason }); },
+    closeShift: function (counted, note) { return change("POST", "/shifts/current/close", { counted: counted, note: note }); },
+    shifts: async function (date) { return (await Api.call("GET", "/shifts" + (date ? "?date=" + encodeURIComponent(date) : ""))).shifts; },
     init: function () {
       if (started) return;
       started = true;
@@ -220,7 +229,8 @@
     setTicketStatus: function (id, status) { return change("POST", "/kitchen/tickets/" + encodeURIComponent(id) + "/status", { status: status }); },
     // tab is an open table or counter order from openTables()
     pay: function (tab, opts) {
-      const body = { discountPct: opts.discountPct, method: opts.method, phone: String(opts.phone || "").trim() };
+      const body = { discountPct: opts.discountPct, method: opts.method, phone: String(opts.phone || "").trim(), tip: Number(opts.tip) || 0 };
+      if (opts.amount !== undefined) body.amount = Number(opts.amount);
       if (opts.method === "Cash") body.tendered = Number(opts.tendered);
       return changeOnce("POST", tab.no ? "/billing/tables/" + tab.no + "/pay" : "/billing/orders/" + encodeURIComponent(tab.orderId) + "/pay", body);
     },

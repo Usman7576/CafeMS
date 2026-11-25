@@ -19,6 +19,9 @@ const DEFAULTS = Object.freeze({
     { name: "Food", station: "Kitchen" }, { name: "Desserts", station: "Kitchen" }
   ],
   orderTypes: { dineIn: true, takeaway: true, delivery: true },
+  // A service charge on dine-in bills, and whether a cashier must open a shift before taking money
+  serviceChargePct: 0,
+  requireShift: false,
   version: 0
 });
 
@@ -57,6 +60,7 @@ function createSettingsService({ db }) {
   const tableNumbers = () => current.tables.map((t) => t.no);
   const hasTable = (no) => current.tables.some((t) => t.no === no);
   const taxRate = () => current.taxRatePct / 100;
+  const serviceRate = () => (current.serviceChargePct || 0) / 100;
   const stationOf = (cat) => {
     const found = current.categories.find((c) => c.name.toLowerCase() === String(cat).toLowerCase());
     return found ? found.station : "Kitchen";
@@ -110,7 +114,7 @@ function createSettingsService({ db }) {
     return current;
   }
 
-  return { ready, get, tableNumbers, hasTable, taxRate, discountLimit, stationOf, hasCategory, typeAllowed, save };
+  return { ready, get, tableNumbers, hasTable, taxRate, serviceRate, discountLimit, stationOf, hasCategory, typeAllowed, save };
 }
 
 module.exports = { createSettingsService, DEFAULTS };

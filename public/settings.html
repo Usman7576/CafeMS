@@ -8,7 +8,7 @@
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/fonts.css?v=7.0">
-  <link rel="stylesheet" href="css/style.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.2">
 </head>
 <body data-page="settings">
   <main class="content" id="main">
@@ -52,6 +52,7 @@
             <div class="field"><label for="taxRate">Sales tax</label><div class="input-group"><input class="input" id="taxRate" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span class="addon">%</span></div></div>
             <div class="field"><label for="limitCashier">Cashier discount limit</label><div class="input-group"><input class="input" id="limitCashier" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="addon">%</span></div></div>
             <div class="field"><label for="limitManager">Manager discount limit</label><div class="input-group"><input class="input" id="limitManager" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="addon">%</span></div></div>
+            <div class="field"><label for="serviceCharge">Service charge <span class="opt">dine-in only</span></label><div class="input-group"><input class="input" id="serviceCharge" type="number" min="0" max="20" step="0.5" inputmode="decimal"><span class="addon">%</span></div></div>
           </div>
         </section>
 
@@ -105,6 +106,7 @@
           <div class="panel-body">
             <label class="setting setting-row"><div><b>Dine-in</b><small>Guests sit at a table and pay at the end.</small></div><input type="checkbox" class="switch" id="typeDineIn"></label>
             <label class="setting setting-row"><div><b>Takeaway</b><small>Ordered at the counter and collected. Needs a customer name.</small></div><input type="checkbox" class="switch" id="typeTakeaway"></label>
+            <label class="setting setting-row"><div><b>Cashiers must open a shift</b><small>Payments are refused until the cashier has opened a shift and counted the float.</small></div><input type="checkbox" class="switch" id="requireShift"></label>
             <label class="setting setting-row"><div><b>Delivery</b><small>Needs a name, a mobile number and an address. Both are encrypted.</small></div><input type="checkbox" class="switch" id="typeDelivery"></label>
           </div>
         </section>
@@ -114,10 +116,10 @@
 
   <script src="js/icons.js?v=7.0"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=7.0"></script>
+  <script src="js/common.js?v=7.2"></script>
   <script src="js/validate.js?v=7.0"></script>
-  <script src="js/store.js?v=7.0"></script>
-  <script src="js/app.js?v=7.0"></script>
+  <script src="js/store.js?v=7.2"></script>
+  <script src="js/app.js?v=7.2"></script>
   <script src="js/settings.js?v=7.0"></script>
 </body>
 </html>
