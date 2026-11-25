@@ -5,7 +5,24 @@
   if (!window.App) return;
   const h = CMS.h, s = App.session, isAdmin = s.role === "Admin";
 
+  // Today against last week, best sellers and who is on shift; refreshed when sales or the clock change
+  async function renderGlance() {
+    const [t, on] = await Promise.all([Api.call("GET", "/insights/today").catch(function () { return null; }), Api.call("GET", "/timeclock/now").catch(function () { return null; })]);
+    const body = document.getElementById("glanceBody");
+    if (!t) return;
+    const delta = function (n) { return n === null ? h("small", { class: "muted", text: "No sales last week to compare" }) : h("small", { class: n >= 0 ? "up" : "down", text: (n >= 0 ? "▲ " : "▼ ") + Math.abs(n) + "% on last week" }); };
+    body.replaceChildren(
+      h("div", { class: "glance-item" }, [h("small", { text: "Revenue" }), h("b", { text: CMS.money(t.revenue) }), delta(t.change)]),
+      h("div", { class: "glance-item" }, [h("small", { text: "Visits" }), h("b", { text: String(t.checks) }), delta(t.checksChange)]),
+      h("div", { class: "glance-item" }, [h("small", { text: "Average visit" }), h("b", { text: CMS.money(t.avgTicket) }), h("small", { class: "muted", text: "Tips " + CMS.money(t.tips) })]),
+      h("div", { class: "glance-item" }, [h("small", { text: "Best sellers" }), h("span", { text: t.top.length ? t.top.slice(0, 3).map(function (i) { return i.qty + "× " + i.name; }).join(", ") : "Nothing sold yet" })]),
+      h("div", { class: "glance-item" }, [h("small", { text: "On shift now" }), h("span", { text: on && on.people.length ? on.people.map(function (p) { return p.name.split(" ")[0]; }).join(", ") : "Nobody clocked in" })])
+    );
+  }
+
   App.ready(function () {
+    renderGlance();
+    Store.on(renderGlance);
     const hour = new Date().getHours();
     document.getElementById("greeting").textContent = (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + ", " + s.name.split(" ")[0];
     document.getElementById("today").textContent = CMS.dateLong(new Date()) + " · " + (isAdmin ? "Owner / administrator view" : "Manager view");

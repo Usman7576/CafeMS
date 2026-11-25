@@ -9,7 +9,7 @@ const TOPIC_OF = Object.freeze({
   billing: "bills", bills: "bills", payments: "bills", shifts: "bills",
   inventory: "inventory", suppliers: "inventory", "purchase-orders": "inventory", "stock-counts": "inventory", waste: "inventory",
   menu: "menu", reservations: "reservations", customers: "guests", vouchers: "guests", waitlist: "reservations", feedback: "guests",
-  timeclock: "people", timesheets: "people", rota: "people", leave: "people",
+  timeclock: "people", timesheets: "people", rota: "people", leave: "people", "pay-rates": "people",
   users: "users", register: "users", setup: "users", settings: "settings",
   alerts: "alerts", approvals: "approvals", requests: "requests"
 });

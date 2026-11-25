@@ -37,6 +37,8 @@ const PERMISSIONS = Object.freeze({
   "rota.read": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"],
   "people.manage": ["Manager"],
   "people.read": ["Manager", "Admin"],
+  // What staff are paid is private: only managers and admins see or set it
+  "pay.manage": ["Manager", "Admin"],
   "reports.read": ["Manager", "Admin"],
   "menu.write": ["Admin"],
   "users.manage": ["Admin"],
@@ -64,6 +66,7 @@ const PAGES = Object.freeze({
   "/users.html": ["Admin"],
   "/settings.html": ["Admin"],
   "/guests.html": ["Manager", "Admin"],
+  "/insights.html": ["Manager", "Admin"],
   "/team.html": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"],
   "/audit.html": ["Admin"],
   "/security.html": ["Admin"],

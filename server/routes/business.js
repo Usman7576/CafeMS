@@ -37,7 +37,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     return records;
   }
 
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests, people } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests, people, insights } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
@@ -171,6 +171,35 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.post("/waitlist/:id/seat", ...allow("waitlist.write"), params(schemas.params.waitId), validate(schemas.waitlistSeat), wrap(async (req, res) => res.json(await guests.closeWaiting(req, req.validParams.id, "Seated", req.body.table))));
   router.post("/waitlist/:id/left", ...allow("waitlist.write"), params(schemas.params.waitId), wrap(async (req, res) => res.json(await guests.closeWaiting(req, req.validParams.id, "Left"))));
   router.get("/feedback", ...allow("feedback.read"), wrap(async (_req, res) => res.json(await guests.listFeedback())));
+
+  // ---------- Insights: sales, product mix, profit, staff and the daily close ----------
+  const q = (req) => [req.validQuery.from, req.validQuery.to];
+  router.get("/insights/summary", ...allow("reports.read"), validate(schemas.rangeQuery, "query"), wrap(async (req, res) => res.json(await insights.summary(...q(req)))));
+  router.get("/insights/mix", ...allow("reports.read"), validate(schemas.rangeQuery, "query"), wrap(async (req, res) => res.json(await insights.productMix(...q(req)))));
+  router.get("/insights/profit", ...allow("reports.read"), validate(schemas.rangeQuery, "query"), wrap(async (req, res) => res.json(await insights.profit(...q(req)))));
+  router.get("/insights/staff", ...allow("reports.read"), validate(schemas.rangeQuery, "query"), wrap(async (req, res) => res.json(await insights.staff(...q(req)))));
+  router.get("/insights/close", ...allow("reports.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => res.json(await insights.dailyClose(req.validQuery.date))));
+  router.get("/insights/today", ...allow("reports.read"), wrap(async (_req, res) => res.json(await insights.today())));
+  // CSV downloads are limited and recorded, like the other exports
+  const csvRoute = (path, name, build) => router.get(path, ...allow("reports.read"), personalLimiter("export", 10), validate(schemas.rangeQuery, "query"), wrap(async (req, res) => {
+    const { rows, from, to } = await build(req);
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Report exported", details: `${name} CSV · ${from} to ${to}`, severity: "warning" });
+    res.attachment(`${name.toLowerCase().replace(/ /g, "-")}-${from}-to-${to}.csv`).type("text/csv").send(toCsv(rows));
+  }));
+  csvRoute("/insights/days.csv", "Daily sales", async (req) => {
+    const s = await insights.summary(...q(req));
+    return { from: s.from, to: s.to, rows: [["Date", "Bills", "Revenue", "Net (without tax)"]].concat(s.byDay.map((d) => [d.date, d.bills, d.revenue, d.net])) };
+  });
+  csvRoute("/insights/mix.csv", "Product mix", async (req) => {
+    const m = await insights.productMix(...q(req));
+    return { from: m.from, to: m.to, rows: [["Item", "Category", "Quantity", "Sales", "Ingredient cost", "Profit", "Margin %", "Share of sales %"]].concat(m.items.map((i) => [i.name, i.cat, i.qty, i.sales, i.cost, i.profit, i.margin, i.share])) };
+  });
+  csvRoute("/insights/staff.csv", "Staff sales", async (req) => {
+    const s = await insights.staff(...q(req));
+    return { from: s.from, to: s.to, rows: [["Name", "Role", "Orders", "Sold (without tax)", "Bills collected", "Collected", "Tips collected", "Hours", "Pay", "Sold per hour"]].concat(s.people.map((p) => [p.name, p.role, p.orders, p.sold, p.bills, p.collected, p.tips, (p.minutes / 60).toFixed(2), p.labour, p.salesPerHour === null ? "" : p.salesPerHour])) };
+  });
+  router.get("/pay-rates", ...allow("pay.manage"), wrap(async (_req, res) => res.json({ rates: await insights.listRates() })));
+  router.put("/pay-rates/:username", ...allow("pay.manage"), params(schemas.params.username), validate(schemas.payRate), wrap(async (req, res) => res.json(await insights.setRate(req, req.validParams.username, req.body.rate))));
 
   // ---------- People: time clock, timesheets, rota, leave and tips ----------
   router.get("/timeclock/me", ...allow("time.self"), wrap(async (req, res) => res.json(await people.me(req.auth.user.username))));

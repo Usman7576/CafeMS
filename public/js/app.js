@@ -17,6 +17,7 @@
     users:     { title: "Staff & roles",   roles: ["Admin"] },
     settings:  { title: "Settings",        roles: ["Admin"] },
     guests:    { title: "Guests",          roles: ["Manager", "Admin"] },
+    insights:  { title: "Insights",        roles: ["Manager", "Admin"] },
     team:      { title: "Team",            roles: ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"] },
     audit:     { title: "Audit log",       roles: ["Admin"] },
     security:  { title: "Security",        roles: ["Admin"] },
@@ -42,6 +43,7 @@
     settings: { page: "settings", href: "settings.html", icon: "settings", label: "Settings" },
     guests: { page: "guests", href: "guests.html", icon: "users", label: "Guests" },
     team: { page: "team", href: "team.html", icon: "clock", label: "Team" },
+    insights: { page: "insights", href: "insights.html", icon: "trend", label: "Insights" },
     audit: { page: "audit", href: "audit.html", icon: "file", label: "Audit log" },
     security: { page: "security", href: "security.html", icon: "shield", label: "Security" }
   };
@@ -69,12 +71,12 @@
       { section: "Today", items: [L.overview] },
       { section: "Sell", items: [L.billing, L.reservations, L.reservation] },
       { section: "Manage", items: [badge(L.inventory), L.guests, L.team, L.requests] },
-      { section: "Reports", items: [L.reports] }
+      { section: "Reports", items: [L.insights, L.reports] }
     ],
     Admin: [
       { section: "Today", items: [L.overview] },
       { section: "Manage", items: [L.menu, L.guests, L.team, L.users] },
-      { section: "Reports", items: [L.reports, L.audit] },
+      { section: "Reports", items: [L.insights, L.reports, L.audit] },
       { section: "Settings", items: [L.settings, L.security] }
     ]
   };

@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log", "customers", "loyalty_ledger", "vouchers", "waitlist", "feedback", "timeclock", "rota", "leave"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log", "customers", "loyalty_ledger", "vouchers", "waitlist", "feedback", "timeclock", "rota", "leave", "pay_rates"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {

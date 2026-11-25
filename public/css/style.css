@@ -1257,3 +1257,28 @@ body[data-page="kitchen"] .avatar { background: var(--accent-50); color: var(--a
 .rota-add { width: 100%; height: 26px; border: 1px dashed var(--line-2); border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
 .rota-add:hover { border-color: var(--accent-300); color: var(--accent-600); }
 .entry-row td { padding-top: 2px; padding-bottom: 6px; }
+
+/* ---------- Insights ---------- */
+.kpis.kpis-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .kpis.kpis-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .kpis.kpis-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+table.heat { border-collapse: separate; border-spacing: 3px; width: 100%; font-size: .74rem; }
+table.heat th { color: var(--muted); font-weight: 600; padding: 2px 4px; text-align: center; }
+table.heat tbody th { text-align: left; }
+table.heat td { height: 26px; min-width: 22px; border-radius: 4px; background: var(--surface-2); }
+.rate-input { max-width: 110px; }
+.glance { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.glance-item { display: grid; gap: 2px; align-content: start; }
+.glance-item small { color: var(--muted); }
+.glance-item b { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.glance-item .up { color: var(--ok); }
+.glance-item .down { color: var(--danger); }
+@media (max-width: 1100px) { .glance { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media print {
+  body[data-page="insights"] .page-tab[hidden] { display: none !important; }
+  body[data-page="insights"] .panel { break-inside: avoid; }
+}
+/* Insights: the range controls stay on one line where there is room */
+body[data-page="insights"] .head-actions { align-items: center; }
+body[data-page="insights"] .head-actions .input { width: auto; }
+.panel-head > .input { width: auto; }

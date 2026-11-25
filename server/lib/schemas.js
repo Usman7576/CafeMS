@@ -40,6 +40,7 @@ module.exports = {
     waitId: z.object({ id: z.string().regex(/^WL-\d{1,12}$/) }).strict(),
     customerId: z.object({ id: z.string().regex(/^CU-\d{1,9}$/) }).strict(),
     clockId: z.object({ id: z.string().regex(/^TC-\d{1,12}$/) }).strict(),
+    username: z.object({ username: z.string().regex(/^[a-z][a-z0-9._]{2,29}$/) }).strict(),
     shiftId2: z.object({ id: z.string().regex(/^RO-\d{1,12}$/) }).strict(),
     leaveId: z.object({ id: z.string().regex(/^LV-\d{1,12}$/) }).strict(),
     voucherCode: z.object({ code: z.string().regex(/^[A-Z0-9-]{3,20}$/) }).strict(),
@@ -87,6 +88,8 @@ module.exports = {
     phone: mobile
   }).strict(),
   customerLookup: z.object({ phone: mobile }).strict(),
+  rangeQuery: z.object({ from: isoDate("!Choose a valid start date.").optional(), to: isoDate("!Choose a valid end date.").optional() }).strict(),
+  payRate: z.object({ rate: z.number("!Enter the hourly rate.").min(0, "!The rate cannot be negative.").max(100000, "!That rate is too large.") }).strict(),
   clockAction: z.object({ action: z.enum(["in", "out"]) }).strict(),
   clockPin: z.object({ username: z.string().trim().toLowerCase().min(1).max(64), pin: z.string().regex(/^\d{4,6}$/, "!A PIN is 4 to 6 digits."), action: z.enum(["in", "out"]) }).strict(),
   weekQuery: z.object({ week: isoDate("!Choose a valid week.").optional() }).strict(),

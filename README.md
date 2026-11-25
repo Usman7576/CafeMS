@@ -28,6 +28,8 @@ Guest orders from the website or a table's QR code wait in an incoming queue unt
 
 Everyone on the floor clocks in and out (on their own screen, or with a PIN on a shared tablet), sees the rota and asks for leave on the **Team** page. Managers plan the rota, approve leave, correct timesheets, export hours as CSV and see how the day's tips are shared by hours worked.
 
+Managers and Admins see **Insights** for any range of up to 92 days: sales by day, the busiest hours of the week, payment methods, order types and categories; product mix with each item's ingredient cost and margin; profit after ingredients, waste and staff pay (from hourly rates); sales by waiter and cashier; and a printable daily close. Each table downloads as CSV, and any view can be printed or saved as PDF.
+
 The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 
 ## How it is secured
