@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log", "customers", "loyalty_ledger", "vouchers", "waitlist", "feedback"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log", "customers", "loyalty_ledger", "vouchers", "waitlist", "feedback", "timeclock", "rota", "leave"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
@@ -65,6 +65,11 @@ async function ensureIndexes(db) {
   await db.collection("loyalty_ledger").createIndex({ customerId: 1, at: -1 });
   await db.collection("waitlist").createIndex({ createdAt: -1 });
   await db.collection("feedback").createIndex({ at: -1 });
+  // One open clock-in per person, so a double tap cannot start two
+  await db.collection("timeclock").createIndex({ username: 1 }, { unique: true, partialFilterExpression: { out: null }, name: "one_open_clock" });
+  await db.collection("timeclock").createIndex({ in: -1 });
+  await db.collection("rota").createIndex({ date: 1, username: 1 });
+  await db.collection("leave").createIndex({ username: 1, from: -1 });
   await db.collection("staff_requests").createIndex({ owner: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ status: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ reviewer: 1, createdAt: -1, seq: -1 });

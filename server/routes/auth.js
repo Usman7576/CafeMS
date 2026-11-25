@@ -9,6 +9,7 @@ const { recordEvent } = require("../services/auditLog");
 const { inTransaction } = require("../lib/tx");
 const { cookieOptions, PREAUTH_COOKIE } = require("../services/sessions");
 const { mfaRequired, PIN_ROLES } = require("../lib/permissions");
+const { checkPin } = require("../services/pins");
 
 // One message for every sign-in failure, so it never reveals whether an account exists or is locked
 const SIGN_IN_FAILED = "Incorrect username or password, or the account is temporarily locked.";
@@ -505,12 +506,9 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, middleware, aut
   // A person on the floor sets a PIN once (with their password). On a tablet that is already signed
   // in, they pick their name and enter it: the current session ends and theirs begins. Only roles
   // without a required authenticator can switch this way, so a PIN never stands in for an Admin's code.
-  const PIN_MAX_FAILURES = 5;
-  const PIN_LOCK_MS = 15 * 60 * 1000;
   const pinSchema = z.string().regex(/^\d{4,6}$/, "!A PIN is 4 to 6 digits.");
   const setPinSchema = z.object({ currentPassword: z.string().min(1).max(MAX_LENGTH), pin: pinSchema }).strict();
   const switchSchema = z.object({ username: z.string().trim().toLowerCase().min(1).max(64), pin: pinSchema }).strict();
-  const PIN_FAILED = "That PIN is not right, or PIN sign-in is paused for this person. Try again or use your password.";
   // Easy guesses are refused: one digit repeated, or a run such as 1234 or 9876
   function weakPin(pin) {
     const d = [...pin].map(Number);
@@ -565,21 +563,7 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, middleware, aut
   router.post("/switch", requireAuth, authLimiter, validate(switchSchema), async (req, res, next) => {
     try {
       const from = req.auth.user;
-      const target = await users.findOne({ username: req.body.username });
-      const usable = Boolean(target && target.status === "Active" && PIN_ROLES.includes(target.role) && target.pin && target.pin.hash);
-      const pinLocked = usable && Boolean(target.pin.lockedUntil) && target.pin.lockedUntil.getTime() > Date.now();
-      // The hash is always checked, so the time taken reveals nothing about the person
-      const ok = await verifyPassword(usable ? target.pin.hash : null, req.body.pin);
-      if (!usable || pinLocked || isLocked(target) || !ok) {
-        if (usable && !pinLocked && !ok) {
-          const failures = (target.pin.failed || 0) + 1;
-          const lock = failures >= PIN_MAX_FAILURES;
-          await users.updateOne({ username: target.username }, { $set: { "pin.failed": lock ? 0 : failures, "pin.lockedUntil": lock ? new Date(Date.now() + PIN_LOCK_MS) : null } });
-          if (lock) await audit(req, { actor: target.username, role: target.role, action: "PIN locked", details: `${PIN_MAX_FAILURES} wrong PINs on a shared tablet`, severity: "high" });
-        }
-        await audit(req, { actor: from.username, role: from.role, action: "PIN switch failed", details: `To ${req.body.username}`, severity: "warning" });
-        throw new AppError(401, "pin_failed", PIN_FAILED);
-      }
+      const target = await checkPin(db, req, req.body.username, req.body.pin, "PIN switch");
       const token = await atomically(async (session) => {
         await sessions.revoke(req.auth.session.jti, null, session);
         await users.updateOne({ username: target.username }, { $set: { "pin.failed": 0, "pin.lockedUntil": null } }, { session });

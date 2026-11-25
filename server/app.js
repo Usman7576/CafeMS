@@ -29,6 +29,7 @@ const { createEventBus } = require("./services/events");
 const { createShiftService } = require("./services/shifts");
 const { createPurchasingService } = require("./services/purchasing");
 const { createGuestService } = require("./services/guests");
+const { createPeopleService } = require("./services/people");
 const { createSettingsService } = require("./services/settings");
 const { createStaffRequestService } = require("./services/staffRequests");
 const { createPublicRouter } = require("./routes/public");
@@ -70,6 +71,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const events = createEventBus();
   const shiftService = createShiftService({ db });
   const purchasing = createPurchasingService({ db });
+  const people = createPeopleService({ db });
   const orderService = createOrderService({ config, db, catalog, settings });
   const billing = createBillingService({ config, db, orderService, approvals, gateway, logger, settings, guests });
   const reservations = createReservationService({ config, db, settings });
@@ -80,7 +82,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const cafe = createCafeService({ db });
   const publicCache = createPublicCache();
   const staffRequests = createStaffRequestService({ config, db });
-  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests };
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests, people };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),
@@ -156,7 +158,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   };
   api.use("/public", createPublicRouter({ config, db, services }));
   api.use("/users", createUsersRouter({ db, middleware, services }));
-  api.use(createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit: config.limits.photoBody, appOrigin: config.appOrigin }));
+  api.use(createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit: config.limits.photoBody, appOrigin: config.appOrigin, authLimiter }));
   api.use((_req, _res, next) => next(new AppError(404, "not_found", "Not found.")));
   app.use("/api/v1", api);
 

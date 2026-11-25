@@ -26,6 +26,8 @@ Every rule is enforced on the server. The browser only shows what the server all
 
 Guest orders from the website or a table's QR code wait in an incoming queue until staff accept them (they go to the kitchen) or decline them (stock is returned and the guest sees why).
 
+Everyone on the floor clocks in and out (on their own screen, or with a PIN on a shared tablet), sees the rota and asks for leave on the **Team** page. Managers plan the rota, approve leave, correct timesheets, export hours as CSV and see how the day's tips are shared by hours worked.
+
 The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 
 ## How it is secured

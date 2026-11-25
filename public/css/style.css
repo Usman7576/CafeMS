@@ -1243,3 +1243,17 @@ body[data-page="kitchen"] .avatar { background: var(--accent-50); color: var(--a
 .qr-table { font-size: 1.2rem; font-weight: 800; }
 .qr-card small { color: var(--muted); }
 @media print { body:has(#qrModal.show) .app { display: none; } body:has(#qrModal.show) .modal { box-shadow: none; max-height: none; } }
+
+/* ---------- Team: time clock and rota ---------- */
+.clock-card { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px 20px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.clock-card.on { border-color: #bbf7d0; background: var(--ok-50); }
+.clock-card b { display: block; font-size: 1.1rem; }
+.clock-card small { color: var(--muted); }
+.data-table.rota th, .data-table.rota td { padding: 8px 10px; vertical-align: top; min-width: 88px; }
+.data-table.rota th.today, .rota-cell.today { background: var(--accent-50); }
+.rota-cell.away { background: var(--surface-2); }
+.rota-shift { display: block; width: 100%; margin-bottom: 4px; padding: 4px 6px; border: 1px solid var(--accent-300); border-radius: 6px; background: var(--accent-50); color: var(--accent-600); font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; }
+.rota-shift:disabled { cursor: default; }
+.rota-add { width: 100%; height: 26px; border: 1px dashed var(--line-2); border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.rota-add:hover { border-color: var(--accent-300); color: var(--accent-600); }
+.entry-row td { padding-top: 2px; padding-bottom: 6px; }

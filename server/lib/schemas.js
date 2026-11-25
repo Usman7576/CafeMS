@@ -39,6 +39,9 @@ module.exports = {
     shiftId: z.object({ id: z.string().regex(/^S-\d{1,12}$/) }).strict(),
     waitId: z.object({ id: z.string().regex(/^WL-\d{1,12}$/) }).strict(),
     customerId: z.object({ id: z.string().regex(/^CU-\d{1,9}$/) }).strict(),
+    clockId: z.object({ id: z.string().regex(/^TC-\d{1,12}$/) }).strict(),
+    shiftId2: z.object({ id: z.string().regex(/^RO-\d{1,12}$/) }).strict(),
+    leaveId: z.object({ id: z.string().regex(/^LV-\d{1,12}$/) }).strict(),
     voucherCode: z.object({ code: z.string().regex(/^[A-Z0-9-]{3,20}$/) }).strict(),
     supplierId: z.object({ id: z.string().regex(/^SUP-\d{1,9}$/) }).strict(),
     purchaseId: z.object({ id: z.string().regex(/^PO-\d{1,12}$/) }).strict(),
@@ -84,6 +87,25 @@ module.exports = {
     phone: mobile
   }).strict(),
   customerLookup: z.object({ phone: mobile }).strict(),
+  clockAction: z.object({ action: z.enum(["in", "out"]) }).strict(),
+  clockPin: z.object({ username: z.string().trim().toLowerCase().min(1).max(64), pin: z.string().regex(/^\d{4,6}$/, "!A PIN is 4 to 6 digits."), action: z.enum(["in", "out"]) }).strict(),
+  weekQuery: z.object({ week: isoDate("!Choose a valid week.").optional() }).strict(),
+  timeFix: z.object({
+    in: z.string().datetime({ offset: true, message: "!Enter the clock-in time." }),
+    out: z.union([z.literal(""), z.string().datetime({ offset: true, message: "!Enter the clock-out time." })]).optional().default(""),
+    reason: text(80, "!Give a reason of 4-80 characters.").min(4, "!Give a reason of 4-80 characters.").transform(noControl)
+  }).strict(),
+  shift: z.object({
+    username: z.string().trim().toLowerCase().min(1).max(64),
+    date: isoDate("!Choose a valid date."),
+    start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "!Enter the start as HH:MM."),
+    end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "!Enter the end as HH:MM."),
+    note: text(60, "!The note must be 60 characters or fewer.").transform(noControl).optional().default("")
+  }).strict(),
+  leaveRequest: z.object({
+    from: isoDate("!Choose the first day."), to: isoDate("!Choose the last day."),
+    reason: text(120, "!Give a reason of 3-120 characters.").min(3, "!Give a reason of 3-120 characters.").transform(noControl)
+  }).strict(),
   // An order from the website or a table's QR code. A filled-in hidden field marks a bot.
   guestOrder: z.object({
     type: z.enum(["takeaway", "delivery"], "!Choose takeaway or delivery.").optional().default("takeaway"),

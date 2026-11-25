@@ -16,7 +16,7 @@ const params = (schema) => validate(schema, "params");
 const VIEW_RECORD_MS = 60 * 60 * 1000;
 const MAX_VIEW_KEYS = 5000;
 
-function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit, appOrigin }) {
+function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit, appOrigin, authLimiter }) {
   const router = express.Router();
   const { requireAuth, requirePermission, requireStepUp } = middleware;
   // Opening customer records is recorded, but screens refresh every few seconds, so the same view by the
@@ -37,7 +37,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     return records;
   }
 
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests, people } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
@@ -171,6 +171,29 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.post("/waitlist/:id/seat", ...allow("waitlist.write"), params(schemas.params.waitId), validate(schemas.waitlistSeat), wrap(async (req, res) => res.json(await guests.closeWaiting(req, req.validParams.id, "Seated", req.body.table))));
   router.post("/waitlist/:id/left", ...allow("waitlist.write"), params(schemas.params.waitId), wrap(async (req, res) => res.json(await guests.closeWaiting(req, req.validParams.id, "Left"))));
   router.get("/feedback", ...allow("feedback.read"), wrap(async (_req, res) => res.json(await guests.listFeedback())));
+
+  // ---------- People: time clock, timesheets, rota, leave and tips ----------
+  router.get("/timeclock/me", ...allow("time.self"), wrap(async (req, res) => res.json(await people.me(req.auth.user.username))));
+  router.post("/timeclock", ...allow("time.self"), validate(schemas.clockAction), wrap(async (req, res) => res.json(await people.clockSelf(req, req.body.action))));
+  // A shared tablet: the person taps their name and enters their PIN (paused after 5 wrong tries)
+  router.post("/timeclock/pin", requireAuth, authLimiter, validate(schemas.clockPin), wrap(async (req, res) => res.json(await people.clockByPin(req, req.body.username, req.body.pin, req.body.action))));
+  router.get("/timeclock/now", ...allow("people.read"), wrap(async (_req, res) => res.json({ people: await people.onShift() })));
+  router.put("/timeclock/:id", ...allow("people.manage"), params(schemas.params.clockId), validate(schemas.timeFix), wrap(async (req, res) => res.json(await people.fixEntry(req, req.validParams.id, req.body))));
+  router.get("/timesheets", ...allow("people.read"), validate(schemas.weekQuery, "query"), wrap(async (req, res) => res.json(await people.timesheet(req.validQuery.week))));
+  router.get("/timesheets.csv", ...allow("people.read"), personalLimiter("export", 10), validate(schemas.weekQuery, "query"), wrap(async (req, res) => {
+    const sheet = await people.timesheet(req.validQuery.week);
+    const rows = [["Name", "Username", "Role"].concat(sheet.week, ["Total hours"])].concat(sheet.people.map((p) => [p.name, p.username, p.role].concat(sheet.week.map((d) => (p.days[d] / 60).toFixed(2)), [(p.minutes / 60).toFixed(2)])));
+    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Report exported", details: `Timesheet CSV · week of ${sheet.week[0]}`, severity: "warning" });
+    res.attachment(`timesheet-${sheet.week[0]}.csv`).type("text/csv").send(toCsv(rows));
+  }));
+  router.get("/rota", ...allow("rota.read"), validate(schemas.weekQuery, "query"), wrap(async (req, res) => res.json(await people.rotaWeek(req.validQuery.week))));
+  router.post("/rota", ...allow("people.manage"), validate(schemas.shift), wrap(async (req, res) => res.status(201).json(await people.addShift(req, req.body))));
+  router.delete("/rota/:id", ...allow("people.manage"), params(schemas.params.shiftId2), wrap(async (req, res) => { await people.removeShift(req, req.validParams.id); res.status(204).end(); }));
+  router.post("/leave", ...allow("time.self"), validate(schemas.leaveRequest), wrap(async (req, res) => res.status(201).json(await people.requestLeave(req, req.body))));
+  router.get("/leave", ...allow("people.read"), wrap(async (_req, res) => res.json({ leave: await people.listLeave() })));
+  router.post("/leave/:id/approve", ...allow("people.manage"), params(schemas.params.leaveId), wrap(async (req, res) => res.json(await people.decideLeave(req, req.validParams.id, true))));
+  router.post("/leave/:id/reject", ...allow("people.manage"), params(schemas.params.leaveId), wrap(async (req, res) => res.json(await people.decideLeave(req, req.validParams.id, false))));
+  router.get("/tips", ...allow("people.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => res.json(await people.tipsShare(req.validQuery.date))));
 
   // ---------- Shifts and the cash drawer ----------
   router.get("/shifts/current", ...allow("shifts.own"), wrap(async (req, res) => res.json({ shift: await shiftService.mine(req) })));
