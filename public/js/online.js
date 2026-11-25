@@ -155,7 +155,9 @@
       try {
         const result = await Api.call("POST", "/public/orders", body, { public: true });
         cart = [];
-        if (result.track) location.href = result.track;
+        // Only ever go to this site's own tracking page, never an address taken from the response as-is
+        const token = typeof result.track === "string" ? (result.track.match(/^\/track\.html\?t=([A-Za-z0-9_-]{16,128})$/) || [])[1] : null;
+        if (token) location.assign("/track.html?t=" + encodeURIComponent(token));
       } catch (e) { fail(e.userMessage || "Your order could not be sent. Please try again."); }
     });
   });
