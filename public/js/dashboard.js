@@ -7,7 +7,10 @@
 
   function mine() { return Store.orders(); }
   function pill(status) { return h("span", { class: "pill pill-" + status.toLowerCase(), text: status }); }
-  function itemsSummary(o) { return o.items.map(function (i) { return i.qty + "× " + i.name; }).join(", "); }
+  function itemsSummary(o) { return o.items.map(function (i) { return i.qty + "× " + i.name + (i.options && i.options.length ? " (" + i.options.join(", ") + ")" : ""); }).join(", "); }
+  const where = function (o) { return o.type && o.type !== "dine-in" ? o.label : "T" + o.table; };
+  // Nothing has been started yet, so the order can still be changed or cancelled
+  const notStarted = function (o) { return o.status === "Held" || (o.status === "Placed" && Object.keys(o.stations || {}).every(function (s) { return o.stations[s] === "Placed"; })); };
   function isToday(ts) { return new Date(ts).toDateString() === new Date().toDateString(); }
 
   App.ready(function () {
@@ -42,14 +45,15 @@
   }
 
   // ----- Actions -----
-  async function serve(o) { if (await CMS.attempt(function () { return Store.serve(o.id); })) CMS.toast(o.id + " served to Table " + o.table, "ok"); }
+  async function serve(o) { if (await CMS.attempt(function () { return Store.serve(o.id); })) CMS.toast(o.id + " · " + o.label + (o.type === "dine-in" ? " served" : " handed over"), "ok"); }
+  async function sendHeld(o) { if (await CMS.attempt(function () { return Store.send(o.id); })) CMS.toast(o.id + " sent to the kitchen", "ok"); }
   async function cancel(o) {
     const ok = await CMS.confirm({ title: "Cancel " + o.id + "?", message: "The kitchen hasn't started this order yet. Stock will be returned and the ticket removed from the kitchen display.", okText: "Cancel order", cancelText: "Keep order", danger: true, icon: "trash" });
     if (ok && await CMS.attempt(function () { return Store.cancel(o.id); })) CMS.toast(o.id + " cancelled", "err");
   }
   function details(o) {
     const t = Store.totals(o.items);
-    document.getElementById("detailTitle").textContent = o.id + " · Table " + o.table;
+    document.getElementById("detailTitle").textContent = o.id + " · " + o.label;
     const sub = document.getElementById("detailSub");
     sub.replaceChildren();
     sub.append("Placed " + CMS.timeAgo(o.createdAt) + " at " + CMS.clock(new Date(o.createdAt)) + " · ", pill(o.status));
@@ -69,19 +73,57 @@
   function actionsFor(o) {
     const w = h("div", { class: "row-actions" });
     if (o.status === "Ready") w.appendChild(h("button", { class: "btn btn-success btn-sm", icon: "check", text: "Serve", "aria-label": "Mark " + o.id + " served", onclick: function () { serve(o); } }));
-    if (o.status === "Placed" && !o.billed) {
+    if (o.status === "Held") w.appendChild(h("button", { class: "btn btn-primary btn-sm", icon: "send", text: "Send", "aria-label": "Send " + o.id + " to the kitchen", onclick: function () { sendHeld(o); } }));
+    if (notStarted(o) && !o.billed) {
       w.appendChild(h("a", { class: "btn btn-secondary btn-sm", href: "order.html?edit=" + encodeURIComponent(o.id), text: "Edit", "aria-label": "Edit " + o.id }));
       w.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Cancel", "aria-label": "Cancel " + o.id, onclick: function () { cancel(o); } }));
     }
+    if (o.type === "dine-in" && !o.billed && o.status !== "Cancelled") w.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "Move", "aria-label": "Move " + o.id + " to another table", onclick: function () { moveOrder(o); } }));
     w.appendChild(h("button", { class: "btn btn-ghost btn-sm", text: "View", "aria-label": "View " + o.id, onclick: function () { details(o); } }));
     return w;
+  }
+
+  // Moves one dine-in order to a free table, or to another table of yours
+  function moveOrder(o) {
+    const picker = h("div", { class: "floor compact", role: "radiogroup", "aria-label": "New table" });
+    let target = null;
+    const ok = h("button", { class: "btn btn-primary", text: "Move order", disabled: true });
+    Store.TABLES.forEach(function (t) {
+      const st = Store.tableState(t.no);
+      const b = h("button", { type: "button", class: "tbl " + st.state, role: "radio", "aria-checked": "false", "aria-label": "Table " + t.no + ", " + st.label }, [h("b", { text: "T" + t.no }), h("small", { text: t.seats + " seats" })]);
+      if (t.no === o.table || st.state === "other") b.disabled = true;
+      else b.addEventListener("click", function () {
+        target = t.no;
+        picker.querySelectorAll(".tbl").forEach(function (x) { x.classList.remove("selected"); x.setAttribute("aria-checked", "false"); });
+        b.classList.add("selected"); b.setAttribute("aria-checked", "true");
+        ok.disabled = false;
+      });
+      picker.appendChild(b);
+    });
+    let modal = document.getElementById("moveModal");
+    if (modal) modal.remove();
+    modal = h("div", { class: "modal-backdrop", id: "moveModal", role: "dialog", "aria-modal": "true", "aria-labelledby": "moveTitle" }, [
+      h("div", { class: "modal" }, [
+        h("div", { class: "modal-head" }, [h("div", { class: "icon-tile" }, [App.I("grid", 20)]), h("div", null, [h("h3", { id: "moveTitle", text: "Move " + o.id }), h("p", { text: "From Table " + o.table + " to a free table, or one you already serve." })])]),
+        h("div", { class: "modal-body" }, [picker]),
+        h("div", { class: "modal-actions" }, [h("button", { class: "btn btn-secondary", "data-close": "moveModal", text: "Cancel" }), ok])
+      ])
+    ]);
+    document.body.appendChild(modal);
+    ok.addEventListener("click", function () {
+      CMS.busy(ok, async function () {
+        const moved = await CMS.attempt(function () { return Store.transfer(o.id, target); });
+        if (moved) { CMS.closeModal("moveModal"); CMS.toast(o.id + " moved to Table " + target, "ok"); }
+      });
+    });
+    CMS.openModal("moveModal");
   }
 
   // ----- My orders -----
   function renderOrders() {
     const all = mine().filter(function (o) { return isToday(o.createdAt) || Store.ACTIVE.indexOf(o.status) !== -1; });
     const sets = {
-      active: all.filter(function (o) { return Store.ACTIVE.indexOf(o.status) !== -1; }),
+      active: all.filter(function (o) { return o.status === "Held" || Store.ACTIVE.indexOf(o.status) !== -1; }),
       Ready: all.filter(function (o) { return o.status === "Ready"; }),
       Served: all.filter(function (o) { return o.status === "Served"; }),
       all: all
@@ -100,7 +142,7 @@
     rows.forEach(function (o) {
       body.appendChild(h("tr", { class: "order-row" }, [
         h("td", null, [h("span", { class: "mono", text: o.id }), o.billed ? h("small", { class: "sub-line", text: "Paid · " + o.billNo }) : null]),
-        h("td", { text: "T" + o.table }),
+        h("td", { text: where(o) }),
         h("td", { class: "hide-sm" }, [h("div", { class: "items", title: itemsSummary(o), text: itemsSummary(o) })]),
         h("td", { class: "nowrap num", text: CMS.money(Store.totals(o.items).total) }),
         h("td", { class: "time hide-sm", text: CMS.timeAgo(o.createdAt) }),
@@ -122,7 +164,7 @@
     }
     ready.forEach(function (o) {
       list.appendChild(h("li", { class: "pulse-in" }, [
-        h("span", { class: "tno ok", text: "T" + o.table }),
+        h("span", { class: "tno ok", text: o.type === "dine-in" ? "T" + o.table : (o.type === "delivery" ? "DL" : "TA") }),
         h("div", { class: "meta" }, [h("b", { text: o.id + " · ready " + CMS.timeAgo(o.updatedAt) }), h("small", { text: itemsSummary(o) })]),
         h("button", { class: "btn btn-success btn-sm", icon: "check", text: "Serve", "aria-label": "Mark " + o.id + " served", onclick: function () { serve(o); } })
       ]));

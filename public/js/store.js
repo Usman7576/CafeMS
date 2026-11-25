@@ -2,7 +2,7 @@
 // from a role-filtered copy in memory, refreshed from the server; every change goes to the server,
 // which decides whether it is allowed. Tampering with this file only changes what one screen shows.
 (function () {
-  const ROLES = ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"];
+  const ROLES = ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"];
   // A safety check, in case a live update is ever missed
   const REFRESH_MS = 60000;
   const DATE_KEYS = new Set(["createdAt", "updatedAt", "since", "billRequested", "at", "lastLogin", "expiresAt", "loginAt", "lastSeenAt"]);
@@ -131,6 +131,7 @@
     get TABLES() { return constants().tables; },
     get ACTIVE() { return constants().activeStatuses; },
     get discountLimit() { return constants().discountLimit; },
+    get taxRate() { return constants().taxRate; },
     init: function () {
       if (started) return;
       started = true;
@@ -202,7 +203,13 @@
     reservationPhone: async function (id) { return (await Api.call("GET", "/reservations/" + encodeURIComponent(id) + "/phone")).phone; },
 
     // ---- changes
-    place: function (table, lines, notes) { return changeOnce("POST", "/orders", { table: table, lines: lines, notes: notes }); },
+    // body: { type, table?, customer?, lines: [{ id, qty, options }], notes, hold }
+    place: function (body) { return changeOnce("POST", "/orders", body); },
+    send: function (id) { return change("POST", "/orders/" + encodeURIComponent(id) + "/send", {}); },
+    transfer: function (id, table) { return change("POST", "/orders/" + encodeURIComponent(id) + "/transfer", { table: table }); },
+    voidOrder: function (id, reason) { return change("POST", "/orders/" + encodeURIComponent(id) + "/void", { reason: reason }); },
+    categoryList: function () { return copy(constants().categories || []); },
+    orderTypes: function () { return copy(constants().orderTypes || { dineIn: true, takeaway: false, delivery: false }); },
     updateOrder: function (id, lines, notes) {
       const current = Store.order(id);
       return change("PUT", "/orders/" + encodeURIComponent(id), { version: current ? current.version : 0, lines: lines, notes: notes });
@@ -211,10 +218,11 @@
     cancel: function (id) { return change("POST", "/orders/" + encodeURIComponent(id) + "/cancel", {}); },
     requestBill: function (no) { return change("POST", "/tables/" + no + "/request-bill", {}); },
     setTicketStatus: function (id, status) { return change("POST", "/kitchen/tickets/" + encodeURIComponent(id) + "/status", { status: status }); },
-    pay: function (no, opts) {
+    // tab is an open table or counter order from openTables()
+    pay: function (tab, opts) {
       const body = { discountPct: opts.discountPct, method: opts.method, phone: String(opts.phone || "").trim() };
       if (opts.method === "Cash") body.tendered = Number(opts.tendered);
-      return changeOnce("POST", "/billing/tables/" + no + "/pay", body);
+      return changeOnce("POST", tab.no ? "/billing/tables/" + tab.no + "/pay" : "/billing/orders/" + encodeURIComponent(tab.orderId) + "/pay", body);
     },
     retryPayment: function (no, body) { return change("POST", "/bills/" + encodeURIComponent(no) + "/retry-payment", body || {}); },
     acknowledgeAlert: function (id) { return change("POST", "/alerts/" + encodeURIComponent(id) + "/acknowledge", {}); },
@@ -228,6 +236,7 @@
     updateReservation: function (id, status) { return change("POST", "/reservations/" + encodeURIComponent(id) + "/status", { status: status }); },
     saveMenuItem: function (d) {
       const body = { name: d.name, cat: d.cat, price: d.price, desc: d.desc, available: d.available };
+      if (d.options) body.options = d.options;
       if (d.recipeEdit) body.recipe = d.recipeEdit;
       return d.id ? change("PUT", "/menu/" + d.id, body) : change("POST", "/menu", body);
     },

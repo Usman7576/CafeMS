@@ -12,7 +12,7 @@ const invitationSchema = z.object({
   role: schemas.userRole.shape.role
 }).strict();
 // Admin access is never granted through a registration; it needs the role change and a second Admin
-const approveSchema = z.object({ role: z.enum(["Waiter", "Kitchen", "Cashier", "Manager"]) }).strict();
+const approveSchema = z.object({ role: z.enum(["Waiter", "Barista", "Kitchen", "Cashier", "Manager"]) }).strict();
 
 function createUsersRouter({ db, middleware, services }) {
   const router = express.Router();

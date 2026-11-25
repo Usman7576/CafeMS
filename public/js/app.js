@@ -4,11 +4,11 @@
 (function () {
   const PAGES = {
     dashboard: { title: "Dashboard",       roles: ["Waiter"] },
-    order:     { title: "Take order",      roles: ["Waiter"] },
+    order:     { title: "POS",             roles: ["Waiter", "Cashier"] },
     reservation: { title: "New reservation", roles: ["Waiter", "Manager"] },
     reservations: { title: "Reservations", roles: ["Waiter", "Manager"] },
-    requests:  { title: "Staff requests",  roles: ["Waiter", "Kitchen", "Cashier", "Manager"] },
-    kitchen:   { title: "Kitchen display", roles: ["Kitchen"] },
+    requests:  { title: "Staff requests",  roles: ["Waiter", "Barista", "Kitchen", "Cashier", "Manager"] },
+    kitchen:   { title: "Kitchen display", roles: ["Kitchen", "Barista"] },
     billing:   { title: "Billing",         roles: ["Cashier", "Manager"] },
     overview:  { title: "Overview",        roles: ["Manager", "Admin"] },
     inventory: { title: "Inventory",       roles: ["Manager"] },
@@ -18,15 +18,16 @@
     settings:  { title: "Settings",        roles: ["Admin"] },
     audit:     { title: "Audit log",       roles: ["Admin"] },
     security:  { title: "Security",        roles: ["Admin"] },
-    account:   { title: "My account",      roles: ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"] }
+    account:   { title: "My account",      roles: ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"] }
   };
-  const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
+  const HOME = { Waiter: "dashboard.html", Barista: "kitchen.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
   const L = {
     dashboard: { page: "dashboard", href: "dashboard.html", icon: "dashboard", label: "Dashboard" },
-    order: { page: "order", href: "order.html", icon: "plus", label: "Take order" },
+    order: { page: "order", href: "order.html", icon: "plus", label: "POS" },
     tables: { href: "dashboard.html#floor", icon: "grid", label: "Tables" },
     ready: { href: "dashboard.html#ready", icon: "bell", label: "Ready to serve", badge: true },
     kitchen: { page: "kitchen", href: "kitchen.html", icon: "chef", label: "Kitchen display", badge: true },
+    bar: { page: "kitchen", href: "kitchen.html", icon: "coffee", label: "Bar display", badge: true },
     billing: { page: "billing", href: "billing.html", icon: "receipt", label: "Billing" },
     reservation: { page: "reservation", href: "reservation.html", icon: "calendar", label: "New reservation" },
     reservations: { page: "reservations", href: "reservations.html", icon: "clipboard", label: "Reservations" },
@@ -48,12 +49,16 @@
       { section: "Guests", items: [L.reservations, L.reservation] },
       { section: "Team", items: [L.requests] }
     ],
+    Barista: [
+      { section: "Bar", items: [L.bar] },
+      { section: "Team", items: [L.requests] }
+    ],
     Kitchen: [
       { section: "Kitchen", items: [L.kitchen] },
       { section: "Team", items: [L.requests] }
     ],
     Cashier: [
-      { section: "Sell", items: [badge(L.billing)] },
+      { section: "Sell", items: [badge(L.billing), L.order] },
       { section: "Team", items: [L.requests] }
     ],
     Manager: [
@@ -71,8 +76,9 @@
   };
   const ACCESS = {
     Waiter: "Orders, tables and bookings. Billing, stock and admin belong to other roles.",
-    Kitchen: "Order tickets only. No prices, payments or customer details.",
-    Cashier: "Billing and receipts. Discounts above your limit and refunds need a manager.",
+    Barista: "Drink tickets for the bar. No prices, payments or customer details.",
+    Kitchen: "Food tickets for the kitchen. No prices, payments or customer details.",
+    Cashier: "Counter orders, billing and receipts. Discounts above your limit and refunds need a manager.",
     Manager: "Operations, stock, reports and refunds. Users and menu are admin-only.",
     Admin: "Full administration. Every critical change is written to the audit log."
   };
@@ -243,11 +249,11 @@
   function notifications() {
     if (session.role === "Waiter") {
       return Store.orders().filter(function (o) { return o.waiter === session.user && o.status === "Ready"; })
-        .map(function (o) { return { icon: "bell", text: o.id + " for Table " + o.table + " is ready to serve", href: "dashboard.html#ready" }; });
+        .map(function (o) { return { icon: "bell", text: o.id + " · " + o.label + " is ready", href: "dashboard.html#ready" }; });
     }
-    if (session.role === "Kitchen") {
+    if ((session.role === "Kitchen" || session.role === "Barista")) {
       return Store.tickets().filter(function (o) { return o.status === "Placed"; })
-        .map(function (o) { return { icon: "clipboard", text: "New order " + o.id + " · Table " + o.table, href: "kitchen.html" }; });
+        .map(function (o) { return { icon: "clipboard", text: "New order " + o.id + " · " + o.label, href: "kitchen.html" }; });
     }
     const out = [];
     if (session.role === "Cashier" || session.role === "Manager") {
@@ -270,7 +276,7 @@
   }
   function badgeCount() {
     if (session.role === "Waiter") return Store.orders().filter(function (o) { return o.status === "Ready"; }).length;
-    if (session.role === "Kitchen") return Store.tickets().filter(function (o) { return o.status === "Placed" || o.status === "Preparing"; }).length;
+    if ((session.role === "Kitchen" || session.role === "Barista")) return Store.tickets().filter(function (o) { return o.status === "Placed" || o.status === "Preparing"; }).length;
     if (session.role === "Cashier") return Store.openTables().filter(function (t) { return t.billRequested; }).length;
     if (session.role === "Manager") return Store.lowStock().length;
     return 0;
@@ -312,8 +318,8 @@
     Store.on(function (changed) {
       renderNotifs();
       changed.forEach(function (o) {
-        if (session.role === "Waiter" && o.status === "Ready") CMS.toast(o.id + " for Table " + o.table + " is ready to serve", "info");
-        if (session.role === "Kitchen" && o.status === "Placed") CMS.toast("New order " + o.id + " for Table " + o.table, "info");
+        if (session.role === "Waiter" && o.status === "Ready") CMS.toast(o.id + " · " + o.label + " is ready", "info");
+        if ((session.role === "Kitchen" || session.role === "Barista") && o.status === "Placed") CMS.toast("New order " + o.id + " · " + o.label, "info");
       });
     });
   }).catch(function () { window.location.replace("login.html"); });

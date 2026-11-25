@@ -16,7 +16,8 @@ const TOPIC_OF = Object.freeze({
 const TOPICS_FOR = Object.freeze({
   Waiter: ["orders", "menu", "reservations", "settings", "requests"],
   Kitchen: ["orders", "menu", "settings", "requests"],
-  Cashier: ["orders", "bills", "settings", "requests"],
+  Barista: ["orders", "menu", "settings", "requests"],
+  Cashier: ["orders", "bills", "menu", "settings", "requests"],
   Manager: ["orders", "bills", "inventory", "menu", "reservations", "approvals", "settings", "requests"],
   Admin: ["orders", "bills", "inventory", "menu", "reservations", "users", "settings", "alerts", "approvals"]
 });

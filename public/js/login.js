@@ -1,7 +1,7 @@
 // Staff sign-in screens. These only display steps: the server makes every decision, including
 // password and code checks, lockout and the user's role.
 (function () {
-  const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
+  const HOME = { Waiter: "dashboard.html", Barista: "kitchen.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
   const el = function (id) { return document.getElementById(id); };
   const STEPS = ["stepPassword", "stepMfa", "stepEnroll", "stepRecovery"];
   const alertBox = el("formAlert");

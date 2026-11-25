@@ -23,6 +23,8 @@
         <a href="#money"><i data-icon="receipt" data-size="16"></i>Tax and discounts</a>
         <a href="#receipt"><i data-icon="file" data-size="16"></i>Receipt</a>
         <a href="#tables"><i data-icon="grid" data-size="16"></i>Tables</a>
+        <a href="#categories"><i data-icon="utensils" data-size="16"></i>Categories</a>
+        <a href="#ordertypes"><i data-icon="package" data-size="16"></i>Order types</a>
       </nav>
 
       <div class="stack">
@@ -83,6 +85,27 @@
               <thead><tr><th scope="col">Number</th><th scope="col">Seats</th><th scope="col">Area</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
               <tbody id="tableRows"></tbody>
             </table>
+          </div>
+        </section>
+        <section class="panel" id="categories">
+          <div class="panel-head">
+            <div><h3>Menu categories</h3><p>Shown on the POS in this order. Each goes to the kitchen or the bar display.</p></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="addCategory"><i data-icon="plus" data-size="15"></i>Add category</button>
+          </div>
+          <div class="table-wrap flush">
+            <table class="data-table">
+              <thead><tr><th scope="col">Name</th><th scope="col">Prepared at</th><th scope="col"><span class="sr-only">Order and remove</span></th></tr></thead>
+              <tbody id="categoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="ordertypes">
+          <div class="panel-head"><div><h3>Order types</h3><p>Which kinds of order the POS offers.</p></div></div>
+          <div class="panel-body">
+            <label class="setting setting-row"><div><b>Dine-in</b><small>Guests sit at a table and pay at the end.</small></div><input type="checkbox" class="switch" id="typeDineIn"></label>
+            <label class="setting setting-row"><div><b>Takeaway</b><small>Ordered at the counter and collected. Needs a customer name.</small></div><input type="checkbox" class="switch" id="typeTakeaway"></label>
+            <label class="setting setting-row"><div><b>Delivery</b><small>Needs a name, a mobile number and an address. Both are encrypted.</small></div><input type="checkbox" class="switch" id="typeDelivery"></label>
           </div>
         </section>
       </div>

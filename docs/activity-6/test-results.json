@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-16T07:40:38.461Z",
+  "generatedAt": "2026-11-25T15:36:36.510Z",
   "passed": 41,
   "total": 41,
   "results": [
@@ -10,7 +10,7 @@
       "request": "Read users.passwordHash for demo.waiter from MongoDB",
       "expected": "Starts with $argon2id$ and does not contain the password",
       "actual": {
-        "passwordHash": "$argon2id$v=19$m=19456,p…O1MtIdw8"
+        "passwordHash": "$argon2id$v=19$m=19456,p…siOx91bU"
       },
       "pass": true
     },
@@ -26,7 +26,7 @@
           "error": {
             "code": "sign_in_failed",
             "message": "Incorrect username or password, or the account is temporarily locked.",
-            "requestId": "8e738279-9e30-4590-8c26-9abc5a9cceb3"
+            "requestId": "7c05d92c-2979-4f49-845d-87f4fe392619"
           }
         }
       },
@@ -42,7 +42,7 @@
         "loginStatus": 200,
         "mfaStatus": 200,
         "cookie": "__Host-cms_session",
-        "token": "eyJhbGciOiJIUzI1NiIsInR5…4l10e6pQ",
+        "token": "eyJhbGciOiJIUzI1NiIsInR5…dX_aHVGk",
         "header": {
           "alg": "HS256",
           "typ": "JWT",
@@ -52,8 +52,8 @@
           "sub": "demo.waiter",
           "iss": "cafems",
           "aud": "cafems-staff",
-          "iat": 1794814834,
-          "exp": 1794843634,
+          "iat": 1795620993,
+          "exp": 1795649793,
           "jti": "(random id)"
         }
       },
@@ -71,7 +71,7 @@
           "username": "demo.waiter",
           "name": "Test Person",
           "role": "Waiter",
-          "loginAt": "2026-11-16T07:40:34.774Z",
+          "loginAt": "2026-11-25T15:36:33.109Z",
           "csrfToken": "(hidden)",
           "idleSeconds": 300,
           "recoveryCodesLeft": 0
@@ -91,7 +91,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "d1298c9b-c64a-480b-9d39-7e0fbb2c8246"
+            "requestId": "4e64ad59-d796-459e-9d65-2fa12dbb4c43"
           }
         }
       },
@@ -109,7 +109,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "6e1c6c34-efe0-4c70-93da-0caab3f1926e"
+            "requestId": "fc498f13-86e0-4313-9a2b-34445604b940"
           }
         }
       },
@@ -119,7 +119,7 @@
       "task": "Task 4.6 / Task 6.3",
       "id": "A6-07",
       "title": "Rejected: Payload modified (sub changed to another user), signature kept",
-      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…4l10e6pQ",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…dX_aHVGk",
       "expected": "401 not_signed_in",
       "actual": {
         "status": 401,
@@ -127,7 +127,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "e5e15dfb-2520-4ea6-97d3-36dc8a9d5447"
+            "requestId": "29cd607a-3515-4880-b342-6445b9517a28"
           }
         }
       },
@@ -137,7 +137,7 @@
       "task": "Task 4.6 / Task 6.3",
       "id": "A6-08",
       "title": "Rejected: Signature modified",
-      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…4l10e6AA",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…dX_aHVAA",
       "expected": "401 not_signed_in",
       "actual": {
         "status": 401,
@@ -145,7 +145,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "515397a0-5a84-4f67-837b-2712e2f9b837"
+            "requestId": "af2a2a27-417e-4177-bd3e-74d854303f07"
           }
         }
       },
@@ -163,7 +163,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "50519c03-a779-48f8-9c1a-b9d74c6856b9"
+            "requestId": "5870680d-576d-4cbe-970a-04f5af8d62d7"
           }
         }
       },
@@ -173,7 +173,7 @@
       "task": "Task 4.6 / Task 6.3",
       "id": "A6-10",
       "title": "Rejected: Signed with a different secret key",
-      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…TBJwduAM",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…2DG6gwo8",
       "expected": "401 not_signed_in",
       "actual": {
         "status": 401,
@@ -181,7 +181,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "bd2ac4f3-444b-4ba9-83c7-1b3eadd93729"
+            "requestId": "31589bd2-34f4-4bbd-944d-155479e48b26"
           }
         }
       },
@@ -191,7 +191,7 @@
       "task": "Task 4.6 / Task 6.3",
       "id": "A6-11",
       "title": "Rejected: Correct key but already expired",
-      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…iCExGRfI",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…g7UzD5RE",
       "expected": "401 not_signed_in",
       "actual": {
         "status": 401,
@@ -199,7 +199,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "b1f1884e-bc13-4cf3-816f-77dc312449f0"
+            "requestId": "b49c67e0-5412-460e-b6ff-6f0394e1d563"
           }
         }
       },
@@ -217,7 +217,7 @@
           "error": {
             "code": "not_signed_in",
             "message": "Please sign in to continue.",
-            "requestId": "fd49b320-b9a3-4c5e-896b-58249c8f802d"
+            "requestId": "143c3dbc-a2ca-417a-96f3-6eb73a6a56f1"
           }
         }
       },
@@ -227,7 +227,7 @@
       "task": "Task 2.1 / Task 6.5",
       "id": "A6-13",
       "title": "Module 1 (Reservations): waiter submits a reservation",
-      "request": "POST /api/v1/reservations {\"name\":\"Ayesha Khan\",\"phone\":\"03211234567\",\"date\":\"2026-11-19\",\"time\":\"19:30\",\"party\":4,\"notes\":\"Window seat\"}",
+      "request": "POST /api/v1/reservations {\"name\":\"Ayesha Khan\",\"phone\":\"03211234567\",\"date\":\"2026-11-28\",\"time\":\"19:30\",\"party\":4,\"notes\":\"Window seat\"}",
       "expected": "201 with the saved reservation, phone masked",
       "actual": {
         "status": 201,
@@ -235,12 +235,12 @@
           "id": "R-1001",
           "name": "Ayesha Khan",
           "phone": "0321-•••••67",
-          "date": "2026-11-19",
+          "date": "2026-11-28",
           "time": "19:30",
           "party": 4,
           "notes": "Window seat",
           "status": "Confirmed",
-          "createdAt": "2026-11-16T07:40:35.581Z",
+          "createdAt": "2026-11-25T15:36:33.690Z",
           "updatedAt": null,
           "createdBy": "demo.waiter"
         }
@@ -300,7 +300,7 @@
           "error": {
             "code": "invalid_input",
             "message": "Party size must be a whole number from 1 to 20.",
-            "requestId": "899e3393-0a3e-4fd0-903e-22a1c093a04a"
+            "requestId": "95030011-fbe3-4209-8087-464ae78616ac"
           }
         }
       },
@@ -318,7 +318,7 @@
           "error": {
             "code": "invalid_input",
             "message": "Check the information you entered and try again.",
-            "requestId": "de40afcb-fc42-4447-ab7d-6288ce5b93ef"
+            "requestId": "757ec7cd-814f-4e31-8805-e0442b4ab754"
           }
         }
       },
@@ -336,7 +336,7 @@
           "error": {
             "code": "invalid_input",
             "message": "Check the information you entered and try again.",
-            "requestId": "01123fc9-36e4-4982-8c70-3ab4728b70fa"
+            "requestId": "a91acb24-f493-4289-aeb7-e2efdf983f01"
           }
         }
       },
@@ -354,13 +354,13 @@
           "id": "R-1001",
           "name": "Ayesha Khan",
           "phone": "0321-•••••67",
-          "date": "2026-11-19",
+          "date": "2026-11-28",
           "time": "19:30",
           "party": 4,
           "notes": "Window seat",
           "status": "Seated",
-          "createdAt": "2026-11-16T07:40:35.581Z",
-          "updatedAt": "2026-11-16T07:40:35.657Z",
+          "createdAt": "2026-11-25T15:36:33.690Z",
+          "updatedAt": "2026-11-25T15:36:33.776Z",
           "createdBy": "demo.waiter"
         }
       },
@@ -376,28 +376,40 @@
         "status": 201,
         "body": {
           "id": "ORD-1001",
+          "type": "dine-in",
           "table": 3,
+          "label": "Table 3",
+          "customer": null,
           "items": [
             {
               "id": 1,
               "name": "Espresso",
               "price": 350,
               "qty": 2,
-              "cat": "Coffee"
+              "cat": "Coffee",
+              "station": "Kitchen",
+              "options": [],
+              "chosen": []
             },
             {
               "id": 2,
               "name": "Cappuccino",
               "price": 520,
               "qty": 1,
-              "cat": "Coffee"
+              "cat": "Coffee",
+              "station": "Kitchen",
+              "options": [],
+              "chosen": []
             }
           ],
           "notes": "No sugar",
           "status": "Placed",
+          "stations": {
+            "Kitchen": "Placed"
+          },
           "waiter": "demo.waiter",
-          "createdAt": "2026-11-16T07:40:35.692Z",
-          "updatedAt": "2026-11-16T07:40:35.692Z",
+          "createdAt": "2026-11-25T15:36:33.812Z",
+          "updatedAt": "2026-11-25T15:36:33.812Z",
           "billed": false,
           "billNo": null,
           "version": 0,
@@ -438,7 +450,7 @@
           "error": {
             "code": "invalid_input",
             "message": "Check the information you entered and try again.",
-            "requestId": "6cee0d1c-6bc2-4abc-bf91-b354be8a30a0"
+            "requestId": "d0e6832e-de2f-44d4-8daa-027006927aee"
           }
         }
       },
@@ -470,7 +482,7 @@
           "error": {
             "code": "forbidden",
             "message": "You do not have permission to do that.",
-            "requestId": "b419b0f4-ab2d-4fa4-923e-63b60edc2465"
+            "requestId": "5768baca-e6dc-4ecd-9a1e-1d99c105fd56"
           }
         }
       },
@@ -479,7 +491,7 @@
     {
       "task": "Task 5.1, 5.2 / Task 6.4",
       "id": "A6-25",
-      "title": "Cashier cannot place orders",
+      "title": "Kitchen cannot place orders",
       "request": "POST /api/v1/orders",
       "expected": "403 forbidden",
       "actual": {
@@ -488,7 +500,7 @@
           "error": {
             "code": "forbidden",
             "message": "You do not have permission to do that.",
-            "requestId": "1d3a15a9-19bf-49e5-acdf-581988984fd4"
+            "requestId": "4f84632e-7cb2-4621-bc91-3c98f0a10b1a"
           }
         }
       },
@@ -506,7 +518,7 @@
           "error": {
             "code": "forbidden",
             "message": "You do not have permission to do that.",
-            "requestId": "eb8b77dd-8055-4c5a-b96f-81c8bbc67d6a"
+            "requestId": "67d6f705-dc29-46ae-acc0-0910d1a8ec64"
           }
         }
       },
@@ -524,7 +536,7 @@
           "error": {
             "code": "forbidden",
             "message": "You do not have permission to do that.",
-            "requestId": "cfab9604-4b7c-4322-94b1-fe0a748d121e"
+            "requestId": "34c900c5-f993-4f9e-a51e-03b5347cbfe7"
           }
         }
       },
@@ -542,7 +554,7 @@
           "error": {
             "code": "forbidden",
             "message": "You do not have permission to do that.",
-            "requestId": "715de664-4f76-4c78-b303-8eb3c2f4371c"
+            "requestId": "0c22898d-5dc0-44b5-8d54-1044b82620d4"
           }
         }
       },
@@ -576,13 +588,13 @@
               "id": "R-1001",
               "name": "Ayesha Khan",
               "phone": "0321-•••••67",
-              "date": "2026-11-19",
+              "date": "2026-11-28",
               "time": "19:30",
               "party": 4,
               "notes": "Window seat",
               "status": "Seated",
-              "createdAt": "2026-11-16T07:40:35.581Z",
-              "updatedAt": "2026-11-16T07:40:35.657Z",
+              "createdAt": "2026-11-25T15:36:33.690Z",
+              "updatedAt": "2026-11-25T15:36:33.776Z",
               "createdBy": "demo.waiter"
             }
           ]
@@ -624,7 +636,7 @@
       "expected": "status Pending; passwordHash starts with $argon2id$; no plaintext",
       "actual": {
         "status": "Pending",
-        "passwordHash": "$argon2id$v=19$m=19456,p…N780viCc"
+        "passwordHash": "$argon2id$v=19$m=19456,p…HpwDd7mU"
       },
       "pass": true
     },
@@ -640,7 +652,7 @@
           "error": {
             "code": "weak_password",
             "message": "Use at least 12 characters. Add an uppercase letter. Add a number. Add a symbol. This password is too common or too easy to guess.",
-            "requestId": "417ba8f9-b74b-4d68-ad72-4d355ab2feac"
+            "requestId": "4ff8c386-5612-4f4d-956c-004fd5375ad3"
           }
         }
       },
@@ -658,7 +670,7 @@
           "error": {
             "code": "sign_in_failed",
             "message": "Incorrect username or password, or the account is temporarily locked.",
-            "requestId": "4fd52230-bfc4-4431-8db9-7f6818242bd8"
+            "requestId": "878b8fe6-5240-48a3-ac03-727c9d328ff2"
           }
         }
       },
@@ -676,7 +688,7 @@
           "error": {
             "code": "forbidden",
             "message": "You do not have permission to do that.",
-            "requestId": "5441b668-9157-4882-b2c4-aa9448710b67"
+            "requestId": "1fb3ac3b-6d0a-4fa7-b807-0f8da244dc2c"
           }
         }
       },
@@ -694,7 +706,7 @@
           "error": {
             "code": "invalid_input",
             "message": "Check the information you entered and try again.",
-            "requestId": "6fd609cf-9dca-45f1-8846-38fef4627f77"
+            "requestId": "2106e9eb-71c6-4e3c-9f15-12a859eba323"
           }
         }
       },
@@ -719,13 +731,16 @@
     {
       "task": "Task 4.1",
       "id": "A6-39",
-      "title": "After approval the new account can sign in (then adds an authenticator)",
+      "title": "After approval the new account can sign in",
       "request": "POST /api/v1/auth/login as ahmed.raza after approval",
-      "expected": "200 with next: enroll",
+      "expected": "200 and signed in (a Kitchen role needs no authenticator)",
       "actual": {
         "status": 200,
         "body": {
-          "next": "enroll"
+          "next": "done",
+          "username": "ahmed.raza",
+          "name": "Ahmed Raza",
+          "role": "Kitchen"
         }
       },
       "pass": true
@@ -742,7 +757,7 @@
           "error": {
             "code": "invalid_input",
             "message": "That request could not be read.",
-            "requestId": "60dda5bb-0a73-4091-b438-619846bb5122"
+            "requestId": "79565e13-d05d-4fbd-a497-68a54ee53aee"
           }
         }
       },
@@ -760,7 +775,7 @@
           "error": {
             "code": "not_found",
             "message": "Not found.",
-            "requestId": "0f2bc034-864c-4d47-8a78-070f4a86d956"
+            "requestId": "df1f01bb-428a-4a97-b3d9-6297c0f45940"
           }
         }
       },

@@ -114,7 +114,6 @@ async function runCases() {
     // ---------- Task 5 / Task 6.4: role-based access ----------
     const kitchen = await as("Kitchen");
     const manager = await as("Manager");
-    const cashier = await as("Cashier");
 
     // ---------- Module 1: Reservations (Task 2, 3, 6.5) ----------
     const booking = { name: "Ayesha Khan", phone: PHONE, date: futureDate(), time: "19:30", party: 4, notes: "Window seat" };
@@ -182,7 +181,7 @@ async function runCases() {
     // ---------- Role-based access (Task 5.1, 5.2, 6.4) ----------
     const rbac = [
       ["A6-24", "Kitchen cannot read reservations", kitchen, "get", `${API}/reservations`, 403],
-      ["A6-25", "Cashier cannot place orders", cashier, "post", `${API}/orders`, 403, { table: 5, lines: [{ id: 1, qty: 1 }] }],
+      ["A6-25", "Kitchen cannot place orders", kitchen, "post", `${API}/orders`, 403, { table: 5, lines: [{ id: 1, qty: 1 }] }],
       ["A6-26", "Waiter cannot reveal a guest's full phone number", waiter, "get", `${API}/reservations/${created.body.id}/phone`, 403],
       ["A6-27", "Waiter cannot open the audit log", waiter, "get", `${API}/audit`, 403],
       ["A6-28", "Manager cannot manage staff accounts (Admin only)", manager, "get", "/api/v1/users", 403],

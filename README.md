@@ -17,11 +17,12 @@ Every rule is enforced on the server. The browser only shows what the server all
 | Who | What they can do |
 | --- | --- |
 | **Customer** | Browse the live menu, see opening hours, request a table online |
-| **Waiter** | Take and edit their own orders, serve, request the bill, manage reservations |
-| **Kitchen** | Move tickets from Placed to Preparing to Ready; never sees prices or customer data |
-| **Cashier** | Bill tables with cash, card or wallet, and discounts up to 10% |
-| **Manager** | Everything a cashier does, with discounts to 25%; refunds, stock, reports, reservations |
-| **Admin** | Menu and photos, staff and roles, settings (cafe details, tax, discount limits, receipt, tables), audit log, security alerts |
+| **Waiter** | Take dine-in, takeaway and delivery orders on the POS (with item options), hold and send them, move them between tables, serve, request the bill, manage reservations |
+| **Barista** | Bar display: makes the drinks part of each order |
+| **Kitchen** | Kitchen display: moves the food part of each order from Placed to Preparing to Ready; never sees prices or customer data |
+| **Cashier** | Take counter (takeaway and delivery) orders; bill tables and counter orders with cash, card or wallet, and discounts up to the limit set in Settings |
+| **Manager** | Billing with a higher discount limit; voids and refunds after a fresh authenticator code; stock, reports, reservations |
+| **Admin** | Menu, photos and item options; staff and roles; settings (cafe details, tax, discount limits, receipt, tables, categories and their station, order types); audit log, security alerts |
 
 The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 

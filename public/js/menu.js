@@ -24,6 +24,7 @@
     }, { summary: document.getElementById("itemErr") });
     photoCheck = Validate.attachFile(document.getElementById("fPhoto"), PHOTO);
     document.getElementById("addIngredient").addEventListener("click", function () { addRecipeRow(null); });
+    document.getElementById("addOption").addEventListener("click", function () { addOptionRow(null); });
     const desc = document.getElementById("fDesc");
     desc.addEventListener("input", function () { document.getElementById("descCount").textContent = desc.value.length + " / 80"; });
     render();
@@ -43,7 +44,8 @@
     });
     const dl = document.getElementById("catList");
     dl.replaceChildren();
-    Store.categories().forEach(function (c) { dl.appendChild(h("option", { value: c })); });
+    // Categories are set by an Admin under Settings, each with its station
+    Store.categoryList().forEach(function (c) { dl.appendChild(h("option", { value: c.name, label: c.station === "Bar" ? "Bar" : "Kitchen" })); });
   }
 
   function renderRows() {
@@ -85,6 +87,40 @@
     document.getElementById("recipeRows").appendChild(row);
   }
 
+  // One option group: its name, whether a choice is required or several may be picked, and the choices
+  function addOptionRow(group) {
+    const name = h("input", { class: "input", maxlength: "24", placeholder: "Group, e.g. Size", "aria-label": "Option group name" });
+    const choices = h("input", { class: "input", maxlength: "300", placeholder: "Small, Large +100", "aria-label": "Choices" });
+    const required = h("input", { type: "checkbox", "aria-label": "Required" });
+    const multi = h("input", { type: "checkbox", "aria-label": "Several allowed" });
+    if (group) {
+      name.value = group.name;
+      choices.value = group.choices.map(function (c) { return c.name + (c.price ? " +" + c.price : ""); }).join(", ");
+      required.checked = group.required;
+      multi.checked = group.multi;
+    }
+    const row = h("div", { class: "option-row" }, [name, choices,
+      h("label", { class: "check" }, [required, "Required"]), h("label", { class: "check" }, [multi, "Several"])]);
+    row.appendChild(h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", icon: "trash", iconSize: 15, "aria-label": "Remove option group", onclick: function () { row.remove(); } }));
+    document.getElementById("optionRows").appendChild(row);
+  }
+
+  // "Small, Large +100" becomes [{ name: "Small", price: 0 }, { name: "Large", price: 100 }]
+  function readOptions() {
+    return Array.prototype.map.call(document.querySelectorAll("#optionRows .option-row"), function (row) {
+      const inputs = row.querySelectorAll("input");
+      return {
+        name: inputs[0].value.trim(),
+        required: inputs[2].checked,
+        multi: inputs[3].checked,
+        choices: inputs[1].value.split(",").map(function (part) { return part.trim(); }).filter(Boolean).map(function (part) {
+          const m = /^(.*?)\s*\+\s*(\d+)$/.exec(part);
+          return m ? { name: m[1].trim(), price: Number(m[2]) } : { name: part, price: 0 };
+        })
+      };
+    });
+  }
+
   function readRecipe() {
     return Array.prototype.map.call(document.querySelectorAll("#recipeRows .recipe-row"), function (row) {
       return { ing: Number(row.querySelector("select").value), qty: Number(row.querySelector("input").value) };
@@ -95,6 +131,8 @@
     editingId = m ? m.id : null;
     document.getElementById("recipeRows").replaceChildren();
     if (m) (m.recipe || []).forEach(addRecipeRow);
+    document.getElementById("optionRows").replaceChildren();
+    if (m) (m.options || []).forEach(addOptionRow);
     CMS.clearError(document.getElementById("itemErr"));
     document.getElementById("itemTitle").textContent = m ? "Edit " + m.name : "Add menu item";
     rules.reset();
@@ -119,7 +157,7 @@
     const v = checked.values;
     const data = {
       id: editingId, name: v.fName, cat: v.fCat, price: Number(v.fPrice),
-      desc: v.fDesc, available: document.getElementById("fAvail").checked, recipeEdit: readRecipe()
+      desc: v.fDesc, available: document.getElementById("fAvail").checked, recipeEdit: readRecipe(), options: readOptions()
     };
     const old = editingId ? Store.menuItem(editingId) : null;
     if (old && old.price !== data.price && Number.isInteger(data.price)) {

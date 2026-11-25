@@ -14,7 +14,7 @@ const { nextSequence, inTransaction } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
 
 const PAGE_SIZE = 5;
-const SUBMITTERS = ["Waiter", "Kitchen", "Cashier"];
+const SUBMITTERS = ["Waiter", "Barista", "Kitchen", "Cashier"];
 const REVIEWERS = ["Manager"];
 const TERMINAL = ["Resolved", "Rejected"];
 const TRANSITIONS = Object.freeze({

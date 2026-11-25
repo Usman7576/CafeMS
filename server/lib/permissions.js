@@ -1,11 +1,15 @@
 // The server's single source of truth for who may do what. Anything not listed is denied.
-const ROLES = Object.freeze(["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]);
+const ROLES = Object.freeze(["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"]);
 
 const PERMISSIONS = Object.freeze({
-  "menu.read": ["Waiter", "Admin"],
-  "orders.write": ["Waiter"],
-  "kitchen.read": ["Kitchen"],
-  "kitchen.update": ["Kitchen"],
+  "menu.read": ["Waiter", "Cashier", "Admin"],
+  // Counter sales: a cashier can take takeaway and delivery orders as well as bill them
+  "orders.write": ["Waiter", "Cashier"],
+  // Each station works its own part of an order: Kitchen the food, Barista the bar
+  "kitchen.read": ["Kitchen", "Barista"],
+  "kitchen.update": ["Kitchen", "Barista"],
+  // A sent order can be voided only by a manager, after a fresh authenticator code
+  "orders.void": ["Manager"],
   "billing.pay": ["Cashier", "Manager"],
   "billing.read": ["Cashier", "Manager", "Admin"],
   "billing.refund": ["Manager"],
@@ -23,18 +27,18 @@ const PERMISSIONS = Object.freeze({
   "audit.read": ["Admin"],
   "alerts.manage": ["Admin"],
   // Staff requests: Role 1 (submitters) own their requests; Role 2 (Manager) reviews them
-  "requests.read": ["Waiter", "Kitchen", "Cashier", "Manager"],
-  "requests.submit": ["Waiter", "Kitchen", "Cashier"],
+  "requests.read": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager"],
+  "requests.submit": ["Waiter", "Barista", "Kitchen", "Cashier"],
   "requests.review": ["Manager"]
 });
 
 // Protected pages: checked on the server before the HTML is sent.
 const PAGES = Object.freeze({
   "/dashboard.html": ["Waiter"],
-  "/order.html": ["Waiter"],
+  "/order.html": ["Waiter", "Cashier"],
   "/reservation.html": ["Waiter", "Manager"],
   "/reservations.html": ["Waiter", "Manager"],
-  "/kitchen.html": ["Kitchen"],
+  "/kitchen.html": ["Kitchen", "Barista"],
   "/billing.html": ["Cashier", "Manager"],
   "/overview.html": ["Manager", "Admin"],
   "/inventory.html": ["Manager"],
@@ -44,14 +48,15 @@ const PAGES = Object.freeze({
   "/settings.html": ["Admin"],
   "/audit.html": ["Admin"],
   "/security.html": ["Admin"],
-  "/requests.html": ["Waiter", "Kitchen", "Cashier", "Manager"],
-  "/account.html": ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]
+  "/requests.html": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager"],
+  "/account.html": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"]
 });
 
 const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/register.html", "/setup.html", "/privacy.html", "/404.html"]);
 
 const HOME = Object.freeze({
   Waiter: "/dashboard.html",
+  Barista: "/kitchen.html",
   Kitchen: "/kitchen.html",
   Cashier: "/billing.html",
   Manager: "/overview.html",
@@ -61,11 +66,13 @@ const HOME = Object.freeze({
 // Admins and Managers hold the keys to money and accounts, so they must use an authenticator.
 // The roles that share tablets on the floor may switch to themselves with a PIN instead.
 const MFA_ROLES = Object.freeze(["Manager", "Admin"]);
-const PIN_ROLES = Object.freeze(["Waiter", "Kitchen", "Cashier"]);
+const PIN_ROLES = Object.freeze(["Waiter", "Barista", "Kitchen", "Cashier"]);
+// The station each display role works
+const STATION_OF = Object.freeze({ Kitchen: "Kitchen", Barista: "Bar" });
 const mfaRequired = (role) => MFA_ROLES.includes(role);
 
 function can(role, permission) {
   return Object.hasOwn(PERMISSIONS, permission) && PERMISSIONS[permission].includes(role);
 }
 
-module.exports = { ROLES, PERMISSIONS, PAGES, PUBLIC_PAGES, HOME, MFA_ROLES, PIN_ROLES, mfaRequired, can };
+module.exports = { ROLES, PERMISSIONS, PAGES, PUBLIC_PAGES, HOME, MFA_ROLES, PIN_ROLES, STATION_OF, mfaRequired, can };

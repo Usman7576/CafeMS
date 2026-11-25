@@ -23,15 +23,18 @@ Waiter orders (create, read, edit, serve, cancel) and the kitchen ticket board t
 
 | Method | Endpoint | Who may call it | Checks |
 | --- | --- | --- | --- |
-| GET | `/api/v1/orders` | Waiter (`orders.write`) | — |
-| POST | `/api/v1/orders` | Waiter (`orders.write`) | validated |
-| PUT | `/api/v1/orders/{id}` | Waiter (`orders.write`) | validated |
-| POST | `/api/v1/orders/{id}/serve` | Waiter (`orders.write`) | validated |
-| POST | `/api/v1/orders/{id}/cancel` | Waiter (`orders.write`) | validated |
-| GET | `/api/v1/tables` | Waiter (`orders.write`) | — |
-| POST | `/api/v1/tables/{no}/request-bill` | Waiter (`orders.write`) | validated |
-| GET | `/api/v1/kitchen/tickets` | Kitchen (`kitchen.read`) | — |
-| POST | `/api/v1/kitchen/tickets/{id}/status` | Kitchen (`kitchen.update`) | validated |
+| GET | `/api/v1/orders` | Waiter, Cashier (`orders.write`) | — |
+| POST | `/api/v1/orders` | Waiter, Cashier (`orders.write`) | validated |
+| PUT | `/api/v1/orders/{id}` | Waiter, Cashier (`orders.write`) | validated |
+| POST | `/api/v1/orders/{id}/serve` | Waiter, Cashier (`orders.write`) | validated |
+| POST | `/api/v1/orders/{id}/cancel` | Waiter, Cashier (`orders.write`) | validated |
+| POST | `/api/v1/orders/{id}/send` | Waiter, Cashier (`orders.write`) | validated |
+| POST | `/api/v1/orders/{id}/transfer` | Waiter, Cashier (`orders.write`) | validated |
+| POST | `/api/v1/orders/{id}/void` | Manager (`orders.void`) | validated, step-up |
+| GET | `/api/v1/tables` | Waiter, Cashier (`orders.write`) | — |
+| POST | `/api/v1/tables/{no}/request-bill` | Waiter, Cashier (`orders.write`) | validated |
+| GET | `/api/v1/kitchen/tickets` | Kitchen, Barista (`kitchen.read`) | — |
+| POST | `/api/v1/kitchen/tickets/{id}/status` | Kitchen, Barista (`kitchen.update`) | validated |
 
 ## Authentication and sessions
 
@@ -42,11 +45,6 @@ Login, authenticator verification, JWT session, sign-out and account security.
 | POST | `/api/v1/auth/login` | Public | — |
 | POST | `/api/v1/auth/mfa/verify` | Public | validated |
 | GET | `/api/v1/auth/mfa/security-question` | Public | — |
-| GET | `/api/v1/auth/oidc/enabled` | Public | — |
-| GET | `/api/v1/auth/oidc/start` | Public | — |
-| POST | `/api/v1/auth/oidc/link` | Any signed-in staff | step-up |
-| POST | `/api/v1/auth/oidc/unlink` | Any signed-in staff | step-up |
-| GET | `/api/v1/auth/oidc/callback` | Public | — |
 | POST | `/api/v1/auth/mfa/passkey/options` | Public | — |
 | POST | `/api/v1/auth/mfa/passkey` | Public | validated |
 | POST | `/api/v1/auth/mfa/enroll/start` | Public | — |
@@ -65,9 +63,10 @@ Login, authenticator verification, JWT session, sign-out and account security.
 | POST | `/api/v1/auth/security-question` | Any signed-in staff | validated, step-up |
 | POST | `/api/v1/auth/mfa/recovery-codes` | Any signed-in staff | step-up |
 | POST | `/api/v1/auth/password` | Any signed-in staff | validated |
-| POST | `/api/v1/auth/signing-keys` | Any signed-in staff | validated |
-| GET | `/api/v1/auth/signing-keys` | Any signed-in staff | — |
-| DELETE | `/api/v1/auth/signing-keys/{id}` | Any signed-in staff | validated |
+| PUT | `/api/v1/auth/pin` | Any signed-in staff | validated |
+| DELETE | `/api/v1/auth/pin` | Any signed-in staff | — |
+| GET | `/api/v1/auth/switch/people` | Any signed-in staff | — |
+| POST | `/api/v1/auth/switch` | Any signed-in staff | validated |
 | GET | `/api/v1/auth/sessions` | Any signed-in staff | — |
 
 ## Other modules
@@ -89,7 +88,7 @@ Menu, billing, inventory, reports, users, audit and the rest of the system.
 | POST | `/api/v1/users/{username}/approve` | Admin (`users.manage`) | validated |
 | POST | `/api/v1/users/{username}/reject` | Admin (`users.manage`) | validated |
 | POST | `/api/v1/users/{username}/unlock` | Admin (`users.manage`) | validated |
-| GET | `/api/v1/menu` | Waiter, Admin (`menu.read`) | — |
+| GET | `/api/v1/menu` | Waiter, Cashier, Admin (`menu.read`) | — |
 | POST | `/api/v1/menu` | Admin (`menu.write`) | validated |
 | PUT | `/api/v1/menu/{id}` | Admin (`menu.write`) | validated |
 | DELETE | `/api/v1/menu/{id}` | Admin (`menu.write`) | validated |
@@ -99,29 +98,37 @@ Menu, billing, inventory, reports, users, audit and the rest of the system.
 | POST | `/api/v1/inventory/{id}/adjust` | Manager (`inventory.write`) | validated |
 | GET | `/api/v1/billing/open-tables` | Cashier, Manager (`billing.pay`) | — |
 | POST | `/api/v1/billing/tables/{no}/pay` | Cashier, Manager (`billing.pay`) | validated |
+| POST | `/api/v1/billing/orders/{id}/pay` | Cashier, Manager (`billing.pay`) | validated |
 | POST | `/api/v1/bills/{no}/retry-payment` | Cashier, Manager (`billing.pay`) | validated |
 | GET | `/api/v1/bills` | Cashier, Manager, Admin (`billing.read`) | validated |
 | GET | `/api/v1/bills/{no}` | Cashier, Manager, Admin (`billing.read`) | validated |
 | GET | `/api/v1/bills/{no}/phone` | Manager, Admin (`customer.phone`) | validated |
-| POST | `/api/v1/bills/{no}/refund` | Manager (`billing.refund`) | validated, step-up, signed |
+| POST | `/api/v1/bills/{no}/refund` | Manager (`billing.refund`) | validated, step-up |
 | GET | `/api/v1/approvals` | Manager, Admin (`approvals.read`) | — |
-| POST | `/api/v1/approvals/{id}/approve` | Manager, Admin (`approvals.read`) | validated, step-up, signed |
-| POST | `/api/v1/approvals/{id}/reject` | Manager, Admin (`approvals.read`) | validated, step-up, signed |
+| POST | `/api/v1/approvals/{id}/approve` | Manager, Admin (`approvals.read`) | validated, step-up |
+| POST | `/api/v1/approvals/{id}/reject` | Manager, Admin (`approvals.read`) | validated, step-up |
 | GET | `/api/v1/reports/sales` | Manager, Admin (`reports.read`) | validated |
 | GET | `/api/v1/reports/trend` | Manager, Admin (`reports.read`) | — |
 | GET | `/api/v1/reports/sales.csv` | Manager, Admin (`reports.read`) | validated |
 | GET | `/api/v1/audit` | Admin (`audit.read`) | validated |
 | GET | `/api/v1/audit/verify` | Admin (`audit.read`) | — |
 | POST | `/api/v1/audit/review` | Admin (`audit.read`) | validated |
-| GET | `/api/v1/audit/signatures/verify` | Admin (`audit.read`) | — |
 | GET | `/api/v1/audit/public-keys` | Admin (`audit.read`) | — |
 | GET | `/api/v1/alerts` | Admin (`alerts.manage`) | — |
 | POST | `/api/v1/alerts/{id}/acknowledge` | Admin (`alerts.manage`) | validated |
-| POST | `/api/v1/customers/erase` | Admin (`customer.erase`) | validated, step-up, signed |
+| POST | `/api/v1/customers/erase` | Admin (`customer.erase`) | validated, step-up |
 | GET | `/api/v1/audit.csv` | Admin (`audit.read`) | validated |
-| GET | `/api/v1/risk` | Admin (`risk.read`) | — |
-| GET | `/api/v1/risk.csv` | Admin (`risk.read`) | — |
 | PUT | `/api/v1/settings/cafe` | Admin (`settings.write`) | validated |
+| GET | `/api/v1/settings` | Admin (`settings.write`) | — |
+| PUT | `/api/v1/settings` | Admin (`settings.write`) | validated, step-up |
+| GET | `/api/v1/requests` | Waiter, Barista, Kitchen, Cashier, Manager (`requests.read`) | validated |
+| POST | `/api/v1/requests` | Waiter, Barista, Kitchen, Cashier (`requests.submit`) | validated |
+| GET | `/api/v1/requests/{id}` | Waiter, Barista, Kitchen, Cashier, Manager (`requests.read`) | validated |
+| GET | `/api/v1/requests/{id}/history` | Waiter, Barista, Kitchen, Cashier, Manager (`requests.read`) | validated |
+| POST | `/api/v1/requests/{id}/claim` | Any signed-in staff | — |
+| POST | `/api/v1/requests/{id}/resolve` | Any signed-in staff | — |
+| POST | `/api/v1/requests/{id}/reject` | Any signed-in staff | — |
+| GET | `/api/v1/events` | Any signed-in staff | — |
 | GET | `/api/v1/snapshot` | Any signed-in staff | — |
 | GET | `/api/health/live` | Any signed-in staff | — |
 | GET | `/api/health` | Any signed-in staff | — |

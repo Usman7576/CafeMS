@@ -3,9 +3,10 @@
 (function () {
   if (!window.App) return;
   const h = CMS.h, me = App.session.user;
-  const ROLE_ICON = { Waiter: "clipboard", Kitchen: "chef", Cashier: "receipt", Manager: "chart", Admin: "shield" };
+  const ROLE_ICON = { Waiter: "clipboard", Barista: "coffee", Kitchen: "chef", Cashier: "receipt", Manager: "chart", Admin: "shield" };
   const ROLE_DESC = {
     Waiter: "Take and update orders, view table status",
+    Barista: "Bar display: drink tickets only",
     Kitchen: "View order queue, update order status",
     Cashier: "Create bills, take payments, discounts up to 10%",
     Manager: "Inventory, reports, refunds, discounts up to 25%",
@@ -171,7 +172,7 @@
 
   function renderMatrix() {
     const perms = [
-      ["Take & update orders", ["Waiter"]], ["View table status", ["Waiter", "Cashier", "Manager", "Admin"]], ["Kitchen order queue", ["Kitchen"]],
+      ["Take & update orders", ["Waiter", "Cashier"]], ["View table status", ["Waiter", "Cashier", "Manager", "Admin"]], ["Kitchen order queue", ["Kitchen"]], ["Bar order queue", ["Barista"]], ["Void a started order", ["Manager"]],
       ["Create bills & take payments", ["Cashier", "Manager"]], ["Discounts", ["Cashier", "Manager"], { Cashier: "≤10%", Manager: "≤25%" }],
       ["Refunds", ["Manager"]], ["Inventory & restocking", ["Manager"]], ["Sales reports", ["Manager", "Admin"]],
       ["Menu & prices", ["Admin"]], ["Users & roles", ["Admin"]], ["Audit log", ["Admin"]]

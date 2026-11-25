@@ -261,7 +261,7 @@
 
     // Landing page: if already signed in, "Staff sign in" buttons open the user's workspace instead
     const s = Session.get();
-    const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
+    const HOME = { Waiter: "dashboard.html", Barista: "kitchen.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
     if (document.querySelector(".site-nav") && s && HOME[s.role]) {
       document.querySelectorAll('a[href="login.html"]').forEach(function (a) {
         a.setAttribute("href", HOME[s.role]);

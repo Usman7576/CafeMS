@@ -17,7 +17,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
 
   // Bills always leave the server masked. Seeing a full number is a separate, logged action.
   const billView = (b) => ({
-    no: b._id, table: b.table, orderIds: b.orderIds, lines: b.lines, discountPct: b.discountPct, subtotal: b.subtotal, discount: b.discount,
+    no: b._id, table: b.table, type: b.type || "dine-in", label: b.label || `Table ${b.table}`, orderIds: b.orderIds, lines: b.lines, discountPct: b.discountPct, subtotal: b.subtotal, discount: b.discount,
     tax: b.tax, total: b.total, method: b.method, tendered: b.tendered, change: b.change, cashier: b.cashier, createdAt: b.createdAt,
     status: b.status, phone: b.phoneMask || "", refund: b.refund || null, refundPending: Boolean(b.refundPending)
   });
@@ -26,8 +26,9 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     const lines = [];
     for (const o of open) {
       for (const i of o.items) {
-        const same = lines.find((l) => l.id === i.id && l.price === i.price);
-        if (same) same.qty += i.qty; else lines.push({ id: i.id, name: i.name, price: i.price, qty: i.qty, cat: i.cat });
+        const opts = (i.options || []).join(", ");
+        const same = lines.find((l) => l.id === i.id && l.price === i.price && (l.options || []).join(", ") === opts);
+        if (same) same.qty += i.qty; else lines.push({ id: i.id, name: i.name, price: i.price, qty: i.qty, cat: i.cat, options: i.options || [] });
       }
     }
     return lines;
@@ -40,30 +41,55 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       users.find({}, { projection: { username: 1, name: 1 } }).toArray()
     ]);
     const names = new Map(staff.map((u) => [u.username, u.name]));
-    return settings.get().tables.map((t) => {
+    const tabs = settings.get().tables.map((t) => {
       const onTable = open.filter((o) => o.table === t.no);
       if (!onTable.length) return null;
       const lines = aggregateLines(onTable);
       const doc = tableDocs.find((d) => d._id === t.no);
       return {
-        no: t.no, seats: t.seats, lines, totals: calculateTotals(lines, 0, settings.taxRate()), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
+        key: `t${t.no}`, type: "dine-in", label: `Table ${t.no}`, no: t.no, seats: t.seats, lines, totals: calculateTotals(lines, 0, settings.taxRate()), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
         billRequested: doc && doc.billRequestedAt ? doc.billRequestedAt : null,
         waiters: [...new Set(onTable.map((o) => names.get(o.waiter) || o.waiter))],
         since: new Date(Math.min(...onTable.map((o) => o.createdAt.getTime())))
       };
     }).filter(Boolean);
+    // Takeaway and delivery orders are billed one by one
+    const counter = open.filter((o) => orderService.typeOf(o) !== "dine-in").map((o) => {
+      const lines = aggregateLines([o]);
+      return {
+        key: o._id, type: o.type, label: orderService.labelOf(o), no: null, orderId: o._id, lines, totals: calculateTotals(lines, 0, settings.taxRate()),
+        orders: [{ id: o._id, status: o.status }], allServed: o.status === "Served", billRequested: null,
+        waiters: [names.get(o.waiter) || o.waiter], since: o.createdAt
+      };
+    });
+    return tabs.concat(counter);
   }
 
-  async function pay(req, no, input, session) {
+  // ref is a table number, or the id of one takeaway or delivery order
+  async function pay(req, ref, input, session) {
     const actor = req.auth.user;
-    await orderService.lockTable(no, session);
-    const open = await orders.find({ table: no, ...orderService.OPEN_FILTER }, { session }).toArray();
-    if (!open.length) throw new AppError(404, "not_found", `Table ${no} has nothing to bill.`);
-    if (!open.every((o) => o.status === "Served")) throw new AppError(409, "not_served", `Some orders on Table ${no} haven't been served yet.`);
+    const byTable = typeof ref === "number";
+    let open;
+    let label;
+    if (byTable) {
+      await orderService.lockTable(ref, session);
+      open = await orders.find({ table: ref, ...orderService.OPEN_FILTER }, { session }).toArray();
+      label = `Table ${ref}`;
+      if (!open.length) throw new AppError(404, "not_found", `${label} has nothing to bill.`);
+      if (!open.every((o) => o.status === "Served")) throw new AppError(409, "not_served", `Some orders on ${label} haven't been served yet.`);
+    } else {
+      // Touching the order makes two payments for it run one after the other
+      const order = await orders.findOneAndUpdate({ _id: ref, type: { $in: ["takeaway", "delivery"] }, ...orderService.OPEN_FILTER }, { $inc: { payRev: 1 } }, { returnDocument: "after", session });
+      if (!order) throw new AppError(404, "not_found", `${ref} has nothing to bill.`);
+      label = orderService.labelOf(order);
+      if (order.status !== "Served") throw new AppError(409, "not_served", `Hand over ${ref} before taking payment.`);
+      open = [order];
+    }
+    const no = byTable ? ref : null;
 
     const limit = settings.discountLimit(actor.role);
     if (input.discountPct > limit) {
-      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Access denied", details: `Tried a ${input.discountPct}% discount on Table ${no}`, severity: "warning" });
+      await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Access denied", details: `Tried a ${input.discountPct}% discount on ${label}`, severity: "warning" });
       throw new AppError(403, "discount_limit", `Your role can apply a discount of up to ${limit}%. Ask a manager for more.`);
     }
 
@@ -77,7 +103,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
 
     const billNo = `B-${await nextSequence(db, "bill", 5000, session)}`;
     const bill = {
-      _id: billNo, table: no, orderIds: open.map((o) => o._id), lines, discountPct: input.discountPct, subtotal: totals.sub,
+      _id: billNo, table: no, type: byTable ? "dine-in" : open[0].type, label, orderIds: open.map((o) => o._id), lines, discountPct: input.discountPct, subtotal: totals.sub,
       discount: totals.discount, tax: totals.tax, total: totals.total, method: input.method, tendered, change: tendered - totals.total,
       cashier: actor.username, createdAt: new Date(), status: input.method === "Cash" ? "Paid" : "Pending Payment"
     };
@@ -88,11 +114,11 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     }
     await bills.insertOne(bill, { session });
     await orders.updateMany({ _id: { $in: bill.orderIds } }, { $set: { billed: true, billNo } }, { session });
-    await tables.updateOne({ _id: no }, { $unset: { billRequestedAt: "" } }, { session });
+    if (byTable) await tables.updateOne({ _id: no }, { $unset: { billRequestedAt: "" } }, { session });
 
     await recordEvent(db, req, {
       actor: actor.username, role: actor.role, action: bill.status === "Paid" ? "Payment recorded" : "Payment started",
-      details: `${billNo} · Table ${no} · Rs ${bill.total} · ${bill.method}`
+      details: `${billNo} · ${label} · Rs ${bill.total} · ${bill.method}`
     }, { session });
     if (bill.status === "Paid" && input.phone) await enqueue(db, "receipt", { billNo }, session);
     if (input.discountPct) {

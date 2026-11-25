@@ -29,7 +29,7 @@
     document.getElementById("kBills").textContent = sales.bills;
     document.getElementById("kBillsSub").textContent = sales.refunds ? sales.refunds + " refunded (" + CMS.money(sales.refundAmount) + ")" : "No refunds today";
     document.getElementById("kActive").textContent = active.length;
-    document.getElementById("kActiveSub").textContent = open.length + " tables open · " + open.filter(function (t) { return t.billRequested; }).length + " awaiting bill";
+    document.getElementById("kActiveSub").textContent = open.filter(function (t) { return t.type === "dine-in"; }).length + " tables open · " + open.filter(function (t) { return t.type !== "dine-in"; }).length + " counter orders · " + open.filter(function (t) { return t.billRequested; }).length + " awaiting bill";
     document.getElementById("kStock").textContent = low.length;
     document.getElementById("kStockSub").textContent = low.filter(function (i) { return i.qty <= 0; }).length + " out of stock";
 

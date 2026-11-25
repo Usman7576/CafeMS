@@ -42,7 +42,9 @@
       taxRatePct: number("taxRate"),
       discountLimits: { Cashier: number("limitCashier"), Manager: number("limitManager") },
       receipt: { header: el("receiptHeader").value, footer: el("receiptFooter").value },
-      tables: draft.tables.map(function (t) { return { no: Number(t.no), seats: Number(t.seats), area: String(t.area || "").trim() }; })
+      tables: draft.tables.map(function (t) { return { no: Number(t.no), seats: Number(t.seats), area: String(t.area || "").trim() }; }),
+      categories: draft.categories.map(function (c) { return { name: String(c.name || "").trim(), station: c.station }; }),
+      orderTypes: { dineIn: el("typeDineIn").checked, takeaway: el("typeTakeaway").checked, delivery: el("typeDelivery").checked }
     };
   }
 
@@ -85,6 +87,36 @@
     Array.from(new Set(draft.tables.map(function (t) { return t.area; }).filter(Boolean))).forEach(function (a) { list.appendChild(h("option", { value: a })); });
   }
 
+  function renderCategories() {
+    const body = el("categoryRows");
+    body.replaceChildren();
+    draft.categories.forEach(function (c, i) {
+      const name = h("input", { class: "input input-sm", maxlength: "24", "aria-label": "Category name, row " + (i + 1) });
+      name.value = c.name;
+      name.addEventListener("input", function () { c.name = name.value; markDirty(); });
+      const station = h("select", { class: "select input-sm station-select", "aria-label": "Station for " + c.name }, [h("option", { value: "Kitchen", text: "Kitchen" }), h("option", { value: "Bar", text: "Bar" })]);
+      station.value = c.station;
+      station.addEventListener("change", function () { c.station = station.value; markDirty(); });
+      const move = function (d) { return function () { const j = i + d; if (j < 0 || j >= draft.categories.length) return; const t = draft.categories[i]; draft.categories[i] = draft.categories[j]; draft.categories[j] = t; renderCategories(); markDirty(); }; };
+      body.appendChild(h("tr", null, [
+        h("td", null, [name]), h("td", null, [station]),
+        h("td", { class: "actions" }, [h("div", { class: "row-actions" }, [
+          h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", "aria-label": "Move " + c.name + " up", disabled: i === 0, onclick: move(-1), text: "↑" }),
+          h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", "aria-label": "Move " + c.name + " down", disabled: i === draft.categories.length - 1, onclick: move(1), text: "↓" }),
+          h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", "aria-label": "Remove " + c.name, onclick: function () { draft.categories.splice(i, 1); renderCategories(); markDirty(); } }, [App.I("trash", 16)])
+        ])])
+      ]));
+    });
+  }
+  el("addCategory").addEventListener("click", function () {
+    draft.categories.push({ name: "", station: "Kitchen" });
+    renderCategories();
+    markDirty();
+    const rows = el("categoryRows").querySelectorAll("tr");
+    rows[rows.length - 1].querySelector("input").focus();
+  });
+  ["typeDineIn", "typeTakeaway", "typeDelivery"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
+
   el("addTable").addEventListener("click", function () {
     const next = draft.tables.reduce(function (m, t) { return Math.max(m, Number(t.no) || 0); }, 0) + 1;
     const lastArea = draft.tables.length ? draft.tables[draft.tables.length - 1].area : "Main hall";
@@ -103,6 +135,10 @@
     el("receiptHeader").value = draft.receipt.header;
     el("receiptFooter").value = draft.receipt.footer;
     renderTables();
+    renderCategories();
+    el("typeDineIn").checked = draft.orderTypes.dineIn;
+    el("typeTakeaway").checked = draft.orderTypes.takeaway;
+    el("typeDelivery").checked = draft.orderTypes.delivery;
     dirty = false;
     saveBtn.disabled = true;
     preview();

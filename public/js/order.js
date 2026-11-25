@@ -1,221 +1,282 @@
-// Take order / edit order: table picker, menu search + category filter,
-// ticket with quantity steppers and live totals, notes counter, confirmation.
+// POS: take a dine-in, takeaway or delivery order. Category pills and photo tiles on the left, the
+// order on the right. Items with options (size, milk...) open a short chooser. Prices shown here are
+// for display only: the server works out every price from the menu when the order is saved.
 (function () {
   if (!window.App) return;
   const h = CMS.h;
-  const MAX_QTY = 20;
-  let selectedTable = null, activeCat = "All", editing = null;
-  const lines = new Map(); // menu id -> qty
+  const el = function (id) { return document.getElementById(id); };
+  const TYPES = [
+    { key: "dine-in", flag: "dineIn", label: "Dine-in", icon: "grid" },
+    { key: "takeaway", flag: "takeaway", label: "Takeaway", icon: "package" },
+    { key: "delivery", flag: "delivery", label: "Delivery", icon: "send" }
+  ];
+  let type = "dine-in", table = null, activeCat = "All", editing = null;
+  let cart = []; // { key, id, name, unit, qty, chosen: [{ group, choice }], labels: [] }
+  let pending = null; // item whose options are being chosen
+
+  const lineKey = function (id, chosen) { return JSON.stringify([id, chosen.map(function (c) { return c.group + "\u0000" + c.choice; }).sort()]); };
+  const dirty = function () { return cart.length > 0 && !editing; };
 
   App.ready(function () {
     const params = new URLSearchParams(location.search);
     const editId = params.get("edit");
+    const allowed = TYPES.filter(function (t) { return Store.orderTypes()[t.flag]; });
+    if (allowed.length && !allowed.some(function (t) { return t.key === type; })) type = allowed[0].key;
+
     if (editId) {
       const o = Store.order(editId);
-      if (!o || o.status !== "Placed") {
-        CMS.toast(o ? "The kitchen has already started " + editId + ". Send a new order for extra items." : "Order not found.", "err");
+      const canEdit = o && (o.status === "Held" || (o.status === "Placed" && Object.keys(o.stations || {}).every(function (s) { return o.stations[s] === "Placed"; })));
+      if (!canEdit) {
+        CMS.toast(o ? "Preparation of " + editId + " has started. Send a new order for extra items." : "Order not found.", "err");
       } else {
         editing = o;
-        selectedTable = o.table;
-        o.items.forEach(function (i) { lines.set(i.id, i.qty); });
-        document.getElementById("notes").value = o.notes || "";
-        document.getElementById("orderHeading").textContent = "Edit " + o.id;
-        document.getElementById("orderIntro").textContent = "Change items or notes. You can edit until the kitchen starts preparing it.";
-        document.getElementById("sendLabel").textContent = "Update order";
-        document.getElementById("tableStep").classList.add("locked");
+        type = o.type;
+        table = o.table;
+        cart = o.items.map(function (i) {
+          const chosen = i.chosen || [];
+          return { key: lineKey(i.id, chosen), id: i.id, name: i.name, unit: i.price, qty: i.qty, chosen: chosen, labels: i.options || [] };
+        });
+        el("notes").value = o.notes || "";
+        el("orderHeading").textContent = (o.status === "Held" ? "Held order " : "Edit ") + o.id;
+        el("orderIntro").textContent = o.status === "Held" ? "Change it, then send it to the kitchen or keep it on hold." : "You can change it until preparation starts.";
+        if (o.customer) { el("custName").value = o.customer.name; el("custName").disabled = true; el("custPhone").disabled = true; el("custAddress").disabled = true; el("custPhone").placeholder = o.customer.phone; el("custAddress").value = o.customer.address; }
       }
     } else {
       const q = parseInt(params.get("table"), 10);
-      if (Store.TABLES.some(function (t) { return t.no === q; }) && Store.tableState(q).state !== "other") selectedTable = q;
+      if (Store.TABLES.some(function (t) { return t.no === q; }) && Store.tableState(q).state !== "other") { type = "dine-in"; table = q; }
     }
 
-    // Sticky "view ticket" bar for phones and tablets, where the ticket sits below the menu
-    const bar = h("button", { type: "button", class: "mobile-cart", id: "mobileCart", onclick: function () {
-      document.querySelector(".ticket").scrollIntoView({ behavior: "smooth", block: "start" });
-    } }, [h("span", { class: "mc-count", id: "mcCount" }), h("span", { class: "mc-label", text: "View ticket" }), h("span", { class: "mc-total", id: "mcTotal" })]);
-    document.body.appendChild(bar);
+    renderTypes(); renderTarget(); renderCats(); renderMenu(); renderCart(); updateCounter();
 
-    renderTables(); renderCats(); renderMenu(); renderTicket(); updateCounter();
-
-    const search = document.getElementById("search");
+    const search = el("search");
     search.addEventListener("input", renderMenu);
     search.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.target.value = ""; renderMenu(); } });
-    document.getElementById("notes").addEventListener("input", updateCounter);
-    document.getElementById("clearBtn").addEventListener("click", clearTicket);
-    document.getElementById("sendBtn").addEventListener("click", openConfirm);
-    document.getElementById("confirmSend").addEventListener("click", send);
+    el("notes").addEventListener("input", updateCounter);
+    el("clearBtn").addEventListener("click", clearOrder);
+    el("sendBtn").addEventListener("click", function () { submit(false); });
+    el("holdBtn").addEventListener("click", function () { submit(true); });
+    el("optAdd").addEventListener("click", addWithOptions);
 
     Store.on(function () {
-      renderTables(); renderMenu();
+      renderTarget(); renderMenu();
       if (editing) {
         const o = Store.order(editing.id);
-        if (o && o.status !== "Placed") {
-          CMS.toast("The kitchen just started " + o.id + ". Your edits can't be saved.", "err");
-          editing = null; lines.clear(); location.replace("dashboard.html");
+        if (!o || (o.status !== "Held" && o.status !== "Placed") || (o.status === "Placed" && Object.keys(o.stations || {}).some(function (s) { return o.stations[s] !== "Placed"; }))) {
+          CMS.toast("Preparation of " + editing.id + " just started, so your changes can't be saved.", "err");
+          editing = null; cart = []; location.replace(App.home);
         }
       }
     });
-    window.addEventListener("beforeunload", function (e) { if (lines.size && !editing) { e.preventDefault(); e.returnValue = ""; } });
+    window.addEventListener("beforeunload", function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
   });
 
   function updateCounter() {
-    const notes = document.getElementById("notes"), counter = document.getElementById("notesCounter");
-    const n = notes.value.length;
-    counter.textContent = n + " / " + notes.maxLength;
-    counter.classList.toggle("warn", n >= notes.maxLength - 15);
+    const n = el("notes").value.length;
+    el("notesCounter").textContent = n + " / 120";
+    el("notesCounter").classList.toggle("warn", n >= 105);
   }
 
-  // ----- Step 1: tables -----
-  function renderTables() {
-    const wrap = document.getElementById("tablePicker");
+  // ---------- Order type and where it goes ----------
+  function renderTypes() {
+    const wrap = el("types");
+    wrap.replaceChildren();
+    const allowed = TYPES.filter(function (t) { return Store.orderTypes()[t.flag]; });
+    wrap.hidden = allowed.length < 2 && !editing;
+    allowed.forEach(function (t) {
+      wrap.appendChild(h("button", { type: "button", class: "seg-btn", role: "radio", "aria-checked": String(type === t.key), disabled: Boolean(editing), onclick: function () {
+        type = t.key; renderTypes(); renderTarget(); renderCart();
+      } }, [App.I(t.icon, 16), t.label]));
+    });
+  }
+
+  function renderTarget() {
+    el("tableStep").hidden = type !== "dine-in";
+    el("customerStep").hidden = type === "dine-in";
+    el("addressField").hidden = type !== "delivery";
+    el("phoneOpt").hidden = type === "delivery";
+    if (type !== "dine-in") return;
+    const wrap = el("tablePicker");
     wrap.replaceChildren();
     Store.TABLES.forEach(function (t) {
       const st = Store.tableState(t.no);
-      const isSel = selectedTable === t.no;
-      const b = h("button", { class: "tbl " + st.state + (isSel ? " selected" : ""), type: "button", role: "radio",
-        "aria-checked": String(isSel), "aria-label": "Table " + t.no + ", " + t.seats + " seats, " + st.label },
-        [h("b", { text: "T" + t.no }), h("small", { text: t.seats + " seats" }), h("span", { class: "st", text: st.label })]);
+      const isSel = table === t.no;
+      const b = h("button", { class: "tbl " + st.state + (isSel ? " selected" : ""), type: "button", role: "radio", "aria-checked": String(isSel), "aria-label": "Table " + t.no + ", " + t.seats + " seats, " + st.label },
+        [h("b", { text: "T" + t.no }), h("small", { text: t.seats + " seats" })]);
       if (st.state === "other" || (editing && t.no !== editing.table)) b.disabled = true;
-      else b.addEventListener("click", function () { selectedTable = t.no; renderTables(); renderTicket(); });
+      else b.addEventListener("click", function () { table = t.no; renderTarget(); renderCart(); });
       wrap.appendChild(b);
     });
   }
 
-  // ----- Step 2: categories + search -----
+  // ---------- Menu ----------
   function renderCats() {
-    const menu = Store.menu();
-    const cats = ["All"].concat(Store.categories());
-    const wrap = document.getElementById("catTabs");
+    const wrap = el("cats");
     wrap.replaceChildren();
-    cats.forEach(function (c) {
-      const n = c === "All" ? menu.length : menu.filter(function (m) { return m.cat === c; }).length;
-      wrap.appendChild(h("button", { class: "tab", role: "tab", type: "button", "aria-selected": String(c === activeCat),
-        onclick: function () { activeCat = c; renderCats(); renderMenu(); } }, [c + " ", h("span", { class: "n", text: String(n) })]));
+    const names = Store.categoryList().map(function (c) { return c.name; });
+    Store.categories().forEach(function (c) { if (names.indexOf(c) === -1) names.push(c); });
+    ["All"].concat(names).forEach(function (c) {
+      wrap.appendChild(h("button", { type: "button", class: "pos-cat", role: "tab", "aria-selected": String(activeCat === c), text: c, onclick: function () { activeCat = c; renderCats(); renderMenu(); } }));
     });
   }
+
   function renderMenu() {
-    const q = document.getElementById("search").value.trim().toLowerCase();
+    const grid = el("menuGrid");
+    const q = el("search").value.trim().toLowerCase();
     const items = Store.menu().filter(function (m) {
-      return (activeCat === "All" || m.cat === activeCat) && (m.name.toLowerCase().indexOf(q) !== -1 || m.desc.toLowerCase().indexOf(q) !== -1);
+      return (activeCat === "All" || m.cat === activeCat) && (!q || m.name.toLowerCase().indexOf(q) !== -1 || (m.desc || "").toLowerCase().indexOf(q) !== -1);
     });
-    const grid = document.getElementById("menuGrid");
     grid.replaceChildren();
-    if (!items.length) {
-      grid.appendChild(h("div", { class: "empty-state", icon: "search", iconSize: 30 }, [h("b", { text: "No items match your search" }), h("span", { text: "Try a different word or category." })]));
-      return;
-    }
+    if (!items.length) { grid.appendChild(h("div", { class: "empty-state", icon: "search", iconSize: 32 }, [h("b", { text: "Nothing matches" }), "Try another word or category."])); return; }
     items.forEach(function (m) {
-      const qty = lines.get(m.id) || 0;
-      const avail = Store.isAvailable(m.id);
-      grid.appendChild(h("article", { class: "dish" + (avail ? "" : " soldout") + (qty ? " picked" : "") }, [
-        m.hasPhoto ? h("img", { class: "dish-photo", src: Store.photoUrl(m.id), alt: "", loading: "lazy" }) : null,
-        h("div", { class: "dish-top" }, [h("span", { class: "cat", text: m.cat }), qty ? h("span", { class: "qty-badge", text: "× " + qty }) : null]),
-        h("span", { class: "name", text: m.name }),
-        h("span", { class: "desc", text: m.desc }),
-        h("div", { class: "foot" }, [
-          h("span", { class: "price", text: CMS.money(m.price) }),
-          avail
-            ? h("button", { class: "btn btn-dark btn-sm", type: "button", icon: "plus", iconSize: 15, text: "Add", "aria-label": "Add " + m.name, onclick: function () { change(m.id, 1); } })
-            : h("span", { class: "pill pill-cancelled", title: Store.unavailableReason(m.id), text: "Sold out" })
-        ])
-      ]));
+      const inCart = cart.filter(function (l) { return l.id === m.id; }).reduce(function (s, l) { return s + l.qty; }, 0);
+      const out = !m.available;
+      const tile = h("button", { type: "button", class: "pos-tile" + (out ? " soldout" : "") + (inCart ? " picked" : ""), disabled: out, "aria-label": m.name + ", " + CMS.money(m.price) + (out ? ", " + m.reason : ""), onclick: function () { pick(m); } }, [
+        m.hasPhoto ? h("img", { class: "pos-photo", src: Store.photoUrl(m.id), alt: "", loading: "lazy" }) : h("span", { class: "pos-photo none" }, [App.I("coffee", 26)]),
+        h("span", { class: "pos-name", text: m.name }),
+        h("span", { class: "pos-meta" }, [h("b", { text: CMS.money(m.price) }), out ? h("small", { class: "out", text: m.reason }) : (m.options && m.options.length ? h("small", { text: "Options" }) : null)]),
+        inCart ? h("span", { class: "qty-badge", text: String(inCart) }) : null
+      ]);
+      grid.appendChild(tile);
     });
   }
 
-  // ----- Ticket -----
-  function change(id, delta) {
-    const q = (lines.get(id) || 0) + delta;
-    if (q <= 0) lines.delete(id);
-    else if (q > MAX_QTY) { CMS.toast("Maximum " + MAX_QTY + " of one item per order", "err"); return; }
-    else lines.set(id, q);
-    renderTicket(); renderMenu();
-  }
-  function currentItems() {
-    return Array.from(lines.entries()).map(function (e) {
-      const m = Store.menuItem(e[0]);
-      return m ? { id: m.id, name: m.name, price: m.price, qty: e[1] } : null;
-    }).filter(Boolean);
-  }
-  function renderTicket() {
-    const items = currentItems(), t = Store.totals(items);
-    const list = document.getElementById("ticketLines");
-    list.replaceChildren();
-    items.forEach(function (it) {
-      list.appendChild(h("li", null, [
-        h("span", { class: "nm" }, [it.name, h("small", { text: CMS.money(it.price) + " each" })]),
-        h("span", { class: "stepper" }, [
-          h("button", { type: "button", icon: it.qty === 1 ? "trash" : "minus", iconSize: 14, "aria-label": "Remove one " + it.name, onclick: function () { change(it.id, -1); } }),
-          h("span", { text: String(it.qty), "aria-live": "polite" }),
-          h("button", { type: "button", icon: "plus", iconSize: 14, "aria-label": "Add one " + it.name, onclick: function () { change(it.id, 1); } })
-        ]),
-        h("span", { class: "amt", text: CMS.money(it.price * it.qty) })
-      ]));
-    });
-    document.getElementById("ticketEmpty").style.display = items.length ? "none" : "";
-    document.getElementById("itemCount").textContent = t.count + (t.count === 1 ? " item" : " items");
-    document.getElementById("subtotal").textContent = CMS.money(t.sub);
-    document.getElementById("tax").textContent = CMS.money(t.tax);
-    document.getElementById("total").textContent = CMS.money(t.total);
-    const bar = document.getElementById("mobileCart");
-    if (bar) {
-      bar.classList.toggle("show", t.count > 0);
-      document.getElementById("mcCount").textContent = String(t.count);
-      document.getElementById("mcTotal").textContent = CMS.money(t.total);
-    }
-    document.getElementById("ticketTable").textContent = selectedTable
-      ? "Table " + selectedTable + " · " + Store.TABLES.find(function (x) { return x.no === selectedTable; }).seats + " seats" + (editing ? " · editing " + editing.id : "")
-      : "No table selected";
-    const hint = !selectedTable ? "Select a table to continue." : !items.length ? "Add at least one item." : "";
-    document.getElementById("sendBtn").disabled = !!hint;
-    const hintEl = document.getElementById("sendHint");
-    hintEl.replaceChildren();
-    if (hint) hintEl.append(Icons.node("info", 14), hint);
+  function pick(m) {
+    if (m.options && m.options.length) return openOptions(m);
+    addLine(m, [], []);
   }
 
-  async function clearTicket() {
-    if (!lines.size) return;
-    const ok = await CMS.confirm({ title: "Clear this ticket?", message: "All items and notes on the ticket will be removed.", okText: "Clear ticket", danger: true, icon: "trash" });
-    if (ok) resetTicket();
-  }
-  function resetTicket() {
-    lines.clear();
-    document.getElementById("notes").value = "";
-    updateCounter(); renderTicket(); renderMenu();
+  function addLine(m, chosen, labels, extra) {
+    const key = lineKey(m.id, chosen);
+    const found = cart.find(function (l) { return l.key === key; });
+    if (found) found.qty = Math.min(99, found.qty + 1);
+    else cart.push({ key: key, id: m.id, name: m.name, unit: m.price + (extra || 0), qty: 1, chosen: chosen, labels: labels });
+    renderCart(); renderMenu();
   }
 
-  // ----- Confirm & send -----
-  function openConfirm() {
-    const items = currentItems(), t = Store.totals(items);
-    document.getElementById("confirmTitle").textContent = editing ? "Update " + editing.id + "?" : "Send order to kitchen?";
-    document.getElementById("confirmSub").textContent = "Table " + selectedTable + " · " + t.count + (t.count === 1 ? " item" : " items") + ". Read the order back to the guest before sending.";
-    const body = document.getElementById("confirmBody");
+  // ---------- Options chooser ----------
+  function openOptions(m) {
+    pending = m;
+    el("optTitle").textContent = m.name;
+    el("optSub").textContent = CMS.money(m.price) + " · choose the options";
+    el("optErr").classList.remove("show");
+    const body = el("optBody");
     body.replaceChildren();
-    const box = h("div", { class: "summary" });
-    items.forEach(function (it) { box.appendChild(h("div", { class: "row" }, [h("span", { text: it.qty + " × " + it.name }), h("span", { text: CMS.money(it.price * it.qty) })])); });
-    box.appendChild(h("div", { class: "row" }, [h("span", { class: "muted", text: "Tax (16%)" }), h("span", { class: "muted", text: CMS.money(t.tax) })]));
-    box.appendChild(h("div", { class: "row total" }, [h("span", { text: "Total" }), h("span", { text: CMS.money(t.total) })]));
-    const note = document.getElementById("notes").value.trim();
-    if (note) box.appendChild(h("div", { class: "note", text: "Kitchen note: " + note })); // rendered as text, never HTML
-    body.appendChild(box);
-    document.getElementById("confirmSend").textContent = editing ? "Save changes" : "Confirm & send";
-    CMS.openModal("confirmModal");
-  }
-  async function send(e) {
-    const note = document.getElementById("notes").value.trim().slice(0, 120);
-    const list = Array.from(lines.entries()).map(function (entry) { return { id: entry[0], qty: entry[1] }; });
-    const o = await CMS.busy(e.currentTarget, function () {
-      return CMS.attempt(function () { return editing ? Store.updateOrder(editing.id, list, note) : Store.place(selectedTable, list, note); });
+    m.options.forEach(function (g, gi) {
+      const name = "opt-" + gi;
+      body.appendChild(h("fieldset", { class: "opt-group" }, [
+        h("legend", null, [g.name, h("span", { class: "opt", text: g.required ? (g.multi ? " · choose at least one" : " · choose one") : " · optional" })]),
+        h("div", { class: "opt-choices" }, g.choices.map(function (c, ci) {
+          const input = h("input", { type: g.multi ? "checkbox" : "radio", name: name, value: String(ci), id: name + "-" + ci });
+          if (!g.multi && g.required && ci === 0) input.checked = true;
+          return h("label", { class: "opt-choice", for: name + "-" + ci }, [input, h("span", { text: c.name }), h("small", { text: c.price ? "+" + CMS.money(c.price) : "" })]);
+        }))
+      ]));
     });
-    CMS.closeModal("confirmModal");
-    if (!o) { renderMenu(); return; }
-    if (editing) {
-      editing = null; lines.clear();
-      CMS.toast(o.id + " updated", "ok");
-      setTimeout(function () { location.href = "dashboard.html"; }, 700);
-      return;
+    CMS.openModal("optionsModal");
+  }
+
+  function addWithOptions() {
+    const m = pending;
+    if (!m) return;
+    const chosen = [], labels = [];
+    let extra = 0;
+    for (let gi = 0; gi < m.options.length; gi++) {
+      const g = m.options[gi];
+      const picked = Array.from(document.querySelectorAll('input[name="opt-' + gi + '"]:checked')).map(function (i) { return g.choices[Number(i.value)]; });
+      if (g.required && !picked.length) {
+        el("optErr").replaceChildren(App.I("alert", 18), h("span", { text: "Choose a " + g.name.toLowerCase() + "." }));
+        el("optErr").classList.add("show");
+        return;
+      }
+      picked.forEach(function (c) { chosen.push({ group: g.name, choice: c.name }); labels.push(c.name); extra += c.price; });
     }
-    CMS.toast(o.id + " sent to the kitchen for Table " + o.table, "ok");
-    selectedTable = null;
-    resetTicket(); renderTables();
+    CMS.closeModal("optionsModal");
+    pending = null;
+    addLine(m, chosen, labels, extra);
+  }
+
+  // ---------- The order ----------
+  function totals() {
+    return Store.totals(cart.map(function (l) { return { price: l.unit, qty: l.qty }; }), 0);
+  }
+
+  function renderCart() {
+    const list = el("lines");
+    list.replaceChildren();
+    if (!cart.length) list.appendChild(h("li", { class: "pos-empty" }, [App.I("clipboard", 26), h("span", { text: "Tap an item to add it" })]));
+    cart.forEach(function (l) {
+      const step = function (d) { return function () { l.qty = Math.max(0, Math.min(99, l.qty + d)); if (!l.qty) cart = cart.filter(function (x) { return x !== l; }); renderCart(); renderMenu(); }; };
+      list.appendChild(h("li", null, [
+        h("div", { class: "nm" }, [h("span", { text: l.name }), l.labels.length ? h("small", { text: l.labels.join(", ") }) : null]),
+        h("div", { class: "stepper" }, [
+          h("button", { type: "button", "aria-label": "One less " + l.name, onclick: step(-1) }, [App.I("minus", 14)]),
+          h("span", { text: String(l.qty) }),
+          h("button", { type: "button", "aria-label": "One more " + l.name, onclick: step(1) }, [App.I("plus", 14)])
+        ]),
+        h("span", { class: "amt", text: CMS.money(l.unit * l.qty) })
+      ]));
+    });
+    const t = totals();
+    el("totals").replaceChildren(
+      h("div", null, [h("span", { text: "Items (" + t.count + ")" }), h("span", { text: CMS.money(t.sub) })]),
+      h("div", null, [h("span", { text: "Tax" }), h("span", { text: CMS.money(t.tax) })]),
+      h("div", { class: "grand" }, [h("span", { text: "Total" }), h("span", { text: CMS.money(t.total) })])
+    );
+    const target = type === "dine-in" ? (table ? "Table " + table : "choose a table") : (type === "takeaway" ? "takeaway" : "delivery");
+    el("sendLabel").textContent = editing && editing.status === "Placed" ? "Update order" : "Send · " + target;
+    el("holdBtn").hidden = Boolean(editing && editing.status === "Placed");
+  }
+
+  function clearOrder() {
+    if (editing) { location.href = App.home; return; }
+    cart = []; el("notes").value = ""; updateCounter(); renderCart(); renderMenu();
+  }
+
+  function fail(message) {
+    el("posErr").replaceChildren(App.I("alert", 18), h("span", { text: message }));
+    el("posErr").classList.add("show");
+  }
+
+  async function submit(hold) {
+    el("posErr").classList.remove("show");
+    if (!cart.length) return fail("Add at least one item.");
+    const lines = cart.map(function (l) { return { id: l.id, qty: l.qty, options: l.chosen }; });
+    const notes = el("notes").value;
+    const button = hold ? el("holdBtn") : el("sendBtn");
+
+    if (editing) {
+      return CMS.busy(button, async function () {
+        try {
+          await Store.updateOrder(editing.id, lines, notes);
+          if (editing.status === "Held" && !hold) await Store.send(editing.id);
+          CMS.toast(editing.id + (editing.status === "Held" && !hold ? " sent" : " saved"), "ok");
+          editing = null; cart = [];
+          location.href = App.home;
+        } catch (e) { fail(e.userMessage || "The order could not be saved."); }
+      });
+    }
+
+    const body = { type: type, lines: lines, notes: notes, hold: hold };
+    if (type === "dine-in") {
+      if (!table) return fail("Choose a table.");
+      body.table = table;
+    } else {
+      const name = el("custName").value.trim();
+      const phone = el("custPhone").value.replace(/[\s-]/g, "");
+      const address = el("custAddress").value.trim();
+      if (name.length < 2) return fail("Enter the customer's name.");
+      if (type === "delivery" && !/^03\d{9}$/.test(phone)) return fail("Enter the mobile number as 03XXXXXXXXX.");
+      if (type === "takeaway" && phone && !/^03\d{9}$/.test(phone)) return fail("Enter the mobile number as 03XXXXXXXXX, or leave it empty.");
+      if (type === "delivery" && address.length < 5) return fail("Enter the delivery address.");
+      body.customer = { name: name, phone: phone, address: type === "delivery" ? address : "" };
+    }
+    return CMS.busy(button, async function () {
+      try {
+        const order = await Store.place(body);
+        CMS.toast(order.id + (hold ? " is on hold" : " sent to the kitchen") + " · " + order.label, "ok");
+        cart = []; table = null; el("notes").value = ""; ["custName", "custPhone", "custAddress"].forEach(function (id) { el(id).value = ""; });
+        updateCounter(); renderTarget(); renderCart(); renderMenu();
+      } catch (e) { fail(e.userMessage || "The order could not be sent."); }
+    });
   }
 })();

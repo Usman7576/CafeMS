@@ -4,7 +4,14 @@
   if (!window.App) return;
   const h = CMS.h;
 
+  // A barista works the bar; everyone else on this screen works the kitchen
+  const BAR = App.session.role === "Barista";
   App.ready(function () {
+    if (BAR) {
+      const title = document.querySelector(".page-head h2");
+      if (title && title.firstChild) title.firstChild.textContent = "Bar display ";
+      document.title = "Bar display · CafeMS";
+    }
     // While kitchen staff are signed in, the server pauses its kitchen simulation.
     render();
     Store.on(render);
@@ -24,17 +31,17 @@
   function ticket(o) {
     const col = o.status;
     const btn = col === "Placed"
-      ? h("button", { class: "btn btn-dark btn-block", icon: "chef", text: "Start preparing", onclick: function () { act(o, "Preparing", "preparing"); } })
+      ? h("button", { class: "btn btn-dark btn-block", icon: BAR ? "coffee" : "chef", text: BAR ? "Start making" : "Start preparing", onclick: function () { act(o, "Preparing", "preparing"); } })
       : col === "Preparing"
         ? h("button", { class: "btn btn-success btn-block", icon: "bell", text: "Mark ready", onclick: function () { act(o, "Ready", "ready for pickup"); } })
         : h("div", { class: "kds-wait", icon: "clock", iconSize: 15, text: "Waiting for pickup" });
     const since = col === "Placed" ? o.createdAt : o.createdAt;
-    return h("article", { class: "kds-ticket " + ageClass(since), "data-since": String(since), "aria-label": o.id + " for table " + o.table }, [
+    return h("article", { class: "kds-ticket " + ageClass(since), "data-since": String(since), "aria-label": o.id + " for " + o.label }, [
       h("header", null, [
-        h("div", null, [h("span", { class: "kds-table", text: "Table " + o.table }), h("span", { class: "kds-id mono", text: o.id })]),
+        h("div", null, [h("span", { class: "kds-table" }, [o.label, o.type !== "dine-in" ? h("span", { class: "kds-tag", text: o.type === "delivery" ? "Delivery" : "Takeaway" }) : null]), h("span", { class: "kds-id mono", text: o.id })]),
         h("span", { class: "kds-timer", "data-timer": String(since), text: elapsed(since) })
       ]),
-      h("ul", { class: "kds-items" }, o.items.map(function (i) { return h("li", null, [h("b", { text: i.qty + "×" }), h("span", { text: i.name })]); })),
+      h("ul", { class: "kds-items" }, o.items.map(function (i) { return h("li", null, [h("b", { text: i.qty + "×" }), h("span", null, [i.name, i.options && i.options.length ? h("small", { text: i.options.join(", ") }) : null])]); })),
       o.notes ? h("div", { class: "kds-note", icon: "note", iconSize: 15 }, [h("span", { text: o.notes })]) : null,
       h("div", { class: "kds-meta", text: "Sent " + CMS.clock(new Date(o.createdAt)) }),
       btn

@@ -12,9 +12,21 @@ const mobile = z.string().max(20).transform(phoneDigits).pipe(z.string().regex(/
 const isoDate = (message) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message).refine(isRealDate, message);
 // Whether the table exists is checked against the current settings when the order is placed
 const tableNo = z.number().int().min(1, "!Choose a valid table.").max(999, "!Choose a valid table.");
+// A chosen option names its group and choice; the server looks up the price, never the browser
+const chosen = z.object({
+  group: text(24, "!Choose a valid option.").min(1, "!Choose a valid option."),
+  choice: text(24, "!Choose a valid option.").min(1, "!Choose a valid option.")
+}).strict();
 const line = z.object({
   id: z.number().int().min(1),
-  qty: z.number().int().min(1, "!Quantity must be at least 1.").max(99, "!Quantity cannot be more than 99.")
+  qty: z.number().int().min(1, "!Quantity must be at least 1.").max(99, "!Quantity cannot be more than 99."),
+  options: z.array(chosen).max(20, "!Too many options on one item.").optional().default([])
+}).strict();
+const ORDER_TYPES = ["dine-in", "takeaway", "delivery"];
+const customer = z.object({
+  name: text(40, "!Customer name must be 2-40 characters.").min(2, "!Customer name must be 2-40 characters.").transform(noControl),
+  phone: z.union([z.literal(""), mobile]).optional().default(""),
+  address: text(160, "!The address must be 160 characters or fewer.").transform(noControl).optional().default("")
 }).strict();
 const lines = z.array(line).min(1, "!Add at least one item.").max(50, "!An order can have at most 50 lines.");
 const notes = text(120, "!Notes must be 120 characters or fewer.").transform(noControl);
@@ -30,7 +42,23 @@ module.exports = {
     approvalId: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict(),
     alertId: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict()
   },
-  placeOrder: z.object({ table: tableNo, lines, notes: notes.optional().default("") }).strict(),
+  // Dine-in needs a table; takeaway a name; delivery a name, mobile number and address
+  placeOrder: z.object({
+    type: z.enum(ORDER_TYPES, "!Choose dine-in, takeaway or delivery.").optional().default("dine-in"),
+    table: tableNo.optional(),
+    customer: customer.optional(),
+    lines,
+    notes: notes.optional().default(""),
+    hold: z.boolean().optional().default(false)
+  }).strict().superRefine((o, ctx) => {
+    const fail = (message, path) => ctx.addIssue({ code: "custom", message, path: [path] });
+    if (o.type === "dine-in" && o.table === undefined) fail("!Choose a table.", "table");
+    if (o.type !== "dine-in" && o.table !== undefined) fail("!Only dine-in orders have a table.", "table");
+    if (o.type !== "dine-in" && !o.customer) fail("!Enter the customer's name.", "customer");
+    if (o.type === "delivery" && o.customer && (!o.customer.phone || o.customer.address.length < 5)) fail("!A delivery needs a mobile number and an address.", "customer");
+  }),
+  transferOrder: z.object({ table: tableNo }).strict(),
+  voidOrder: z.object({ reason: text(80, "!Give a reason of 4-80 characters.").min(4, "!Give a reason of 4-80 characters.").transform(noControl) }).strict(),
   updateOrder: z.object({ version: z.number().int().min(0), lines, notes: notes.optional().default("") }).strict(),
   kitchenStatus: z.object({ status: z.enum(["Preparing", "Ready"]) }).strict(),
   pay: z.object({
@@ -60,7 +88,17 @@ module.exports = {
     recipe: z.array(z.object({
       ing: z.number().int().min(1),
       qty: z.number("!Enter how much of each ingredient one portion uses.").positive("!Enter how much of each ingredient one portion uses.").max(1000, "!Enter how much of each ingredient one portion uses.")
-    }).strict()).max(20, "!A recipe can have at most 20 ingredients.").optional()
+    }).strict()).max(20, "!A recipe can have at most 20 ingredients.").optional(),
+    // Option groups such as Size or Milk. A choice may add to the price.
+    options: z.array(z.object({
+      name: text(24, "!An option group name must be 1-24 characters.").min(1, "!An option group name must be 1-24 characters.").transform(noControl),
+      required: z.boolean(),
+      multi: z.boolean(),
+      choices: z.array(z.object({
+        name: text(24, "!A choice name must be 1-24 characters.").min(1, "!A choice name must be 1-24 characters.").transform(noControl),
+        price: z.number("!An extra price must be a whole number from 0 to Rs 5,000.").int("!An extra price must be a whole number from 0 to Rs 5,000.").min(0, "!An extra price must be a whole number from 0 to Rs 5,000.").max(5000, "!An extra price must be a whole number from 0 to Rs 5,000.")
+      }).strict()).min(1, "!Each option group needs at least one choice.").max(10, "!An option group can have at most 10 choices.")
+    }).strict()).max(5, "!An item can have at most 5 option groups.").optional()
   }).strict(),
   stockAdjustment: z.object({
     delta: z.number("!Enter a quantity between 0 and 1000.").finite().min(-1000, "!Enter a quantity between 0 and 1000.").max(1000, "!Enter a quantity between 0 and 1000.").refine((n) => n !== 0, "!Enter a quantity between 0 and 1000."),
@@ -97,7 +135,7 @@ module.exports = {
     limit: z.coerce.number().int().min(1).max(200).optional().default(100),
     before: z.iso.datetime().optional()
   }).strict(),
-  userRole: z.object({ role: z.enum(["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]) }).strict(),
+  userRole: z.object({ role: z.enum(["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"]) }).strict(),
   userStatus: z.object({ status: z.enum(["Active", "Disabled"]) }).strict(),
   // Staff requests (quiz Q2/Q3). Strict: owner, status, version and timestamps come only from the server,
   // so a request that tries to set them is refused rather than trusted.
@@ -152,6 +190,11 @@ module.exports = {
     receipt: z.object({
       header: text(80, "!The receipt header must be 80 characters or fewer.").transform(noControl),
       footer: text(120, "!The receipt footer must be 120 characters or fewer.").transform(noControl)
-    }).strict()
+    }).strict(),
+    categories: z.array(z.object({
+      name: text(24, "!A category name must be 1-24 characters.").min(1, "!A category name must be 1-24 characters.").transform(noControl),
+      station: z.enum(["Kitchen", "Bar"], "!Choose Kitchen or Bar for each category.")
+    }).strict()).min(1, "!Keep at least one category.").max(30, "!Up to 30 categories are supported."),
+    orderTypes: z.object({ dineIn: z.boolean(), takeaway: z.boolean(), delivery: z.boolean() }).strict()
   }).strict()
 };

@@ -97,6 +97,10 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.put("/orders/:id", ...allow("orders.write"), params(schemas.params.orderId), validate(schemas.updateOrder), tx((req, session) => orderService.update(req, req.validParams.id, req.body, session)));
   router.post("/orders/:id/serve", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.serve(req, req.validParams.id, session)));
   router.post("/orders/:id/cancel", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.cancel(req, req.validParams.id, session)));
+  router.post("/orders/:id/send", ...allow("orders.write"), params(schemas.params.orderId), tx((req, session) => orderService.send(req, req.validParams.id, session)));
+  router.post("/orders/:id/transfer", ...allow("orders.write"), params(schemas.params.orderId), validate(schemas.transferOrder), tx((req, session) => orderService.transfer(req, req.validParams.id, req.body.table, session)));
+  // Voiding an order a station has started on throws food away, so a manager confirms a fresh code
+  router.post("/orders/:id/void", ...allow("orders.void"), requireStepUp, params(schemas.params.orderId), validate(schemas.voidOrder), tx((req, session) => orderService.voidOrder(req, req.validParams.id, req.body.reason, session)));
   router.get("/tables", ...allow("orders.write"), wrap(async (req, res) => res.json({ tables: await orderService.tableStates(req.auth.user.username) })));
   router.post("/tables/:no/request-bill", ...allow("orders.write"), params(schemas.params.tableNo), wrap(async (req, res) => {
     const no = tableNumber(req);
@@ -105,7 +109,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   }));
 
   // ---------- Kitchen ----------
-  router.get("/kitchen/tickets", ...allow("kitchen.read"), wrap(async (_req, res) => res.json({ tickets: await orderService.kitchenTickets() })));
+  router.get("/kitchen/tickets", ...allow("kitchen.read"), wrap(async (req, res) => res.json({ tickets: await orderService.kitchenTickets(req.auth.user.role) })));
   router.post("/kitchen/tickets/:id/status", ...allow("kitchen.update"), params(schemas.params.orderId), validate(schemas.kitchenStatus),
     tx((req, session) => orderService.kitchenUpdate(req, req.validParams.id, req.body.status, session)));
 
@@ -115,6 +119,11 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.post("/billing/tables/:no/pay", ...allow("billing.pay"), params(schemas.params.tableNo), validate(schemas.pay), wrap(async (req, res) => {
     const no = tableNumber(req);
     const outcome = await idempotentTransaction(db, req, async (session) => ({ status: 201, body: await billing.pay(req, no, req.body, session) }));
+    const bill = await billing.settle(req, outcome.body.no);
+    res.status(bill.status === "Paid" ? 201 : 202).json(bill);
+  }));
+  router.post("/billing/orders/:id/pay", ...allow("billing.pay"), params(schemas.params.orderId), validate(schemas.pay), wrap(async (req, res) => {
+    const outcome = await idempotentTransaction(db, req, async (session) => ({ status: 201, body: await billing.pay(req, req.validParams.id, req.body, session) }));
     const bill = await billing.settle(req, outcome.body.no);
     res.status(bill.status === "Paid" ? 201 : 202).json(bill);
   }));
@@ -180,8 +189,8 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   router.get("/reports/trend", ...allow("reports.read"), wrap(async (_req, res) => res.json({ days: await billing.trend(7) })));
   router.get("/reports/sales.csv", ...allow("reports.read"), personalLimiter("export", 10), validate(schemas.salesQuery, "query"), wrap(async (req, res) => {
     const bills = await billing.list(req.validQuery);
-    const rows = [["Bill", "Time", "Table", "Method", "Subtotal", "Discount", "Tax", "Total", "Status"]]
-      .concat(bills.map((b) => [b.no, b.createdAt.toISOString(), b.table, b.method, b.subtotal, b.discount, b.tax, b.total, b.status]));
+    const rows = [["Bill", "Time", "Order", "Method", "Subtotal", "Discount", "Tax", "Total", "Status"]]
+      .concat(bills.map((b) => [b.no, b.createdAt.toISOString(), b.label, b.method, b.subtotal, b.discount, b.tax, b.total, b.status]));
     await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Report exported", details: `Sales CSV · ${bills.length} bills`, severity: "warning" });
     res.attachment("sales.csv").type("text/csv").send(toCsv(rows));
   }));
@@ -260,7 +269,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     const allowed = (permission) => can(role, permission);
     const snapshot = {
       // The receipt text is only for those who print bills
-      constants: { tables: settings.get().tables, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: settings.taxRate(), discountLimit: settings.discountLimit(role), ...(allowed("billing.read") ? { receipt: settings.get().receipt } : {}) }
+      constants: { tables: settings.get().tables, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: settings.taxRate(), discountLimit: settings.discountLimit(role), categories: settings.get().categories, orderTypes: settings.get().orderTypes, ...(allowed("billing.read") ? { receipt: settings.get().receipt } : {}) }
     };
     const parts = [];
     // Results are added in this fixed order, not as each query finishes, so identical data gives
@@ -271,7 +280,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
       add("orders", () => orderService.listOwn(username));
       add("tables", () => orderService.tableStates(username));
     }
-    if (allowed("kitchen.read")) add("tickets", () => orderService.kitchenTickets());
+    if (allowed("kitchen.read")) add("tickets", () => orderService.kitchenTickets(role));
     if (allowed("billing.pay") || allowed("reports.read")) add("openTables", () => billing.openTables());
     if (allowed("billing.read")) add("bills", () => viewedList(req, "bills", "Bills", () => billing.list()));
     if (allowed("inventory.read")) add("inventory", () => catalog.listInventory());
@@ -285,7 +294,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     // The kitchen needs only the cafe's name on its screen (least privilege)
     add("cafe", async () => {
       const details = await cafe.get();
-      return role === "Kitchen" ? { name: details.name } : details;
+      return role === "Kitchen" || role === "Barista" ? { name: details.name } : details;
     });
     res.json({ ...snapshot, ...Object.fromEntries(await Promise.all(parts)) });
   }));

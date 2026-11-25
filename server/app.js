@@ -60,11 +60,11 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   });
   const middleware = createAuthMiddleware(config, db, sessions, { userLimiter });
 
-  const catalog = createCatalogService({ db });
-  const approvals = createApprovalService({ db });
   const settings = createSettingsService({ db });
+  const catalog = createCatalogService({ db, settings });
+  const approvals = createApprovalService({ db });
   const events = createEventBus();
-  const orderService = createOrderService({ db, catalog, settings });
+  const orderService = createOrderService({ config, db, catalog, settings });
   const billing = createBillingService({ config, db, orderService, approvals, gateway, logger, settings });
   const reservations = createReservationService({ config, db });
   const userService = createUserService({ config, db, approvals });

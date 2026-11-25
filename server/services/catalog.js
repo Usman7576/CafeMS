@@ -5,7 +5,33 @@ const { nextSequence } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
 const { enqueue } = require("./outbox");
 
-function createCatalogService({ db }) {
+// Works out the options chosen for one line from the item's own option groups. Names are matched
+// exactly; the price of each choice comes from the menu, never from the request.
+function resolveOptions(item, chosen) {
+  const groups = item.options || [];
+  const picked = new Map();
+  for (const c of chosen || []) {
+    const group = groups.find((g) => g.name === c.group);
+    const choice = group && group.choices.find((x) => x.name === c.choice);
+    if (!choice) throw new AppError(400, "invalid_option", `"${c.choice}" is not an option for ${item.name}.`);
+    const list = picked.get(group.name) || [];
+    if (list.some((x) => x.name === choice.name)) throw new AppError(400, "invalid_option", `"${choice.name}" was chosen twice for ${item.name}.`);
+    if (!group.multi && list.length) throw new AppError(400, "invalid_option", `Choose one ${group.name.toLowerCase()} for ${item.name}.`);
+    picked.set(group.name, [...list, choice]);
+  }
+  const missing = groups.find((g) => g.required && !picked.has(g.name));
+  if (missing) throw new AppError(400, "invalid_option", `Choose a ${missing.name.toLowerCase()} for ${item.name}.`);
+  // Listed in the menu's own order, so the same choices always give the same line
+  const labels = [];
+  const chosenList = [];
+  let extra = 0;
+  for (const g of groups) for (const ch of g.choices) {
+    if ((picked.get(g.name) || []).includes(ch)) { labels.push(ch.name); chosenList.push({ group: g.name, choice: ch.name }); extra += ch.price; }
+  }
+  return { labels, chosen: chosenList, extra };
+}
+
+function createCatalogService({ db, settings }) {
   const menu = db.collection("menu");
   const inventory = db.collection("inventory");
 
@@ -30,12 +56,12 @@ function createCatalogService({ db }) {
   // Waiters see what they need to sell an item; recipes and stock levels stay private
   async function listForSale() {
     const [items, stock] = await Promise.all([menu.find().sort({ _id: 1 }).toArray(), stockMap()]);
-    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: Boolean(m.photo), available: !unavailableReason(m, stock), reason: unavailableReason(m, stock) }));
+    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, station: settings.stationOf(m.cat), price: m.price, desc: m.desc, options: m.options || [], hasPhoto: Boolean(m.photo), available: !unavailableReason(m, stock), reason: unavailableReason(m, stock) }));
   }
 
   async function listForAdmin() {
     const [items, stock] = await Promise.all([menu.find().sort({ _id: 1 }).toArray(), stockMap()]);
-    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, price: m.price, desc: m.desc, hasPhoto: Boolean(m.photo), available: m.available, reason: unavailableReason(m, stock), recipe: (m.recipe || []).map((r) => ({ ing: r.ing, qty: fromMilli(r.qtyMilli), name: stock.has(r.ing) ? stock.get(r.ing).name : "Unknown" })) }));
+    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, station: settings.stationOf(m.cat), price: m.price, desc: m.desc, options: m.options || [], hasPhoto: Boolean(m.photo), available: m.available, reason: unavailableReason(m, stock), recipe: (m.recipe || []).map((r) => ({ ing: r.ing, qty: fromMilli(r.qtyMilli), name: stock.has(r.ing) ? stock.get(r.ing).name : "Unknown" })) }));
   }
 
   const inventoryView = (ing, usedIn) => ({
@@ -61,7 +87,8 @@ function createCatalogService({ db }) {
       if (!item) throw new AppError(409, "item_unavailable", "An item on this order is no longer on the menu.");
       if (!item.available) throw new AppError(409, "item_unavailable", `${item.name} is no longer available.`);
       for (const r of item.recipe || []) needed.set(r.ing, (needed.get(r.ing) || 0) + r.qtyMilli * l.qty);
-      return { id: item._id, name: item.name, price: item.price, qty: l.qty, cat: item.cat };
+      const { labels, chosen, extra } = resolveOptions(item, l.options);
+      return { id: item._id, name: item.name, price: item.price + extra, qty: l.qty, cat: item.cat, station: settings.stationOf(item.cat), options: labels, chosen };
     });
 
     for (const [ing, qtyMilli] of needed) {
@@ -104,6 +131,12 @@ function createCatalogService({ db }) {
     }
     const fields = { ...data };
     delete fields.recipe;
+    if (!settings.hasCategory(fields.cat)) throw new AppError(400, "invalid_input", "Choose a category from the list. An Admin adds categories under Settings.");
+    // Each option group, and each choice inside one, needs its own name
+    for (const g of fields.options || []) {
+      if (new Set(g.choices.map((c) => c.name.toLowerCase())).size !== g.choices.length) throw new AppError(400, "invalid_input", `Each choice under ${g.name} needs its own name.`);
+    }
+    if (fields.options && new Set(fields.options.map((g) => g.name.toLowerCase())).size !== fields.options.length) throw new AppError(400, "invalid_input", "Each option group needs its own name.");
 
     // A case-insensitive comparison that treats the name purely as text
     const duplicate = await menu.findOne(
@@ -125,6 +158,7 @@ function createCatalogService({ db }) {
     if (current.available !== data.available) await event(data.available ? "Item switched on" : "Item switched off", data.name, "info");
     if (current.name !== data.name || current.cat !== data.cat || current.desc !== data.desc) await event("Menu item edited", data.name, "info");
     if (recipe) await event("Recipe changed", data.name, "info");
+    if (fields.options && JSON.stringify(fields.options) !== JSON.stringify(current.options || [])) await event("Item options changed", data.name, "info");
     await menu.updateOne({ _id: id }, { $set: { ...fields, ...(recipe ? { recipe } : {}) } }, { session });
     return id;
   }

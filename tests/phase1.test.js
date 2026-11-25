@@ -32,6 +32,8 @@ describe("operating settings", () => {
     tables: [{ no: 1, seats: 2, area: "Window" }, { no: 2, seats: 4, area: "Main hall" }, { no: 3, seats: 6, area: "Terrace" }],
     discountLimits: { Cashier: 10, Manager: 25 },
     receipt: { header: "Welcome", footer: "See you soon" },
+    categories: [{ name: "Coffee", station: "Bar" }, { name: "Tea", station: "Bar" }, { name: "Cold Drinks", station: "Bar" }, { name: "Food", station: "Kitchen" }, { name: "Desserts", station: "Kitchen" }],
+    orderTypes: { dineIn: true, takeaway: true, delivery: true },
     ...extra
   });
 

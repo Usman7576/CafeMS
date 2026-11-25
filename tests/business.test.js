@@ -13,7 +13,7 @@ before(async () => {
   db = ctx.db;
   await seedCatalog(db);
   ({ app, config } = buildApp(db));
-  for (const role of ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]) clients[role] = await as(role);
+  for (const role of ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"]) clients[role] = await as(role);
 });
 after(() => ctx.stop());
 
@@ -31,25 +31,29 @@ async function stepUp(client) {
 }
 
 describe("every role against every route (RBAC matrix)", () => {
-  const ALL = ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"];
+  const ALL = ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"];
   const MATRIX = [
-    ["get", "/menu", ["Waiter", "Admin"]],
+    ["get", "/menu", ["Waiter", "Cashier", "Admin"]],
     ["post", "/menu", ["Admin"]],
     ["put", "/menu/999999", ["Admin"]],
     ["delete", "/menu/999999", ["Admin"]],
     ["get", "/inventory", ["Manager", "Admin"]],
     ["post", "/inventory/1/adjust", ["Manager"]],
-    ["get", "/orders", ["Waiter"]],
-    ["post", "/orders", ["Waiter"]],
-    ["put", "/orders/ORD-1", ["Waiter"]],
-    ["post", "/orders/ORD-1/serve", ["Waiter"]],
-    ["post", "/orders/ORD-1/cancel", ["Waiter"]],
-    ["get", "/tables", ["Waiter"]],
-    ["post", "/tables/1/request-bill", ["Waiter"]],
-    ["get", "/kitchen/tickets", ["Kitchen"]],
-    ["post", "/kitchen/tickets/ORD-1/status", ["Kitchen"]],
+    ["get", "/orders", ["Waiter", "Cashier"]],
+    ["post", "/orders", ["Waiter", "Cashier"]],
+    ["put", "/orders/ORD-1", ["Waiter", "Cashier"]],
+    ["post", "/orders/ORD-1/serve", ["Waiter", "Cashier"]],
+    ["post", "/orders/ORD-1/cancel", ["Waiter", "Cashier"]],
+    ["post", "/orders/ORD-1/send", ["Waiter", "Cashier"]],
+    ["post", "/orders/ORD-1/transfer", ["Waiter", "Cashier"]],
+    ["post", "/orders/ORD-1/void", ["Manager"]],
+    ["get", "/tables", ["Waiter", "Cashier"]],
+    ["post", "/tables/1/request-bill", ["Waiter", "Cashier"]],
+    ["get", "/kitchen/tickets", ["Barista", "Kitchen"]],
+    ["post", "/kitchen/tickets/ORD-1/status", ["Barista", "Kitchen"]],
     ["get", "/billing/open-tables", ["Cashier", "Manager"]],
     ["post", "/billing/tables/1/pay", ["Cashier", "Manager"]],
+    ["post", "/billing/orders/ORD-1/pay", ["Cashier", "Manager"]],
     ["get", "/bills", ["Cashier", "Manager", "Admin"]],
     ["get", "/bills/B-1", ["Cashier", "Manager", "Admin"]],
     ["get", "/bills/B-1/phone", ["Manager", "Admin"]],
@@ -106,7 +110,8 @@ describe("what each role receives (least privilege)", () => {
   test("the snapshot holds only that role's data", async () => {
     assert.deepEqual(await keysOf("Kitchen"), ["cafe", "constants", "tickets"]);
     assert.deepEqual(await keysOf("Waiter"), ["cafe", "constants", "menu", "orders", "reservations", "tables"]);
-    assert.deepEqual(await keysOf("Cashier"), ["bills", "cafe", "constants", "openTables", "staffNames"]);
+    assert.deepEqual(await keysOf("Barista"), ["cafe", "constants", "tickets"]);
+    assert.deepEqual(await keysOf("Cashier"), ["bills", "cafe", "constants", "menu", "openTables", "orders", "staffNames", "tables"]);
     assert.deepEqual(await keysOf("Manager"), ["approvals", "bills", "cafe", "constants", "inventory", "openTables", "reservations", "sales", "staffNames"]);
     assert.deepEqual(await keysOf("Admin"), ["alerts", "approvals", "bills", "cafe", "constants", "inventory", "menu", "openTables", "recentAudit", "sales", "staffNames", "users"]);
   });
