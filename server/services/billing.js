@@ -1,6 +1,6 @@
 // Billing. All amounts come from stored order lines; nothing the browser says about price is used.
 const { AppError } = require("../lib/errors");
-const { TABLES, DISCOUNT_LIMIT, calculateTotals, maskPhone, dayRange, localDate, localHour } = require("../lib/domain");
+const { calculateTotals, maskPhone, dayRange, localDate, localHour } = require("../lib/domain");
 const { encrypt, decrypt, blindIndex } = require("../lib/crypto");
 const { nextSequence, inTransaction } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
@@ -9,7 +9,7 @@ const { withTimeout } = require("./gateway");
 
 const OPEN_FOR_PAYMENT = ["Pending Payment", "Payment Failed"];
 
-function createBillingService({ config, db, orderService, approvals, gateway, logger }) {
+function createBillingService({ config, db, orderService, approvals, gateway, logger, settings }) {
   const bills = db.collection("bills");
   const orders = db.collection("orders");
   const tables = db.collection("tables");
@@ -40,13 +40,13 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       users.find({}, { projection: { username: 1, name: 1 } }).toArray()
     ]);
     const names = new Map(staff.map((u) => [u.username, u.name]));
-    return TABLES.map((t) => {
+    return settings.get().tables.map((t) => {
       const onTable = open.filter((o) => o.table === t.no);
       if (!onTable.length) return null;
       const lines = aggregateLines(onTable);
       const doc = tableDocs.find((d) => d._id === t.no);
       return {
-        no: t.no, seats: t.seats, lines, totals: calculateTotals(lines), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
+        no: t.no, seats: t.seats, lines, totals: calculateTotals(lines, 0, settings.taxRate()), orders: onTable.map((o) => ({ id: o._id, status: o.status })), allServed: onTable.every((o) => o.status === "Served"),
         billRequested: doc && doc.billRequestedAt ? doc.billRequestedAt : null,
         waiters: [...new Set(onTable.map((o) => names.get(o.waiter) || o.waiter))],
         since: new Date(Math.min(...onTable.map((o) => o.createdAt.getTime())))
@@ -61,14 +61,14 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     if (!open.length) throw new AppError(404, "not_found", `Table ${no} has nothing to bill.`);
     if (!open.every((o) => o.status === "Served")) throw new AppError(409, "not_served", `Some orders on Table ${no} haven't been served yet.`);
 
-    const limit = Object.hasOwn(DISCOUNT_LIMIT, actor.role) ? DISCOUNT_LIMIT[actor.role] : 0;
+    const limit = settings.discountLimit(actor.role);
     if (input.discountPct > limit) {
       await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Access denied", details: `Tried a ${input.discountPct}% discount on Table ${no}`, severity: "warning" });
       throw new AppError(403, "discount_limit", `Your role can apply a discount of up to ${limit}%. Ask a manager for more.`);
     }
 
     const lines = aggregateLines(open);
-    const totals = calculateTotals(lines, input.discountPct);
+    const totals = calculateTotals(lines, input.discountPct, settings.taxRate());
     let tendered = totals.total;
     if (input.method === "Cash") {
       if (input.tendered === undefined || input.tendered < totals.total) throw new AppError(400, "cash_too_low", `Cash received must be at least Rs ${totals.total.toLocaleString()}.`);

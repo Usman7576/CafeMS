@@ -19,7 +19,7 @@ Only the latest release and the `main` branch receive security fixes.
 | Risk scores and failure analysis | [RISK-AND-FAILURE-ANALYSIS.md](docs/security/RISK-AND-FAILURE-ANALYSIS.md) |
 | Scanner results | [SCAN-RESULTS.md](docs/security/SCAN-RESULTS.md) |
 | Load test | [LOAD-TEST.md](docs/security/LOAD-TEST.md) |
-| Secure deployment | [DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Local setup and database security | [LOCAL-SETUP.md](docs/LOCAL-SETUP.md) |
 
 ## Verifying a release
 

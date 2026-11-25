@@ -42,24 +42,49 @@
     loadDevices();
     loadPasskeys();
     loadQuestion();
-    loadOidc();
+    loadPin();
   });
 
-  async function loadOidc() {
-    const result = await Api.call("GET", "/auth/oidc/enabled").catch(function () { return null; });
-    if (!result || !result.enabled) return;
-    document.getElementById("oidcPanel").hidden = false;
-    if (window.location.hash === "#oidc-linked") { history.replaceState(null, "", window.location.pathname); CMS.toast("Organisation account linked", "ok"); }
-    document.getElementById("oidcLinkBtn").addEventListener("click", function (e) {
-      CMS.busy(e.currentTarget, async function () {
-        const r = await CMS.attempt(function () { return CMS.withStepUp(function () { return Api.call("POST", "/auth/oidc/link", {}); }); });
-        if (r && r.url) window.location.assign(r.url);
+  // A PIN lets a person switch to themselves on a shared tablet. Only floor roles may have one.
+  async function loadPin() {
+    const result = await Api.call("GET", "/auth/switch/people").catch(function () { return null; });
+    if (!result || !result.pinAllowed) return;
+    const panel = document.getElementById("pinPanel");
+    const err = document.getElementById("pinErr");
+    const remove = document.getElementById("pinRemove");
+    const status = document.getElementById("pinStatus");
+    panel.hidden = false;
+    function show(hasPin) {
+      remove.hidden = !hasPin;
+      document.getElementById("pinSave").textContent = hasPin ? "Change PIN" : "Save PIN";
+      status.textContent = hasPin
+        ? "Your PIN is set. On a shared tablet, open the account menu, choose Switch user, tap your name and enter it."
+        : "On a shared tablet, tap your name and enter this PIN to switch to yourself. You still need your password on a new device.";
+    }
+    show(result.hasPin);
+    document.getElementById("pinForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      err.className = "alert alert-error";
+      const pin = document.getElementById("pinNew").value.trim();
+      const password = document.getElementById("pinPassword").value;
+      if (!/^\d{4,6}$/.test(pin)) { err.textContent = "A PIN is 4 to 6 digits."; err.classList.add("show"); return; }
+      if (!password) { err.textContent = "Enter your current password."; err.classList.add("show"); return; }
+      CMS.busy(document.getElementById("pinSave"), async function () {
+        try {
+          await Api.call("PUT", "/auth/pin", { currentPassword: password, pin: pin });
+          document.getElementById("pinForm").querySelectorAll("input").forEach(function (i) { i.value = ""; });
+          show(true);
+          CMS.toast("PIN saved", "ok");
+        } catch (error) {
+          err.textContent = error.userMessage || "The PIN could not be saved.";
+          err.classList.add("show");
+        }
       });
     });
-    document.getElementById("oidcUnlinkBtn").addEventListener("click", function (e) {
-      CMS.busy(e.currentTarget, async function () {
-        const ok = await CMS.attempt(function () { return CMS.withStepUp(function () { return Api.call("POST", "/auth/oidc/unlink", {}); }).then(function () { return true; }); });
-        if (ok) CMS.toast("Organisation account unlinked", "ok");
+    remove.addEventListener("click", function () {
+      CMS.busy(remove, async function () {
+        const ok = await CMS.attempt(function () { return Api.call("DELETE", "/auth/pin").then(function () { return true; }); });
+        if (ok) { show(false); CMS.toast("PIN removed", "ok"); }
       });
     });
   }

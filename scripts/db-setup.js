@@ -7,7 +7,7 @@ const { MongoClient } = require("mongodb");
 const { ensureAppRole, ensureAppUser, ROLE } = require("../server/lib/dbRoles");
 const { ensureIndexes, ensureAuditIndexes } = require("../server/db");
 
-const HOST = process.env.MONGODB_HOST || "127.0.0.1:27018";
+const HOST = process.env.MONGODB_HOST || "127.0.0.1:27017";
 const need = (name) => {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is missing from .env. Run: npm run setup:env`);

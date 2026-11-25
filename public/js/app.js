@@ -1,58 +1,78 @@
-// Staff app shell: session guard, role-based navigation (RBAC — UX layer only),
-// sidebar, top bar, notifications, command palette (Ctrl/⌘+K), user menu and
-// inactivity timeout. Each staff page only contains its <main> content.
+// Staff app shell: session guard, role-based navigation (RBAC — UX layer only), sidebar grouped by
+// kind of work, top bar with live status, notifications, command palette (Ctrl/⌘+K), user menu with
+// PIN switching, and the inactivity timeout. Each staff page only contains its <main> content.
 (function () {
   const PAGES = {
     dashboard: { title: "Dashboard",       roles: ["Waiter"] },
     order:     { title: "Take order",      roles: ["Waiter"] },
     reservation: { title: "New reservation", roles: ["Waiter", "Manager"] },
-    reservations: { title: "Reservation queue", roles: ["Waiter", "Manager"] },
+    reservations: { title: "Reservations", roles: ["Waiter", "Manager"] },
+    requests:  { title: "Staff requests",  roles: ["Waiter", "Kitchen", "Cashier", "Manager"] },
     kitchen:   { title: "Kitchen display", roles: ["Kitchen"] },
     billing:   { title: "Billing",         roles: ["Cashier", "Manager"] },
     overview:  { title: "Overview",        roles: ["Manager", "Admin"] },
     inventory: { title: "Inventory",       roles: ["Manager"] },
     reports:   { title: "Sales reports",   roles: ["Manager", "Admin"] },
-    menu:      { title: "Menu management", roles: ["Admin"] },
+    menu:      { title: "Menu",            roles: ["Admin"] },
     users:     { title: "Staff & roles",   roles: ["Admin"] },
+    settings:  { title: "Settings",        roles: ["Admin"] },
     audit:     { title: "Audit log",       roles: ["Admin"] },
     security:  { title: "Security",        roles: ["Admin"] },
-    risk:      { title: "Risk register",   roles: ["Admin"] },
     account:   { title: "My account",      roles: ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"] }
   };
   const HOME = { Waiter: "dashboard.html", Kitchen: "kitchen.html", Cashier: "billing.html", Manager: "overview.html", Admin: "overview.html" };
+  const L = {
+    dashboard: { page: "dashboard", href: "dashboard.html", icon: "dashboard", label: "Dashboard" },
+    order: { page: "order", href: "order.html", icon: "plus", label: "Take order" },
+    tables: { href: "dashboard.html#floor", icon: "grid", label: "Tables" },
+    ready: { href: "dashboard.html#ready", icon: "bell", label: "Ready to serve", badge: true },
+    kitchen: { page: "kitchen", href: "kitchen.html", icon: "chef", label: "Kitchen display", badge: true },
+    billing: { page: "billing", href: "billing.html", icon: "receipt", label: "Billing" },
+    reservation: { page: "reservation", href: "reservation.html", icon: "calendar", label: "New reservation" },
+    reservations: { page: "reservations", href: "reservations.html", icon: "clipboard", label: "Reservations" },
+    overview: { page: "overview", href: "overview.html", icon: "dashboard", label: "Overview" },
+    inventory: { page: "inventory", href: "inventory.html", icon: "package", label: "Inventory" },
+    reports: { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" },
+    menu: { page: "menu", href: "menu.html", icon: "utensils", label: "Menu" },
+    users: { page: "users", href: "users.html", icon: "users", label: "Staff & roles" },
+    requests: { page: "requests", href: "requests.html", icon: "file", label: "Staff requests" },
+    settings: { page: "settings", href: "settings.html", icon: "settings", label: "Settings" },
+    audit: { page: "audit", href: "audit.html", icon: "file", label: "Audit log" },
+    security: { page: "security", href: "security.html", icon: "shield", label: "Security" }
+  };
+  const badge = function (item) { return Object.assign({}, item, { badge: true }); };
+  // Grouped by kind of work: Sell · Kitchen · Manage · Reports · Settings
   const NAV = {
     Waiter: [
-      { page: "dashboard", href: "dashboard.html", icon: "dashboard", label: "Dashboard" },
-      { page: "order", href: "order.html", icon: "clipboard", label: "Take order" },
-      { page: "reservation", href: "reservation.html", icon: "calendar", label: "New reservation" },
-      { page: "reservations", href: "reservations.html", icon: "clipboard", label: "Reservation queue" },
-      { href: "dashboard.html#ready", icon: "bell", label: "Ready to serve", badge: true },
-      { href: "dashboard.html#floor", icon: "grid", label: "Tables" }
+      { section: "Sell", items: [L.dashboard, L.order, L.tables, L.ready] },
+      { section: "Guests", items: [L.reservations, L.reservation] },
+      { section: "Team", items: [L.requests] }
     ],
-    Kitchen: [{ page: "kitchen", href: "kitchen.html", icon: "chef", label: "Kitchen display", badge: true }],
-    Cashier: [{ page: "billing", href: "billing.html", icon: "receipt", label: "Billing", badge: true }],
+    Kitchen: [
+      { section: "Kitchen", items: [L.kitchen] },
+      { section: "Team", items: [L.requests] }
+    ],
+    Cashier: [
+      { section: "Sell", items: [badge(L.billing)] },
+      { section: "Team", items: [L.requests] }
+    ],
     Manager: [
-      { page: "overview", href: "overview.html", icon: "dashboard", label: "Overview" },
-      { page: "billing", href: "billing.html", icon: "receipt", label: "Billing" },
-      { page: "inventory", href: "inventory.html", icon: "package", label: "Inventory", badge: true },
-      { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" },
-      { page: "reservation", href: "reservation.html", icon: "calendar", label: "New reservation" },
-      { page: "reservations", href: "reservations.html", icon: "clipboard", label: "Reservation queue" }
+      { section: "Today", items: [L.overview] },
+      { section: "Sell", items: [L.billing, L.reservations, L.reservation] },
+      { section: "Manage", items: [badge(L.inventory), L.requests] },
+      { section: "Reports", items: [L.reports] }
     ],
     Admin: [
-      { page: "overview", href: "overview.html", icon: "dashboard", label: "Overview" },
-      { page: "menu", href: "menu.html", icon: "utensils", label: "Menu" },
-      { page: "users", href: "users.html", icon: "users", label: "Staff & roles" },
-      { page: "reports", href: "reports.html", icon: "chart", label: "Sales reports" },
-      { page: "audit", href: "audit.html", icon: "file", label: "Audit log" },
-      { page: "security", href: "security.html", icon: "shield", label: "Security" },
-      { page: "risk", href: "risk.html", icon: "alert", label: "Risk register" }
+      { section: "Today", items: [L.overview] },
+      { section: "Manage", items: [L.menu, L.users] },
+      { section: "Reports", items: [L.reports, L.audit] },
+      { section: "Settings", items: [L.settings, L.security] }
     ]
   };
   const ACCESS = {
-    Waiter: "Waiter tools only. Billing, inventory, reports and admin belong to other roles.",
-    Kitchen: "Order queue only. No prices, payments or customer details.",
-    Cashier: "Billing and receipts. Discounts above 10% and refunds need a manager.",
+    Waiter: "Orders, tables and bookings. Billing, stock and admin belong to other roles.",
+    Kitchen: "Order tickets only. No prices, payments or customer details.",
+    Cashier: "Billing and receipts. Discounts above your limit and refunds need a manager.",
     Manager: "Operations, stock, reports and refunds. Users and menu are admin-only.",
     Admin: "Full administration. Every critical change is written to the audit log."
   };
@@ -80,7 +100,8 @@
 
   const h = CMS.h;
   const I = function (n, s) { return Icons.node(n, s || 18); };
-  const initials = session.name.split(" ").map(function (p) { return p[0]; }).join("").replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase();
+  const initialsOf = function (name) { return name.split(" ").map(function (p) { return p[0]; }).join("").replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase(); };
+  const initials = initialsOf(session.name);
 
   function signOut(msg) {
     const finish = function () {
@@ -93,26 +114,28 @@
 
   // ======================================================== build shell
   const main = document.getElementById("main");
-  document.title = page.title + " — Cafe Management System";
+  document.title = page.title + " · CafeMS";
 
-  const navItems = NAV[session.role];
-  const sideNav = h("ul", { class: "side-nav" }, navItems.map(function (n) {
-    const a = h("a", { href: n.href, "aria-current": n.page === pageKey ? "page" : null }, [I(n.icon), n.label]);
+  const groups = NAV[session.role];
+  const navItems = groups.reduce(function (all, g) { return all.concat(g.items); }, []);
+  const navLink = function (n) {
+    const a = h("a", { href: n.href, "aria-current": n.page === pageKey ? "page" : null }, [I(n.icon), h("span", { text: n.label })]);
     if (n.badge) a.appendChild(h("span", { class: "count", "data-nav-badge": true }));
     return h("li", null, [a]);
-  }));
+  };
 
   const sidebar = h("aside", { class: "sidebar", id: "sidebar", "aria-label": "Staff navigation" }, [
-    h("a", { href: HOME[session.role], class: "brand light" }, [h("span", { class: "brand-mark" }, [I("coffee", 19)]), h("span", null, ["CafeMS", h("small", { text: session.role + " workspace" })])]),
-    h("div", { class: "nav-section", text: session.role === "Admin" ? "Administration" : session.role }),
-    sideNav,
-    h("div", { class: "nav-section", text: "Account" }),
-    h("ul", { class: "side-nav" }, [
-      h("li", null, [h("a", { href: "account.html", "aria-current": pageKey === "account" ? "page" : null }, [I("key"), "My account"])]),
-      h("li", null, [h("a", { href: "index.html" }, [I("home"), "Public site"])]),
-      h("li", null, [h("button", { type: "button", "data-signout": true }, [I("logout"), "Sign out"])])
-    ]),
-    h("div", { class: "sidebar-foot" }, [h("b", null, [I("shield", 16), session.role + " access"]), ACCESS[session.role]])
+    h("a", { href: HOME[session.role], class: "brand" }, [h("span", { class: "brand-mark" }, [I("coffee", 18)]), h("span", null, [h("span", { "data-cafe-name": true, text: "CafeMS" }), h("small", { text: session.role + " workspace" })])]),
+    h("nav", { class: "side-groups" }, groups.map(function (g) {
+      return h("div", { class: "side-group" }, [h("div", { class: "nav-section", text: g.section }), h("ul", { class: "side-nav" }, g.items.map(navLink))]);
+    }).concat([
+      h("div", { class: "side-group" }, [h("div", { class: "nav-section", text: "Account" }), h("ul", { class: "side-nav" }, [
+        h("li", null, [h("a", { href: "account.html", "aria-current": pageKey === "account" ? "page" : null }, [I("key"), h("span", { text: "My account" })])]),
+        h("li", null, [h("a", { href: "index.html" }, [I("home"), h("span", { text: "Public site" })])]),
+        h("li", null, [h("button", { type: "button", "data-signout": true }, [I("logout"), h("span", { text: "Sign out" })])])
+      ])])
+    ])),
+    h("div", { class: "sidebar-foot" }, [h("b", null, [I("shield", 15), session.role + " access"]), ACCESS[session.role]])
   ]);
 
   const notifBtn = h("button", { class: "icon-btn", id: "notifBtn", "aria-label": "Notifications", "aria-haspopup": "true", "aria-expanded": "false" }, [I("bell"), h("span", { class: "dot", id: "notifDot" })]);
@@ -128,6 +151,7 @@
     h("div", { class: "head" }, [h("b", { text: session.name }), h("span", { class: "muted", text: "@" + session.user + " · " }), h("span", { class: "pill pill-role", text: session.role })]),
     h("a", { href: HOME[session.role] }, [I("home", 16), "My workspace"]),
     h("button", { type: "button", id: "openPalette" }, [I("search", 16), "Quick search", h("kbd", { class: "kbd", text: "Ctrl K" })]),
+    h("button", { type: "button", id: "openSwitch" }, [I("users", 16), "Switch user"]),
     h("a", { href: "account.html" }, [I("key", 16), "My account"]),
     h("button", { type: "button", class: "danger", "data-signout": true }, [I("logout", 16), "Sign out"])
   ]);
@@ -137,6 +161,7 @@
     h("div", { class: "title" }, [h("div", { class: "crumb", text: session.role + " workspace" }), h("h1", { text: page.title })]),
     h("div", { class: "spacer" }),
     h("button", { class: "search-btn", type: "button", id: "searchBtn", "aria-label": "Quick search (Ctrl+K)" }, [I("search", 16), h("span", { text: "Search…" }), h("kbd", { class: "kbd", text: "Ctrl K" })]),
+    h("div", { class: "live-chip", id: "liveChip", title: "Screens update as soon as something changes" }, [h("span", { class: "live-dot" }), h("span", { class: "live-on", text: "Live" }), h("span", { class: "live-off", text: "Reconnecting" })]),
     h("div", { class: "shift-clock" }, [I("clock", 15), h("span", { id: "shiftClock" })]),
     h("div", { class: "user-menu" }, [notifBtn, notifMenu]),
     h("div", { class: "user-menu" }, [userBtn, userMenu])
@@ -174,8 +199,6 @@
   mainCol.appendChild(footer);
   document.body.appendChild(idleModal);
   document.body.appendChild(palette);
-  // Slow-moving coffee artwork behind the screens. It is decoration only and ignores the mouse.
-  document.body.insertBefore(h("div", { class: "bean-field", "aria-hidden": "true" }, ["b1", "b2", "b3", "b4", "b5", "cup"].map(function (c) { return h("span", { class: "bean-float " + c }); })), document.body.firstChild);
   if (!document.querySelector(".skip-link")) document.body.insertBefore(h("a", { href: "#main", class: "skip-link", text: "Skip to content" }), document.body.firstChild);
   document.documentElement.classList.remove("app-loading");
 
@@ -301,6 +324,7 @@
   commands.push(
     { label: "Public website", hint: "Go to", icon: "home", run: function () { location.href = "index.html"; } },
     { label: "My account", hint: "Go to", icon: "key", run: function () { location.href = "account.html"; } },
+    { label: "Switch user", hint: "Action", icon: "users", run: function () { document.getElementById("openSwitch").click(); } },
     { label: "Sign out", hint: "Action", icon: "logout", run: function () { document.querySelector("[data-signout]").click(); } }
   );
   let sel = 0, filtered = commands;
@@ -364,6 +388,99 @@
 
   const flash = Session.flash();
   if (flash) setTimeout(function () { CMS.toast(flash, "err"); }, 200);
+
+  // ---------- Switch user with a PIN (shared tablets) ----------
+  // The server checks the PIN, ends this session and starts the other person's. Nothing about the
+  // PIN is kept in the browser.
+  const pinInput = h("input", { class: "input pin-input", type: "password", inputmode: "numeric", autocomplete: "off", maxlength: "6", "aria-label": "PIN", id: "switchPin" });
+  const switchErr = h("div", { class: "alert alert-error", role: "alert" });
+  const switchPeople = h("div", { class: "switch-people" });
+  const switchWho = h("div", { class: "switch-who" });
+  const pinDots = h("div", { class: "pin-dots", "aria-hidden": "true" });
+  const pinPad = h("div", { class: "pin-pad" });
+  const pinStep = h("div", { class: "pin-step", hidden: true }, [switchWho, pinDots, pinInput, pinPad]);
+  const switchOk = h("button", { class: "btn btn-primary", type: "button", id: "switchOk", hidden: true, text: "Switch" });
+  const switchBack = h("button", { class: "btn btn-ghost", type: "button", hidden: true, text: "Back" });
+  const switchModal = h("div", { class: "modal-backdrop", id: "switchModal", role: "dialog", "aria-modal": "true", "aria-labelledby": "switchTitle" }, [
+    h("div", { class: "modal" }, [
+      h("div", { class: "modal-head" }, [h("div", { class: "icon-tile" }, [I("users", 20)]), h("div", null, [
+        h("h3", { id: "switchTitle", text: "Switch user" }),
+        h("p", { text: "Tap your name and enter your PIN. This tablet's current session ends." })
+      ])]),
+      h("div", { class: "modal-body" }, [switchErr, switchPeople, pinStep]),
+      h("div", { class: "modal-actions" }, [switchBack, h("button", { class: "btn btn-secondary", type: "button", "data-close": "switchModal", text: "Cancel" }), switchOk])
+    ])
+  ]);
+  document.body.appendChild(switchModal);
+  let switchTarget = null;
+  function drawDots() {
+    pinDots.replaceChildren();
+    for (let i = 0; i < 6; i++) pinDots.appendChild(h("i", { class: i < pinInput.value.length ? "on" : "" }));
+    switchOk.disabled = pinInput.value.length < 4;
+  }
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"].forEach(function (k) {
+    const label = k === "back" ? I("delete", 20) : k === "clear" ? "Clear" : k;
+    pinPad.appendChild(h("button", { type: "button", class: "pin-key" + (k.length > 1 ? " fn" : ""), "aria-label": k === "back" ? "Delete last digit" : k === "clear" ? "Clear" : k, onclick: function () {
+      if (k === "back") pinInput.value = pinInput.value.slice(0, -1);
+      else if (k === "clear") pinInput.value = "";
+      else if (pinInput.value.length < 6) pinInput.value += k;
+      drawDots();
+      pinInput.focus();
+    } }, [label]));
+  });
+  pinInput.addEventListener("input", function () { pinInput.value = pinInput.value.replace(/\D/g, "").slice(0, 6); drawDots(); });
+  pinInput.addEventListener("keydown", function (e) { if (e.key === "Enter" && !switchOk.disabled) switchOk.click(); });
+  function showPeople() {
+    switchTarget = null;
+    pinStep.hidden = true; switchOk.hidden = true; switchBack.hidden = true; switchPeople.hidden = false;
+  }
+  function choose(person) {
+    switchTarget = person;
+    switchErr.classList.remove("show");
+    switchWho.replaceChildren(h("span", { class: "avatar", text: initialsOf(person.name) }), h("div", null, [h("b", { text: person.name }), h("small", { text: person.role })]));
+    pinInput.value = "";
+    drawDots();
+    switchPeople.hidden = true; pinStep.hidden = false; switchOk.hidden = false; switchBack.hidden = false;
+    pinInput.focus();
+  }
+  async function openSwitch() {
+    document.querySelectorAll(".dropdown.open").forEach(function (d) { d.classList.remove("open"); });
+    switchErr.classList.remove("show");
+    showPeople();
+    switchPeople.replaceChildren(h("p", { class: "muted", text: "Loading…" }));
+    CMS.openModal("switchModal");
+    const result = await CMS.attempt(function () { return Api.call("GET", "/auth/switch/people"); }, switchErr);
+    switchPeople.replaceChildren();
+    if (!result) return;
+    if (!result.people.length) {
+      switchPeople.appendChild(h("div", { class: "empty-state" }, [I("users", 28), h("b", { text: "Nobody can switch in yet" }), "Waiters, kitchen staff and cashiers can set a PIN on their My account page."]));
+      return;
+    }
+    result.people.forEach(function (p) {
+      switchPeople.appendChild(h("button", { type: "button", class: "person-tile", onclick: function () { choose(p); } }, [h("span", { class: "avatar", text: initialsOf(p.name) }), h("b", { text: p.name }), h("small", { text: p.role })]));
+    });
+  }
+  switchBack.addEventListener("click", showPeople);
+  switchOk.addEventListener("click", function () {
+    if (!switchTarget) return;
+    CMS.busy(switchOk, async function () {
+      try {
+        await Api.call("POST", "/auth/switch", { username: switchTarget.username, pin: pinInput.value });
+        pinInput.value = "";
+        Store.forget();
+        Api.csrfToken = null;
+        const me = await Api.me();
+        Session.set({ user: me.username, name: me.name, role: me.role, loginAt: me.loginAt });
+        window.location.replace(HOME[me.role]);
+      } catch (error) {
+        pinInput.value = "";
+        drawDots();
+        switchErr.replaceChildren(I("alert", 18), h("span", { text: error.userMessage || "That did not work. Try again." }));
+        switchErr.classList.add("show");
+      }
+    });
+  });
+  document.getElementById("openSwitch").addEventListener("click", openSwitch);
 
   window.App = { session: session, signOut: signOut, home: HOME[session.role], I: I, ready: function (fn) { readyPromise.then(fn); } };
 })();

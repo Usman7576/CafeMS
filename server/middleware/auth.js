@@ -4,7 +4,6 @@ const { safeEqual } = require("../lib/crypto");
 const { can } = require("../lib/permissions");
 const { AppError, notSignedIn, forbidden, invalidInput } = require("../lib/errors");
 const { recordEvent } = require("../services/auditLog");
-const { createSignatureService } = require("../services/signatures");
 
 function guard(kind, fn) {
   fn.guard = kind;
@@ -58,18 +57,7 @@ function createAuthMiddleware(config, db, sessions, { userLimiter } = {}) {
     return next();
   });
 
-  // A sensitive action must also be signed by the person's own device key (non-repudiation)
-  const signatures = createSignatureService({ config, db });
-  const requireSignature = guard("signature", async function requireSignature(req, _res, next) {
-    try {
-      await signatures.verifyRequest(req);
-      next();
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  return { requireAuth, requirePermission, requireStepUp, requireSignature, signatures };
+  return { requireAuth, requirePermission, requireStepUp };
 }
 
 // Strict schema validation; unknown fields and wrong types (such as NoSQL operator objects) are refused.

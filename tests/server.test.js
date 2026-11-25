@@ -73,7 +73,7 @@ describe("page guard", () => {
   });
 
   test("public pages and assets load without signing in", async () => {
-    for (const path of ["/", "/index.html", "/login.html", "/setup.html", "/privacy.html", "/css/style.css", "/js/login.js", "/assets/favicon.svg", "/assets/bean.svg", "/vendor/three.module.min.js", "/js/coffee-scene.js"]) {
+    for (const path of ["/", "/index.html", "/login.html", "/setup.html", "/privacy.html", "/css/style.css", "/js/login.js", "/assets/favicon.svg", "/assets/bean.svg"]) {
       assert.equal((await request(app).get(path)).status, 200, path);
     }
   });
@@ -244,5 +244,5 @@ test("every route has a guard, so none can be left open by accident (complete me
 
   // Public routes are an explicit, reviewed list
   const open = found.filter((r) => r.guards.includes("public")).map((r) => r.path).sort();
-  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/info", "/login", "/menu", "/menu/:id/photo", "/oidc/callback", "/oidc/enabled", "/oidc/start", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/passkey", "/mfa/passkey/options", "/mfa/security-question", "/mfa/verify", "/payments/callback", "/reservations", "/setup"].sort());
+  assert.deepEqual(open.map(String), ["/api/health,/api/health/ready", "/api/health/live", "/info", "/login", "/menu", "/menu/:id/photo", "/mfa/enroll/confirm", "/mfa/enroll/start", "/mfa/passkey", "/mfa/passkey/options", "/mfa/security-question", "/mfa/verify", "/payments/callback", "/register", "/reservations", "/setup"].sort());
 });

@@ -51,8 +51,12 @@
     if (!rules.check().ok) { alertBox.className = "alert show alert-error"; return; }
     button.disabled = true;
     try {
-      await Api.call("POST", "/auth/setup", { token: token, password: password.value }, { public: true });
-      window.location.replace("login.html#enroll");
+      const result = await Api.call("POST", "/auth/setup", { token: token, password: password.value }, { public: true });
+      // Admins and Managers add an authenticator next; other roles simply sign in with the new password
+      if (result && result.next === "login") {
+        Session.flash("Your password is set. Sign in to start your shift.");
+        window.location.replace("login.html");
+      } else window.location.replace("login.html#enroll");
     } catch (error) {
       showError(error.userMessage || "Something went wrong. Please try again.");
       button.disabled = false;

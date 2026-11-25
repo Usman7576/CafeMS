@@ -3,6 +3,10 @@ const { randomToken, hashToken } = require("../lib/crypto");
 const { AppError } = require("../lib/errors");
 const { recordEvent } = require("./auditLog");
 const { inTransaction } = require("../lib/tx");
+const { hashPassword, passwordProblems } = require("../lib/passwords");
+
+// Caps how many unreviewed registrations can pile up, so the form cannot be used to flood the users list
+const MAX_PENDING = 50;
 
 function createUserService({ config, db, approvals }) {
   const users = db.collection("users");
@@ -12,7 +16,7 @@ function createUserService({ config, db, approvals }) {
 
   // An allow-list of fields, so hashes and MFA secrets can never reach a response
   const view = (u) => ({
-    username: u.username, name: u.name, role: u.role, status: u.status, lastLogin: u.lastLogin || null,
+    username: u.username, name: u.name, role: u.role, status: u.status, lastLogin: u.lastLogin || null, createdAt: u.createdAt || null,
     locked: Boolean(u.lockedUntil && u.lockedUntil.getTime() > Date.now()), mfaEnabled: Boolean(u.mfa && u.mfa.enabled)
   });
   const list = async () => (await users.find().sort({ username: 1 }).toArray()).map(view);
@@ -48,6 +52,22 @@ function createUserService({ config, db, approvals }) {
 
     const target = await users.findOne({ username: change.target }, { session });
     if (!target) throw new AppError(404, "not_found", "User not found.");
+
+    // A self-registered account does nothing until an Admin approves it and chooses its role
+    if (target.status === "Pending") {
+      if (change.action === "approve") {
+        await users.updateOne({ username: target.username, status: "Pending" }, { $set: { status: "Active", role: change.role, sponsor: actor.username, approvedAt: new Date() } }, { session });
+        await event("Registration approved", `${target.username} as ${change.role}`);
+        return { username: target.username, role: change.role, status: "Active" };
+      }
+      if (change.action === "reject") {
+        await users.deleteOne({ username: target.username, status: "Pending" }, { session });
+        await event("Registration rejected", target.username, "warning");
+        return { username: target.username, status: "Rejected" };
+      }
+      throw new AppError(409, "pending_account", "Approve or reject this registration first.");
+    }
+    if (change.action === "approve" || change.action === "reject") throw new AppError(409, "not_pending", "This account is not waiting for approval.");
 
     if (change.action === "reset") {
       if (target.status === "Disabled") throw new AppError(400, "disabled_account", "Enable this account before resetting it.");
@@ -106,7 +126,31 @@ function createUserService({ config, db, approvals }) {
     });
   }
 
-  return { list, execute, request, assertNotSelf, unlock };
+  // Public self-registration. The account is stored as Pending with no role it can use: sign-in refuses
+  // anything not Active, so a stranger gains nothing until an Admin approves the request and picks the role.
+  // The answer is the same whether or not the username was free, so it cannot be used to find accounts.
+  async function register(req, { name, username, password }) {
+    const problems = passwordProblems(password, username);
+    if (problems.length) throw new AppError(400, "weak_password", problems.join(" "));
+    if (await users.countDocuments({ status: "Pending" }) >= MAX_PENDING) {
+      await recordEvent(db, req, { actor: "public", action: "Registration refused", details: "Too many requests are waiting for review", severity: "warning" });
+      return;
+    }
+    const passwordHash = await hashPassword(password);
+    try {
+      await inTransaction(db, async (session) => {
+        await users.insertOne({
+          username, name, role: "Waiter", status: "Pending", passwordHash, failedAttempts: 0, lockedUntil: null,
+          createdAt: new Date(), createdBy: "self-registration", mfa: { enabled: false }
+        }, { session });
+        await recordEvent(db, req, { actor: username, action: "Registration requested", details: `${username} asked for a staff account`, severity: "warning" }, { session });
+      });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+    }
+  }
+
+  return { list, execute, request, assertNotSelf, unlock, register };
 }
 
 module.exports = { createUserService };

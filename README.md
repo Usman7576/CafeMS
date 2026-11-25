@@ -7,9 +7,10 @@ Every rule is enforced on the server. The browser only shows what the server all
 | | |
 | --- | --- |
 | **Author** | M. Usman (22L-7991) |
-| **Stack** | Node.js 24, Express, MongoDB replica set, vanilla JavaScript, three.js, Docker, Caddy |
-| **Evidence** | 330+ automated tests, all lecture concepts mapped in [CONCEPT-COVERAGE.md](docs/security/CONCEPT-COVERAGE.md) |
-| **Deployment** | Runs on any Linux server with Docker: see [DEPLOYMENT.md](docs/DEPLOYMENT.md). Netlify cannot host it |
+| **Stack** | Node.js 24, Express, MongoDB (local replica set), vanilla JavaScript |
+| **Evidence** | 400+ automated tests; coursework concept and traceability records in [docs/security](docs/security/) |
+| **Setup** | Local MongoDB, no Docker: see [LOCAL-SETUP.md](docs/LOCAL-SETUP.md) |
+| **Roadmap** | [PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md](docs/PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md) |
 
 ## What it does
 
@@ -20,7 +21,7 @@ Every rule is enforced on the server. The browser only shows what the server all
 | **Kitchen** | Move tickets from Placed to Preparing to Ready; never sees prices or customer data |
 | **Cashier** | Bill tables with cash, card or wallet, and discounts up to 10% |
 | **Manager** | Everything a cashier does, with discounts to 25%; refunds, stock, reports, reservations |
-| **Admin** | Menu and photos, staff and roles, cafe details, audit log, security alerts, risk register |
+| **Admin** | Menu and photos, staff and roles, settings (cafe details, tax, discount limits, receipt, tables), audit log, security alerts |
 
 The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 
@@ -28,15 +29,15 @@ The service loop: a waiter sends an order, stock is taken, the kitchen prepares 
 
 | Area | Control |
 | --- | --- |
-| Sign-in | Argon2id passwords, authenticator codes for all staff, lockout after 3 failures, rate limits |
+| Sign-in | Argon2id passwords; authenticator codes required for Admins and Managers; a hashed, lockable PIN to switch user on shared tablets; lockout after 3 failures, rate limits |
 | Sessions | Signed `__Host-` HttpOnly, SameSite=Strict cookie with a revocable server record; 5-minute idle and 8-hour limits |
 | Access | One permission table on every route; waiters reach only their own orders and cashiers only today's bills; a second person for large refunds and Admin changes |
 | Input | Strict schemas that refuse unknown fields; totals worked out on the server |
 | Browser | Strict CSP with Trusted Types, no inline code, no third-party resources, CSRF token and Origin check |
 | Data | AES-256-GCM for customer details, masked numbers, 90-day retention, erasure on request, encrypted backups |
 | Accountability | Hash-chained audit log signed with Ed25519, written in the same transaction as each action; alerts |
-| Delivery | Non-root, read-only distroless container; HTTPS through Caddy; private database network with a least-privilege login |
-| Pipeline | ESLint, Semgrep, CodeQL, gitleaks, Trivy, OWASP ZAP, a restore drill and tests on every push |
+| Database | Local MongoDB replica set with login required; the app uses its own least-privilege login and cannot change or delete audit entries |
+| Pipeline | ESLint, Semgrep, CodeQL, gitleaks, dependency audit and tests on every push |
 
 ## Security documents
 
@@ -54,47 +55,42 @@ The service loop: a waiter sends an order, stock is taken, the kitchen prepares 
 | [OUT-OF-SCOPE.md](docs/security/OUT-OF-SCOPE.md) | What cannot be built inside a web app |
 | [BURP-TEST-SCRIPT.md](docs/security/BURP-TEST-SCRIPT.md) | The manual penetration test |
 
-Admins can also see risk scores on the Risk register page. The payment gateway and SMS or email delivery are simulated, because real ones need provider accounts.
+Screens update live over Server-Sent Events: the stream carries only the names of changed areas, and each screen re-reads its own role-filtered data. The payment gateway and SMS or email delivery are simulated, because real ones need provider accounts.
 
 ## Run it locally
 
-You need Node.js 24 and Docker Desktop. MongoDB runs as a replica set in Docker, because payments and orders use transactions.
+You need Node.js 24 and a local MongoDB server running as a replica set (one-time steps in [LOCAL-SETUP.md](docs/LOCAL-SETUP.md)). No Docker is needed.
 
 ```bash
 npm install
 ```
 
 ```bash
-npm run setup:env
-```
-
-```bash
-docker compose up -d --wait
-```
-
-```bash
-npm run db:setup
-```
-
-```bash
-npm run seed:dev
+npm run setup
 ```
 
 ```bash
 npm start
 ```
 
-Open http://localhost:3000. `setup:env` creates the keys and database passwords in `.env`, which git ignores. The server refuses to start if a key is missing or weak. `seed:dev` creates staff accounts with random passwords, shown once. There are no default passwords, and each person adds an authenticator app at first sign-in.
+Open http://localhost:3000.
+
+`npm run setup` does four things:
+- creates the keys and database passwords in `.env`, which git ignores;
+- checks MongoDB;
+- creates the app's database login and indexes;
+- on an empty database, adds a demo cafe.
+
+The demo cafe includes a starting photo for each menu item (free-licence photos, credited in [scripts/seed-photos/CREDITS.md](scripts/seed-photos/CREDITS.md)). Staff accounts get random passwords, saved to `.seed-credentials.txt`. There are no default passwords. Admins and Managers add an authenticator app at first sign-in; other staff can set a tablet PIN on their account page. The server refuses to start if a key is missing or weak.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | All tests, using a temporary database |
+| `npm run setup` | One-command setup against the local MongoDB (safe to run again) |
+| `npm test` | All tests, using a temporary in-memory database (never your data) |
 | `npm run test:coverage` | Tests with coverage thresholds |
 | `npm run lint` | ESLint with security rules |
-| `npm run trace` | Checks and regenerates the traceability matrix |
-| `npm run concepts` | Checks and regenerates the concept coverage |
 | `npm run deps:report` | Dependency matrix report and single points of failure |
 | `npm run load-test` | Staff response times during a simulated flood |
 | `npm run backup` and `npm run restore` | Encrypted backup, and restore into an empty database |
@@ -103,14 +99,15 @@ Open http://localhost:3000. `setup:env` creates the keys and database passwords 
 
 ```
 server/        Express app, routes, services, security middleware
-public/        Pages, browser scripts, styles, self-hosted fonts and three.js
+public/        Pages, browser scripts, styles and self-hosted fonts
 scripts/       Setup, seed, backup, first Admin, load test and report tools
 tests/         Automated tests, including attack and failure tests
-deploy/        Production Compose stack and Caddy configuration
-docs/          Deployment guide and security documents
+docs/          Local setup guide, roadmap, coursework and security documents
 .github/       CI, release checksums, Dependabot and the pull request checklist
 ```
 
-Earlier coursework is in [SUBMISSION.md](SUBMISSION.md), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) and [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md). They describe the prototype as it stood at each activity.
+Earlier coursework is in [SUBMISSION.md](SUBMISSION.md), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md), [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md) and [SUBMISSION-ACTIVITY4.md](SUBMISSION-ACTIVITY4.md). They describe the prototype as it stood at each activity.
+
+Activity 6 (backend, JWT and authorization) is in [SUBMISSION-ACTIVITY6.md](SUBMISSION-ACTIVITY6.md). Its evidence is in [docs/activity-6](docs/activity-6/), regenerated by `node scripts/activity6-evidence.js`.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).

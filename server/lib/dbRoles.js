@@ -2,7 +2,7 @@
 // delete them, and it cannot create indexes on them (a time-to-live index would delete entries).
 const READ_WRITE = ["find", "insert", "update", "remove"];
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "menu", "inventory", "orders", "bills", "reservations", "tables",
-  "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks", "system_status", "signing_keys", "signed_actions", "passkeys", "passkey_challenges", "oidc_flows"];
+  "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "gateway_callbacks", "system_status",  "passkeys", "passkey_challenges", "staff_requests"];
 const ROLE = "cafemsApp";
 
 function appPrivileges(dbName) {
@@ -10,6 +10,8 @@ function appPrivileges(dbName) {
   return [
     ...COLLECTIONS.map((name) => on(name, [...READ_WRITE, "createIndex"])),
     on("audit_events", ["find", "insert", "listIndexes"]),
+    // A request's history is append-only too: entries can be added and read, never edited or removed
+    on("request_history", ["find", "insert", "listIndexes", "createIndex"]),
     on("", ["listCollections", "createCollection"])
   ];
 }

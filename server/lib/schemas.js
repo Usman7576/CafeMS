@@ -1,7 +1,7 @@
 // Strict request schemas. Unknown fields and wrong types are refused, which also blocks NoSQL
 // operator injection. A message beginning with "!" is safe to show to the user.
 const { z } = require("zod");
-const { TABLE_NUMBERS, isRealDate } = require("./domain");
+const { isRealDate } = require("./domain");
 
 const text = (max, message) => z.string().trim().max(max, message);
 const noControl = (value) => value.replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, " ");
@@ -10,7 +10,8 @@ const mobile = z.string().max(20).transform(phoneDigits).pipe(z.string().regex(/
 
 // A calendar date that really exists, so 2026-02-30 or 2026-99-99 is refused
 const isoDate = (message) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message).refine(isRealDate, message);
-const tableNo = z.number().int().refine((n) => TABLE_NUMBERS.includes(n), "!Choose a valid table.");
+// Whether the table exists is checked against the current settings when the order is placed
+const tableNo = z.number().int().min(1, "!Choose a valid table.").max(999, "!Choose a valid table.");
 const line = z.object({
   id: z.number().int().min(1),
   qty: z.number().int().min(1, "!Quantity must be at least 1.").max(99, "!Quantity cannot be more than 99.")
@@ -23,6 +24,7 @@ module.exports = {
     orderId: z.object({ id: z.string().regex(/^ORD-\d{1,12}$/) }).strict(),
     billNo: z.object({ no: z.string().regex(/^B-\d{1,12}$/) }).strict(),
     reservationId: z.object({ id: z.string().regex(/^R-\d{1,12}$/) }).strict(),
+    requestId: z.object({ id: z.string().regex(/^SR-\d{1,12}$/) }).strict(),
     numericId: z.object({ id: z.string().regex(/^\d{1,9}$/) }).strict(),
     tableNo: z.object({ no: z.string().regex(/^\d{1,3}$/) }).strict(),
     approvalId: z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict(),
@@ -97,6 +99,35 @@ module.exports = {
   }).strict(),
   userRole: z.object({ role: z.enum(["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]) }).strict(),
   userStatus: z.object({ status: z.enum(["Active", "Disabled"]) }).strict(),
+  // Staff requests (quiz Q2/Q3). Strict: owner, status, version and timestamps come only from the server,
+  // so a request that tries to set them is refused rather than trusted.
+  staffRequest: z.object({
+    title: z.string("!Enter a title.").transform((v) => v.normalize("NFKC").replace(/\s+/g, " ").trim())
+      .pipe(z.string().min(5, "!The title must be at least 5 characters after removing extra spaces.").max(100, "!The title can be at most 100 characters.").regex(/^[^<>]*$/, "!The title cannot contain < or >.")),
+    description: z.string("!Enter a description.").transform((v) => v.normalize("NFKC").trim())
+      .pipe(z.string().min(15, "!The description must be at least 15 characters.").max(1000, "!The description can be at most 1000 characters.")),
+    category: z.enum(["Equipment", "Supplies", "Maintenance", "Staffing", "Other"], "!Choose a category from the list."),
+    contactPhone: z.union([z.literal(""), mobile]).optional().default("")
+  }).strict(),
+  requestQuery: z.object({
+    search: z.string().trim().max(100, "!Search text can be at most 100 characters.").optional().default(""),
+    category: z.enum(["Equipment", "Supplies", "Maintenance", "Staffing", "Other"], "!Unknown category filter.").optional(),
+    status: z.enum(["Pending", "In Review", "Resolved", "Rejected"], "!Unknown status filter.").optional(),
+    sort: z.enum(["newest", "oldest"], "!Sort must be newest or oldest.").optional().default("newest"),
+    page: z.string().regex(/^[1-9]\d{0,3}$/, "!Page must be a whole number from 1 to 9999.").optional().default("1").transform(Number)
+  }).strict(),
+  requestTransition: z.object({ version: z.number("!The record version is missing.").int().min(1) }).strict(),
+  requestReject: z.object({
+    version: z.number("!The record version is missing.").int().min(1),
+    reason: z.string("!Give a reason for the rejection.").trim().min(1, "!Give a reason for the rejection.").max(300, "!The reason can be at most 300 characters.").regex(/^[^<>]*$/, "!The reason cannot contain < or >.")
+  }).strict(),
+  // Public staff registration. No role field: the Admin chooses it when approving.
+  registration: z.object({
+    name: text(60, "!Enter your full name (2-60 characters).").min(2, "!Enter your full name (2-60 characters).").regex(/^[^<>]*$/, "!Enter your full name (2-60 characters).").transform(noControl),
+    username: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9._]{2,29}$/, "!Username must be 3-30 letters, numbers, dots or underscores, starting with a letter."),
+    password: z.string().min(1, "!Choose a password.").max(128, "!Passwords can be at most 128 characters."),
+    website: z.string().max(200).optional().default("")
+  }).strict(),
   cafeDetails: z.object({
     name: text(40, "!The cafe name must be 2-40 characters.").min(2, "!The cafe name must be 2-40 characters.").transform(noControl),
     tagline: text(80, "!The tagline must be 80 characters or fewer.").transform(noControl),
@@ -104,5 +135,23 @@ module.exports = {
     address: text(120, "!The address must be 120 characters or fewer.").transform(noControl),
     phone: text(20, "!The phone number must be 20 characters or fewer.").regex(/^[0-9+\-\s]*$/, "!The phone number can use only digits, spaces, + and -.").transform(noControl),
     hours: text(80, "!Opening hours must be 80 characters or fewer.").transform(noControl)
+  }).strict(),
+  // Operating settings. Every part is required, so a save always describes the whole cafe.
+  operations: z.object({
+    version: z.number().int().min(0),
+    taxRatePct: z.number().min(0, "!Tax must be between 0 and 30%.").max(30, "!Tax must be between 0 and 30%.").multipleOf(0.5, "!Tax can use steps of 0.5%."),
+    tables: z.array(z.object({
+      no: z.number().int().min(1, "!Table numbers run from 1 to 999.").max(999, "!Table numbers run from 1 to 999."),
+      seats: z.number().int().min(1, "!A table seats 1 to 20 people.").max(20, "!A table seats 1 to 20 people."),
+      area: text(30, "!An area name must be 30 characters or fewer.").min(1, "!Give each table an area.").transform(noControl)
+    }).strict()).min(1, "!The cafe needs at least one table.").max(100, "!Up to 100 tables are supported."),
+    discountLimits: z.object({
+      Cashier: z.number().int().min(0, "!Discount limits run from 0 to 100%.").max(100, "!Discount limits run from 0 to 100%."),
+      Manager: z.number().int().min(0, "!Discount limits run from 0 to 100%.").max(100, "!Discount limits run from 0 to 100%.")
+    }).strict(),
+    receipt: z.object({
+      header: text(80, "!The receipt header must be 80 characters or fewer.").transform(noControl),
+      footer: text(120, "!The receipt footer must be 120 characters or fewer.").transform(noControl)
+    }).strict()
   }).strict()
 };

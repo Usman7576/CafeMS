@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My account — Cafe Management System</title>
-  <meta name="theme-color" content="#1d110b">
+  <meta name="theme-color" content="#f8f7f5">
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/fonts.css?v=6.0">
-  <link rel="stylesheet" href="css/style.css?v=6.0">
+  <link rel="stylesheet" href="css/fonts.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.0">
 </head>
 <body data-page="account">
   <main class="content" id="main">
@@ -50,9 +50,16 @@
           <ul class="ready-list" id="passkeyList"></ul>
           <div class="panel-body"><button type="button" class="btn btn-secondary" id="addPasskey">Add a passkey on this device</button></div>
         </section>
-        <section class="panel" id="oidcPanel" hidden>
-          <div class="panel-head"><div><h3>Organisation account</h3><p id="oidcStatus">Sign in with your organisation account instead of your password. Your authenticator is still asked for.</p></div></div>
-          <div class="panel-body"><button type="button" class="btn btn-secondary" id="oidcLinkBtn">Link my organisation account</button> <button type="button" class="btn btn-secondary" id="oidcUnlinkBtn">Unlink</button></div>
+        <section class="panel" id="pinPanel" hidden>
+          <div class="panel-head"><div><h3>Tablet PIN</h3><p id="pinStatus">On a shared tablet, tap your name and enter this PIN to switch to yourself. You still need your password on a new device.</p></div></div>
+          <form class="panel-body" id="pinForm" method="post" novalidate>
+            <div class="alert alert-error" id="pinErr" role="alert"></div>
+            <div class="form-grid">
+              <div class="field"><label for="pinNew">New PIN</label><input class="input" type="password" id="pinNew" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="4 to 6 digits"></div>
+              <div class="field"><label for="pinPassword">Current password</label><input class="input" type="password" id="pinPassword" autocomplete="current-password" maxlength="128"></div>
+            </div>
+            <div class="row-actions"><button type="submit" class="btn btn-primary" id="pinSave">Save PIN</button><button type="button" class="btn btn-ghost" id="pinRemove" hidden>Remove PIN</button></div>
+          </form>
         </section>
         <section class="panel">
           <div class="panel-head"><div><h3>Security question</h3><p id="questionStatus">Asked as well as a recovery code, if you ever lose your phone.</p></div></div>
@@ -70,13 +77,13 @@
       </div>
     </div>
   </main>
-  <script src="js/icons.js?v=6.0"></script>
+  <script src="js/icons.js?v=7.0"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=6.0"></script>
+  <script src="js/common.js?v=7.0"></script>
   <script src="js/password_strength_helper.js"></script>
-  <script src="js/validate.js?v=6.0"></script>
-  <script src="js/store.js?v=6.0"></script>
-  <script src="js/app.js?v=6.0"></script>
-  <script src="js/account.js?v=6.0"></script>
+  <script src="js/validate.js?v=7.0"></script>
+  <script src="js/store.js?v=7.0"></script>
+  <script src="js/app.js?v=7.0"></script>
+  <script src="js/account.js?v=7.0"></script>
 </body>
 </html>

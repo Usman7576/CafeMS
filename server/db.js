@@ -10,12 +10,12 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status", "signing_keys", "signed_actions", "passkeys", "passkey_challenges", "oidc_flows", "gateway_callbacks"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
   const hello = await db.admin().command({ hello: 1 });
-  if (!hello.setName) throw new Error("MongoDB must run as a replica set. Run: docker compose up -d --wait");
+  if (!hello.setName) throw new Error("MongoDB must run as a replica set (rs0). See docs/LOCAL-SETUP.md, then run: npm run setup");
 }
 
 async function ensureIndexes(db) {
@@ -33,10 +33,8 @@ async function ensureIndexes(db) {
   await db.collection("auth_tokens").createIndex({ username: 1 });
   await db.collection("alerts").createIndex({ key: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "Open" } });
   await db.collection("alerts").createIndex({ status: 1, rule: 1, lastSeenAt: -1 });
-  await db.collection("signing_keys").createIndex({ username: 1, revokedAt: 1, createdAt: -1 });
   await db.collection("passkeys").createIndex({ username: 1, createdAt: 1 });
   await db.collection("passkey_challenges").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-  await db.collection("oidc_flows").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await db.collection("outbox").createIndex({ status: 1, nextAttemptAt: 1 });
   await db.collection("outbox").createIndex({ sentAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
   await db.collection("notifications").createIndex({ deliveredAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
@@ -50,6 +48,14 @@ async function ensureIndexes(db) {
   await db.collection("approvals").createIndex({ status: 1, createdAt: -1 });
   await db.collection("idempotency").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await db.collection("gateway_callbacks").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  // Staff requests: one title per owner, compared after trimming, collapsing spaces and ignoring case.
+  // The database enforces it, so two requests sent at the same moment still produce one record.
+  await db.collection("staff_requests").createIndex({ owner: 1, titleKey: 1 }, { unique: true, name: "one_title_per_owner" });
+  await db.collection("staff_requests").createIndex({ owner: 1, createdAt: -1, seq: -1 });
+  await db.collection("staff_requests").createIndex({ status: 1, createdAt: -1, seq: -1 });
+  await db.collection("staff_requests").createIndex({ reviewer: 1, createdAt: -1, seq: -1 });
+  // One history entry per version: a second change from the same version cannot be recorded twice
+  await db.collection("request_history").createIndex({ requestId: 1, version: 1 }, { unique: true });
 }
 
 // Audit indexes are created by the administrator (npm run db:setup), because the app's own account must

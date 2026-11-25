@@ -39,13 +39,13 @@
   async function enterWorkspace() {
     const me = await Api.me();
     Session.set({ user: me.username, name: me.name, role: me.role, loginAt: me.loginAt });
-    // Straight after signing in, this device can register its signing key without another code
-    await Signer.ensure(me.username).catch(function () { /* set up on first signed action instead */ });
     window.location.replace(HOME[me.role]);
   }
 
   // ---------- Step 1: password ----------
   function afterPassword(result) {
+    // Roles without a required authenticator are signed in by the password alone
+    if (result.next === "done") return enterWorkspace();
     if (result.next === "mfa") { setRecoveryMode(false); showStep("stepMfa"); return Promise.resolve(); }
     return startEnrolment();
   }
@@ -178,14 +178,6 @@
     if (landing === "#enroll") {
       history.replaceState(null, "", window.location.pathname);
       try { await startEnrolment(); } catch (error) { showAlert(errorText(error)); }
-    } else if (landing === "#mfa") {
-      // Back from the organisation account: the cafe's own second step still follows
-      history.replaceState(null, "", window.location.pathname);
-      setRecoveryMode(false);
-      showStep("stepMfa");
-    } else if (landing === "#oidc-failed") {
-      history.replaceState(null, "", window.location.pathname);
-      showAlert("The organisation sign-in was not accepted. Use your username and password, or ask an Admin.");
     } else {
       try {
         await enterWorkspace();
@@ -197,6 +189,5 @@
     if (flash) showAlert(flash, "info");
     // The button ships disabled so the form can't be submitted before this script is ready
     loginBtn.disabled = false;
-    Api.call("GET", "/auth/oidc/enabled", undefined, { public: true }).then(function (r) { el("oidcLink").hidden = !(r && r.enabled); }).catch(function () { /* stays hidden */ });
   })();
 })();

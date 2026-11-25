@@ -3,7 +3,8 @@
 // which decides whether it is allowed. Tampering with this file only changes what one screen shows.
 (function () {
   const ROLES = ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"];
-  const REFRESH_MS = 3000;
+  // A safety check, in case a live update is ever missed
+  const REFRESH_MS = 60000;
   const DATE_KEYS = new Set(["createdAt", "updatedAt", "since", "billRequested", "at", "lastLogin", "expiresAt", "loginAt", "lastSeenAt"]);
 
   let data = null;
@@ -65,6 +66,30 @@
     });
   }
 
+  // Live updates: the server sends only the names of areas that changed, and the screen then
+  // re-reads its own snapshot. If the stream is not available, a slow check keeps the screen current.
+  let stream = null;
+  let pending = null;
+  function refreshSoon() {
+    if (pending) return;
+    pending = setTimeout(function () { pending = null; poll(); }, 250);
+  }
+  function connect() {
+    if (!window.EventSource || stream) return;
+    stream = new EventSource("/api/v1/events");
+    stream.addEventListener("change", refreshSoon);
+    stream.addEventListener("ended", function () { stream.close(); stream = null; poll(); });
+    stream.onopen = function () {
+      if (!online) { online = true; CMS.toast("Live updates are back on", "ok"); poll(); }
+      document.documentElement.dataset.live = "on";
+    };
+    stream.onerror = function () {
+      document.documentElement.dataset.live = "off";
+      // The browser retries by itself; a closed stream (such as an ended session) is checked by a poll
+      if (stream && stream.readyState === EventSource.CLOSED) { stream = null; poll(); }
+    };
+  }
+
   // Runs a change, then refreshes so the screen shows what the server now holds
   async function change(method, path, body, opts) {
     const result = await Api.call(method, path, body, opts);
@@ -113,6 +138,7 @@
         if (e.status === 401) { sessionEnded(); return; }
         CMS.toast(e.userMessage || "Could not load data from the server.", "err");
       });
+      connect();
       timer = setInterval(poll, REFRESH_MS);
       document.addEventListener("visibilitychange", function () { if (!document.hidden) poll(); });
     },
@@ -121,6 +147,8 @@
     forget: function () {
       if (timer) clearInterval(timer);
       timer = null;
+      if (stream) stream.close();
+      stream = null;
       data = null;
       lastJson = "";
       intentKeys.clear();
@@ -209,12 +237,16 @@
     setRole: function (username, role) { return change("POST", "/users/" + encodeURIComponent(username) + "/role", { role: role }); },
     setStatus: function (username, status) { return change("POST", "/users/" + encodeURIComponent(username) + "/status", { status: status }); },
     resetUser: function (username) { return change("POST", "/users/" + encodeURIComponent(username) + "/reset-link", {}); },
+    approveUser: function (username, role) { return change("POST", "/users/" + encodeURIComponent(username) + "/approve", { role: role }); },
+    rejectUser: function (username) { return change("POST", "/users/" + encodeURIComponent(username) + "/reject", {}); },
     unlockUser: function (username) { return change("POST", "/users/" + encodeURIComponent(username) + "/unlock", {}); },
     saveCafe: function (details) { return change("PUT", "/settings/cafe", details); },
     salesFor: function (date) { return Api.call("GET", "/reports/sales?date=" + encodeURIComponent(date)); },
     billsFor: async function (date) { return normalize((await Api.call("GET", "/bills?date=" + encodeURIComponent(date))).bills); },
     trend: async function () { return (await Api.call("GET", "/reports/trend")).days; },
-    risk: function () { return Api.call("GET", "/risk"); }
+    settings: function () { return Api.call("GET", "/settings"); },
+    saveSettings: function (body) { return change("PUT", "/settings", body); },
+    receipt: function () { return copy(constants().receipt || { header: "", footer: "" }); }
   };
 
   window.Store = Store;

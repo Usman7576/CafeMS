@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff requests — Cafe Management System</title>
+  <meta name="theme-color" content="#f8f7f5">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.0">
+</head>
+<body data-page="requests">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Staff requests</h2><p id="requestsIntro">Report a problem or ask for supplies. A manager reviews every request.</p></div>
+    </div>
+
+    <section class="panel mb-20" id="newRequestPanel" hidden>
+      <div class="panel-head"><div><h3>New request</h3><p>Your request is saved as Pending until a manager claims it.</p></div></div>
+      <form method="post" class="panel-body" id="requestForm" novalidate>
+        <div class="alert alert-error" id="requestErr" role="alert"></div>
+        <div class="form-grid">
+          <div class="field"><label for="rqTitle">Title</label><input class="input" id="rqTitle" maxlength="100" required placeholder="e.g. Espresso machine is leaking"></div>
+          <div class="field"><label for="rqCategory">Category</label><select class="select" id="rqCategory" required><option value="">Choose a category</option><option>Equipment</option><option>Supplies</option><option>Maintenance</option><option>Staffing</option><option>Other</option></select></div>
+          <div class="field span-2"><label for="rqDescription">Description</label><textarea class="input" id="rqDescription" rows="3" maxlength="1000" required placeholder="What happened, where, and how urgent it is (at least 15 characters)"></textarea></div>
+          <div class="field"><label for="rqPhone">Contact number <span class="opt">Optional</span></label><input class="input" id="rqPhone" type="tel" maxlength="13" placeholder="03XXXXXXXXX" autocomplete="off"><div class="field-hint">Stored encrypted and only ever shown masked.</div></div>
+        </div>
+        <button class="btn btn-primary" id="requestSubmitBtn" type="submit"><i data-icon="plus" data-size="18"></i>Submit request</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h3 id="listTitle">Requests</h3><p id="listCount"></p></div>
+        <div class="toolbar">
+          <div class="input-wrap w-250"><i data-icon="search" data-size="16"></i><label class="sr-only" for="fSearch">Search titles</label><input class="input input-sm" id="fSearch" type="search" maxlength="100" placeholder="Search titles"></div>
+          <select class="select input-sm" id="fCategory" aria-label="Filter by category"><option value="">All categories</option><option>Equipment</option><option>Supplies</option><option>Maintenance</option><option>Staffing</option><option>Other</option></select>
+          <select class="select input-sm" id="fStatus" aria-label="Filter by status"><option value="">All statuses</option><option>Pending</option><option>In Review</option><option>Resolved</option><option>Rejected</option></select>
+          <select class="select input-sm" id="fSort" aria-label="Sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+        </div>
+      </div>
+      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Request</th><th>Category</th><th>Status</th><th class="hide-sm">Owner</th><th class="hide-sm">Created</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="requestBody"></tbody></table></div>
+      <div class="pager" id="pager"><button class="btn btn-secondary btn-sm" id="prevPage" type="button">Previous</button><span id="pageInfo" class="muted small"></span><button class="btn btn-secondary btn-sm" id="nextPage" type="button">Next</button></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="requestDetail" role="dialog" aria-modal="true" aria-labelledby="requestDetailTitle">
+    <div class="modal wide">
+      <div class="modal-head"><div class="icon-tile"><i data-icon="file" data-size="20"></i></div><div><h3 id="requestDetailTitle">Request</h3><p id="requestDetailSub"></p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="detailErr" role="alert"></div>
+        <div id="requestDetailBody"></div>
+        <div class="field mt-20" id="reasonField" hidden><label for="rejectReason">Reason for rejection</label><textarea class="input" id="rejectReason" rows="2" maxlength="300"></textarea></div>
+        <h4 class="mt-20">History</h4>
+        <ol class="history-list" id="historyList"></ol>
+      </div>
+      <div class="modal-actions" id="detailActions"><button class="btn btn-secondary" data-close="requestDetail">Close</button></div>
+    </div>
+  </div>
+
+  <script src="js/icons.js?v=7.0"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=7.0"></script>
+  <script src="js/validate.js?v=7.0"></script>
+  <script src="js/store.js?v=7.0"></script>
+  <script src="js/app.js?v=7.0"></script>
+  <script src="js/requests.js?v=7.0"></script>
+</body>
+</html>

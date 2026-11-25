@@ -5,7 +5,7 @@ require("dotenv").config({ quiet: true });
 const crypto = require("crypto");
 const { loadConfig } = require("../server/config");
 const { createClient, ensureIndexes, assertTransactionsAvailable } = require("../server/db");
-const { seedCatalog } = require("./seed-data");
+const { seedCatalog, seedPhotos } = require("./seed-data");
 const { hashPassword } = require("../server/lib/passwords");
 
 const STAFF = [
@@ -32,6 +32,8 @@ async function main() {
     await assertTransactionsAvailable(db);
     await ensureIndexes(db);
     await seedCatalog(db);
+    const photos = await seedPhotos(db, config.uploadDir);
+    if (photos) console.log(`Added ${photos} menu photos`);
     const users = db.collection("users");
     const base = { failedAttempts: 0, lockedUntil: null, createdAt: new Date(), mfa: { enabled: false } };
 

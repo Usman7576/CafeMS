@@ -27,7 +27,7 @@ function parseKeyring(raw, activeId, name) {
   return { keys, activeId };
 }
 
-// An empty value (as Docker Compose passes for an unset variable) counts as not set
+// An empty value (such as "KEY=" in .env) counts as not set
 const unset = (type) => z.preprocess((v) => (v === "" ? undefined : v), type);
 
 const schema = z.object({
@@ -42,11 +42,7 @@ const schema = z.object({
   // Optional email for staff notices. Only smtp:// (upgraded to TLS) or smtps:// is accepted.
   SMTP_URL: unset(z.string().regex(/^smtps?:\/\/\S+$/).optional()),
   MAIL_FROM: unset(z.string().email().optional()),
-  STAFF_NOTIFY_EMAIL: unset(z.string().email().optional()),
-  // Optional sign-in with an organisation account (OpenID Connect)
-  OIDC_ISSUER: unset(z.string().url().optional()),
-  OIDC_CLIENT_ID: unset(z.string().min(1).max(256).optional()),
-  OIDC_CLIENT_SECRET: unset(z.string().min(1).max(512).optional())
+  STAFF_NOTIFY_EMAIL: unset(z.string().email().optional())
 });
 
 function loadConfig(env) {
@@ -60,9 +56,6 @@ function loadConfig(env) {
   if (origin.origin !== s.APP_ORIGIN) throw new ConfigError("APP_ORIGIN must be an origin only, with no path or trailing slash.");
   const isProduction = s.NODE_ENV === "production";
   if (s.SMTP_URL && (!s.MAIL_FROM || !s.STAFF_NOTIFY_EMAIL)) throw new ConfigError("SMTP_URL needs MAIL_FROM and STAFF_NOTIFY_EMAIL as well.");
-  if (s.OIDC_ISSUER && (!s.OIDC_CLIENT_ID || !s.OIDC_CLIENT_SECRET)) throw new ConfigError("OIDC_ISSUER needs OIDC_CLIENT_ID and OIDC_CLIENT_SECRET as well.");
-  // Only tests may talk to a provider without HTTPS
-  if (s.OIDC_ISSUER && !s.OIDC_ISSUER.startsWith("https://") && s.NODE_ENV !== "test") throw new ConfigError("OIDC_ISSUER must use https.");
   if (isProduction && origin.protocol !== "https:") throw new ConfigError("APP_ORIGIN must use https in production.");
   // In production the app signs in to MongoDB with its own least-privilege account (server/lib/dbRoles.js)
   if (isProduction && !/^mongodb(?:\+srv)?:\/\/[^@/\s]+:[^@/\s]+@/.test(s.MONGODB_URI)) {
@@ -92,7 +85,6 @@ function loadConfig(env) {
     usesTls: origin.protocol === "https:",
     trustProxy: s.TRUST_PROXY,
     runWorkers: s.RUN_WORKERS === "true",
-    oidc: s.OIDC_ISSUER ? Object.freeze({ issuer: s.OIDC_ISSUER, clientId: s.OIDC_CLIENT_ID, clientSecret: s.OIDC_CLIENT_SECRET, allowHttp: s.NODE_ENV === "test" }) : null,
     mail: s.SMTP_URL ? Object.freeze({ smtpUrl: s.SMTP_URL, from: s.MAIL_FROM, staffTo: s.STAFF_NOTIFY_EMAIL }) : null,
     jwt,
     data,
@@ -118,6 +110,7 @@ function loadConfig(env) {
       sitePerMinute: 600,
       authPer15Minutes: 20,
       publicBookingsPerHour: 10,
+      publicRegistrationsPerHour: 5,
       publicReadsPerMinute: 120
     }),
     auth: Object.freeze({

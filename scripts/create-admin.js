@@ -1,7 +1,6 @@
 // Usage: node scripts/create-admin.js <username> "<Full name>"
 //        node scripts/create-admin.js --recover <username>
-// In the production stack:
-//   docker compose -f deploy/docker-compose.yml run --rm app scripts/create-admin.js owner "Cafe Owner"
+// Example: node scripts/create-admin.js owner "Cafe Owner"
 //
 // Creates the first two Admins of a deployment as invitations, and prints a single-use, 24-hour setup
 // link once. Two are needed before the second-Admin rule can work. It refuses once two Admins exist, so

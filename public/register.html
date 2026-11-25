@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Cafe Management System</title>
+  <meta name="description" content="Request a staff account for the Cafe Management System.">
+  <meta name="theme-color" content="#f8f7f5">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.0">
+</head>
+<body>
+  <div class="auth">
+    <aside class="auth-aside">
+      <img class="auth-photo" src="assets/hero.jpg" alt="" width="1200" height="900">
+      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+      <div>
+        <h2>Join the team.</h2>
+        <p>Request a staff account. An Admin checks who you are, gives you the right role, and then you can sign in.</p>
+      </div>
+      <p class="foot">© <span data-year></span> CafeMS</p>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-top">
+        <a href="index.html" class="brand auth-mobile-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+        <a href="index.html"><i data-icon="arrow-left" data-size="16"></i>Back to home</a>
+      </div>
+
+      <div class="auth-form-wrap">
+        <div class="auth-form">
+          <h1>Create a staff account</h1>
+          <p class="sub">Your account stays pending until an Admin approves it.</p>
+          <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
+          <form method="post" id="registerForm" novalidate>
+            <div class="field">
+              <label for="regName">Full name</label>
+              <div class="input-wrap">
+                <i data-icon="user" data-size="18"></i>
+                <input class="input" type="text" id="regName" autocomplete="name" maxlength="60" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="regUser">Username</label>
+              <div class="input-wrap">
+                <i data-icon="user" data-size="18"></i>
+                <input class="input" type="text" id="regUser" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="e.g. ahmed.raza" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="regPassword">Password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input" type="password" id="regPassword" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">
+              </div>
+              <ul class="pw-rules" id="pwRules" aria-label="Password requirements">
+                <li data-rule="len">At least 12 characters</li>
+                <li data-rule="upper">One uppercase letter</li>
+                <li data-rule="lower">One lowercase letter</li>
+                <li data-rule="num">One number</li>
+                <li data-rule="sym">One symbol</li>
+              </ul>
+            </div>
+            <div class="field">
+              <label for="regConfirm">Confirm password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input" type="password" id="regConfirm" autocomplete="new-password" maxlength="128" required>
+              </div>
+            </div>
+            <div class="hp-field" aria-hidden="true"><label for="regWebsite">Leave this empty</label><input id="regWebsite" tabindex="-1" autocomplete="off"></div>
+            <button type="submit" class="btn btn-dark btn-lg btn-block" id="registerBtn">Request account</button>
+            <noscript><p class="field-error auth-noscript">JavaScript is required to register.</p></noscript>
+          </form>
+          <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+        </div>
+      </div>
+
+      <p class="auth-bottom"><i data-icon="lock" data-size="14"></i>Admin approval · Role-based access</p>
+    </main>
+  </div>
+
+  <script src="js/icons.js?v=7.0"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=7.0"></script>
+  <script src="js/password_strength_helper.js"></script>
+  <script src="js/validate.js?v=7.0"></script>
+  <script src="js/register.js?v=7.0"></script>
+</body>
+</html>

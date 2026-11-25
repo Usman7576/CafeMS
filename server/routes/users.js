@@ -11,13 +11,15 @@ const invitationSchema = z.object({
   name: z.string().trim().min(2, "!Enter the full name (2-60 characters).").max(60, "!Enter the full name (2-60 characters)."),
   role: schemas.userRole.shape.role
 }).strict();
+// Admin access is never granted through a registration; it needs the role change and a second Admin
+const approveSchema = z.object({ role: z.enum(["Waiter", "Kitchen", "Cashier", "Manager"]) }).strict();
 
 function createUsersRouter({ db, middleware, services }) {
   const router = express.Router();
-  const { requireAuth, requirePermission, requireStepUp, requireSignature } = middleware;
+  const { requireAuth, requirePermission, requireStepUp } = middleware;
   const { userService } = services;
   const view = [requireAuth, requirePermission("users.manage")];
-  const change = [...view, requireStepUp, requireSignature];
+  const change = [...view, requireStepUp];
 
   const submit = (req, res, next, details, summary) => inTransaction(db, (session) => userService.request(req, details, summary, session))
     .then((outcome) => res.status(outcome.status).json(outcome.body))
@@ -40,6 +42,13 @@ function createUsersRouter({ db, middleware, services }) {
   }));
   router.post("/:username/status", ...change, validate(usernameParams, "params"), validate(schemas.userStatus), onOtherUser((req, res, next) => {
     submit(req, res, next, { action: "status", target: req.validParams.username, status: req.body.status }, `Set ${req.validParams.username} to ${req.body.status}`);
+  }));
+  // Self-registered accounts: approving one makes it Active with the role the Admin chooses (never Admin)
+  router.post("/:username/approve", ...change, validate(usernameParams, "params"), validate(approveSchema), onOtherUser((req, res, next) => {
+    submit(req, res, next, { action: "approve", target: req.validParams.username, role: req.body.role }, `Approve ${req.validParams.username} as ${req.body.role}`);
+  }));
+  router.post("/:username/reject", ...change, validate(usernameParams, "params"), onOtherUser((req, res, next) => {
+    submit(req, res, next, { action: "reject", target: req.validParams.username }, `Reject registration ${req.validParams.username}`);
   }));
   router.post("/:username/unlock", ...change, validate(usernameParams, "params"), (req, res, next) => {
     userService.unlock(req, req.validParams.username).then(() => res.status(204).end()).catch(next);

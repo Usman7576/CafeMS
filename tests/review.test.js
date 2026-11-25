@@ -74,7 +74,7 @@ describe("personal data must not leak by other routes", () => {
 
 describe("a reset must end every sign-in in progress", () => {
   async function enrolChallenge() {
-    const user = await createUser(db, config, { mfa: false, role: "Waiter" });
+    const user = await createUser(db, config, { mfa: false, role: "Manager" });
     const attacker = browser(app);
     await attacker.post(`${API}/auth/login`, { username: user.username, password: user.password });
     const start = await attacker.post(`${API}/auth/mfa/enroll/start`, {});

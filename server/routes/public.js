@@ -10,7 +10,8 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 
 function createPublicRouter({ config, services }) {
   const router = express.Router();
-  const { catalog, cafe, photos, reservations, publicCache } = services;
+  const { catalog, cafe, photos, reservations, publicCache, userService } = services;
+  const REGISTERED = { ok: true, message: "Thank you. An Admin will review your request. You can sign in once it is approved." };
   const bookingLimiter = limiter(60 * 60 * 1000, config.limits.publicBookingsPerHour, "Too many booking requests. Please try again later or call us.");
   // A visitor reads the menu and details once per visit, so this is far below the general API limit
   const readLimiter = limiter(60 * 1000, config.limits.publicReadsPerMinute, "Too many requests. Please wait a moment.");
@@ -37,6 +38,15 @@ function createPublicRouter({ config, services }) {
     const { website, ...booking } = req.body;
     if (!website) await reservations.createOnline(req, booking);
     res.status(202).json(ACCEPTED);
+  }));
+
+  // Staff self-registration. The account waits as Pending until an Admin approves it and sets the role.
+  // A filled-in hidden field marks a bot: it gets the same answer and nothing is saved.
+  const registerLimiter = limiter(60 * 60 * 1000, config.limits.publicRegistrationsPerHour, "Too many registration requests. Please try again later.");
+  router.post("/register", publicRoute, registerLimiter, validate(schemas.registration), wrap(async (req, res) => {
+    const { website, ...details } = req.body;
+    if (!website) await userService.register(req, details);
+    res.status(202).json(REGISTERED);
   }));
 
   return router;

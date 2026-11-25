@@ -199,7 +199,7 @@ describe("errors and limits", () => {
     const built = buildApp(db);
     const admin = await as("Admin", built);
     for (let i = 0; i < 10; i++) assert.equal((await admin.get(`${API}/audit.csv`)).status, 200);
-    assert.equal((await admin.get(`${API}/risk.csv`)).status, 429);
+    assert.equal((await admin.get(`${API}/reports/sales.csv?date=2026-01-01`)).status, 429);
   });
 });
 
@@ -302,9 +302,8 @@ describe("dependency graph and screens", () => {
     assert.deepEqual(edges(model).map((e) => e.line), ["solid", "dashed", "dotted"]);
   });
 
-  test("a declined bill offers cash, and the risk page draws the graph", () => {
+  test("a declined bill offers cash", () => {
     const read = (file) => fs.readFileSync(path.join(__dirname, "..", "public", "js", file), "utf8");
     assert.match(read("billing.js"), /"Take cash"/);
-    assert.match(read("risk.js"), /renderGraph/);
   });
 });

@@ -46,4 +46,28 @@ async function seedCatalog(db) {
   await db.collection("counters").updateOne({ _id: "menu" }, { $max: { value: MENU.length } }, { upsert: true });
 }
 
-module.exports = { MENU, INVENTORY, seedCatalog };
+// Starting photos (free-licence, credited in seed-photos/CREDITS.md). Each is copied into the upload folder
+// under a random name, the same way an Admin's upload is stored. Items that already have a photo keep it,
+// so this never replaces a photo an Admin has chosen.
+async function seedPhotos(db, uploadDir) {
+  const fs = require("fs/promises");
+  const path = require("path");
+  const { randomToken } = require("../server/lib/crypto");
+  const folder = path.join(__dirname, "seed-photos");
+  let added = 0;
+  for (const m of MENU) {
+    const source = path.join(folder, `${String(m._id).padStart(2, "0")}.jpg`);
+    const current = await db.collection("menu").findOne({ _id: m._id });
+    if (!current || current.photo) continue;
+    const bytes = await fs.readFile(source).catch(() => null);
+    if (!bytes) continue;
+    await fs.mkdir(uploadDir, { recursive: true });
+    const file = `${randomToken(24)}.jpg`;
+    await fs.writeFile(path.join(uploadDir, file), bytes, { flag: "wx", mode: 0o640 });
+    const result = await db.collection("menu").updateOne({ _id: m._id, photo: { $exists: false } }, { $set: { photo: { file, type: "image/jpeg" } } });
+    if (result.modifiedCount) added += 1; else await fs.rm(path.join(uploadDir, file), { force: true });
+  }
+  return added;
+}
+
+module.exports = { MENU, INVENTORY, seedCatalog, seedPhotos };

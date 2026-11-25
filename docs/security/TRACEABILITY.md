@@ -1,6 +1,8 @@
 # Traceability matrix
 
-Generated from `traceability.json` by `npm run trace`; do not edit by hand. A test fails if any link below is broken or this file is out of date.
+> **Historical coursework record (frozen 25 November 2026).** This matrix records the system as it stood at the end of the Secure Software Development course. On 25 November 2026 the Docker deployment stack (Dockerfile, `deploy/`, Caddy, ZAP) was removed in favour of a local MongoDB (see [LOCAL-SETUP.md](../LOCAL-SETUP.md)). The generator and its link check were retired at the same time, so links to those files are no longer live. They remain in git history.
+
+Generated from `traceability.json`.
 
 35 requirements, 22 threats and 12 misuse cases. Every requirement traces to a threat or regulation, to the code that meets it and to the tests that prove it.
 

@@ -166,8 +166,8 @@ describe("MFA", () => {
     assert.equal((await second.post(VERIFY, { recoveryCode: code })).status, 401);
   });
 
-  test("first sign-in forces enrolment; secret is encrypted and codes are hashed", async () => {
-    const user = await createUser(db, config, { mfa: false });
+  test("first sign-in forces enrolment for a Manager; secret is encrypted and codes are hashed", async () => {
+    const user = await createUser(db, config, { mfa: false, role: "Manager" });
     const client = browser(app);
     assert.deepEqual((await client.post(LOGIN, { username: user.username, password: user.password })).body, { next: "enroll" });
     assert.equal(client.jar[SESSION_COOKIE], undefined);

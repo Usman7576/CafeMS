@@ -11,10 +11,11 @@ const TABLE_NUMBERS = Object.freeze(TABLES.map((t) => t.no));
 const DISCOUNT_LIMIT = Object.freeze({ Cashier: 10, Manager: 25 });
 const ACTIVE_ORDER_STATUSES = Object.freeze(["Placed", "Preparing", "Ready"]);
 
-function calculateTotals(lines, discountPct = 0) {
+// taxRate comes from the settings service; the default is the one used before settings existed
+function calculateTotals(lines, discountPct = 0, taxRate = TAX_RATE) {
   const sub = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
   const discount = Math.round((sub * discountPct) / 100);
-  const tax = Math.round((sub - discount) * TAX_RATE);
+  const tax = Math.round((sub - discount) * taxRate);
   return { sub, discount, tax, total: sub - discount + tax, count: lines.reduce((sum, l) => sum + l.qty, 0) };
 }
 

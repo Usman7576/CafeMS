@@ -2,14 +2,13 @@ const express = require("express");
 const { z } = require("zod");
 const { randomToken, hashToken, blindIndex, networkRef } = require("../lib/crypto");
 const MAX_KNOWN_NETWORKS = 20;
-const MAX_KNOWN_COUNTRIES = 20;
-const { countryOf } = require("../lib/geo");
 const { hashPassword, verifyPassword, dummyVerify, passwordProblems, MAX_LENGTH } = require("../lib/passwords");
 const { AppError, invalidInput } = require("../lib/errors");
 const { publicRoute, validate } = require("../middleware/auth");
 const { recordEvent } = require("../services/auditLog");
 const { inTransaction } = require("../lib/tx");
 const { cookieOptions, PREAUTH_COOKIE } = require("../services/sessions");
+const { mfaRequired, PIN_ROLES } = require("../lib/permissions");
 
 // One message for every sign-in failure, so it never reveals whether an account exists or is locked
 const SIGN_IN_FAILED = "Incorrect username or password, or the account is temporarily locked.";
@@ -48,7 +47,7 @@ const setupSchema = z.object({ token: z.string().min(20).max(128), password: z.s
 const changePasswordSchema = z.object({ currentPassword: z.string().min(1).max(MAX_LENGTH), newPassword: z.string().min(1).max(MAX_LENGTH) }).strict();
 const sidSchema = z.object({ sid: z.string().regex(/^[A-Za-z0-9_-]{10,64}$/) }).strict();
 
-function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middleware, authLimiter }) {
+function createAuthRouter({ config, db, sessions, mfa, passkeys, middleware, authLimiter }) {
   const router = express.Router();
   const users = db.collection("users");
   const challenges = db.collection("auth_challenges");
@@ -141,6 +140,12 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
         throw failed;
       }
 
+      // Admins and Managers must use an authenticator. Other roles may add one; without it the
+      // password alone signs them in (they work on shared tablets and switch with a PIN).
+      if (!(user.mfa && user.mfa.enabled) && !mfaRequired(user.role)) {
+        await finishSignIn(req, res, user, null, "Password (no authenticator for this role)", "info");
+        return;
+      }
       // The failure count is cleared only after the second factor succeeds. Clearing it here would let
       // someone who knows the password keep guessing authenticator codes without ever being locked out.
       const stage = user.mfa && user.mfa.enabled ? "mfa" : "enroll";
@@ -183,21 +188,15 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
   // Ends a sign-in that has passed both steps: one session, the network learned, and an audit entry
   async function finishSignIn(req, res, user, challenge, details, severity) {
       const token = await atomically(async (session) => {
-        await challenges.deleteOne({ _id: challenge._id }, { session });
+        if (challenge) await challenges.deleteOne({ _id: challenge._id }, { session });
         const known = user.knownNetworks || [];
         const network = networkRef(req.ip, config.blindIndexKey);
         const newNetwork = !known.includes(network);
-        // The country of the address, looked up locally; private and local addresses have none
-        const knownCountries = user.knownCountries || [];
-        const country = countryOf(req.ip);
-        const newCountry = Boolean(country) && !knownCountries.includes(country);
         await users.updateOne({ username: user.username }, {
           $set: {
-            failedAttempts: 0, lockedUntil: null, knownNetworks: newNetwork ? [...known, network].slice(-MAX_KNOWN_NETWORKS) : known,
-            knownCountries: newCountry ? [...knownCountries, country].slice(-MAX_KNOWN_COUNTRIES) : knownCountries
+            failedAttempts: 0, lockedUntil: null, knownNetworks: newNetwork ? [...known, network].slice(-MAX_KNOWN_NETWORKS) : known
           }
         }, { session });
-        if (newCountry && knownCountries.length) await audit(req, { actor: user.username, role: user.role, action: "Sign-in from a new country", details: `${country}, not seen before for this account`, severity: "high" }, session);
         const issued = await sessions.create(user, req, session);
         // A person's first network is simply learned. Later ones are worth a look.
         if (newNetwork && known.length) await audit(req, { actor: user.username, role: user.role, action: "Sign-in from a new network", details: "Not seen before for this account", severity: "warning" }, session);
@@ -205,7 +204,7 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
         return issued;
       });
       sessions.setCookie(res, token);
-      res.json({ username: user.username, name: user.name, role: user.role });
+      res.json({ next: "done", username: user.username, name: user.name, role: user.role });
   }
 
   // The question is shown only after the password step, so it reveals nothing about other accounts
@@ -216,72 +215,6 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
       res.json({ question: user && user.securityQuestion ? user.securityQuestion.question : null });
     } catch (error) {
       next(error);
-    }
-  });
-
-  // ---------- First step with an organisation account (OpenID Connect) ----------
-  const OIDC_COOKIE = "__Host-cms_oidc";
-  // Lax, because the provider sends the browser back with a top-level navigation from its own site
-  const oidcCookie = { ...cookieOptions(10 * 60 * 1000), sameSite: "lax" };
-  router.get("/oidc/enabled", publicRoute, (_req, res) => res.json({ enabled: oidc.enabled() }));
-  router.get("/oidc/start", publicRoute, authLimiter, async (req, res, next) => {
-    try {
-      const { url, state } = await oidc.start("signin");
-      res.cookie(OIDC_COOKIE, state, oidcCookie);
-      res.redirect(302, url);
-    } catch (error) {
-      next(error);
-    }
-  });
-  // Linking is done by the signed-in person after a fresh check, so nobody can attach their own
-  // organisation account to someone else's staff account
-  router.post("/oidc/link", requireAuth, requireStepUp, async (req, res, next) => {
-    try {
-      const { url, state } = await oidc.start("link", req.auth.user.username);
-      res.cookie(OIDC_COOKIE, state, oidcCookie);
-      res.json({ url });
-    } catch (error) {
-      next(error);
-    }
-  });
-  router.post("/oidc/unlink", requireAuth, requireStepUp, async (req, res, next) => {
-    try {
-      const { user } = req.auth;
-      await atomically(async (session) => {
-        await users.updateOne({ username: user.username }, { $unset: { oidc: "" } }, { session });
-        await audit(req, { actor: user.username, role: user.role, action: "Organisation account unlinked", details: "OpenID Connect", severity: "warning" }, session);
-      });
-      res.status(204).end();
-    } catch (error) {
-      next(error);
-    }
-  });
-  router.get("/oidc/callback", publicRoute, authLimiter, async (req, res, next) => {
-    const cookieState = req.cookies && req.cookies[OIDC_COOKIE];
-    res.clearCookie(OIDC_COOKIE, oidcCookie);
-    try {
-      const result = await oidc.finish(new URL(req.originalUrl, config.appOrigin), cookieState);
-      if (result.mode === "link") {
-        const taken = await users.findOne({ "oidc.iss": result.identity.iss, "oidc.sub": result.identity.sub });
-        if (taken && taken.username !== result.username) throw new AppError(409, "oidc_failed", "That organisation account is already linked to another person.");
-        await atomically(async (session) => {
-          await users.updateOne({ username: result.username }, { $set: { oidc: { ...result.identity, linkedAt: new Date() } } }, { session });
-          await audit(req, { actor: result.username, action: "Organisation account linked", details: result.identity.iss, severity: "warning" }, session);
-        });
-        return res.redirect(302, "/account.html#oidc-linked");
-      }
-      const user = await users.findOne({ "oidc.iss": result.identity.iss, "oidc.sub": result.identity.sub });
-      if (!user || user.status !== "Active" || isLocked(user)) {
-        await audit(req, { actor: user ? user.username : "unknown", action: "Sign-in failed", details: "Organisation account not linked or not allowed", severity: "warning" });
-        return res.redirect(302, "/login.html#oidc-failed");
-      }
-      // The organisation account stands in for the password; the cafe's own second factor still follows
-      await audit(req, { actor: user.username, role: user.role, action: "Organisation account accepted", details: "First step of sign-in", severity: "info" });
-      await startChallenge(res, user.username, user.mfa && user.mfa.enabled ? "mfa" : "enroll");
-      return res.redirect(302, user.mfa && user.mfa.enabled ? "/login.html#mfa" : "/login.html#enroll");
-    } catch (error) {
-      if (error.code === "oidc_failed") return res.redirect(302, "/login.html#oidc-failed");
-      return next(error);
     }
   });
 
@@ -339,7 +272,7 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
       const done = await atomically(async (session) => {
         const recoveryCodes = await mfa.completeEnrolment(challenge.username, challenge.pendingSecretEnc, req.body.code, session);
         if (!recoveryCodes) return null;
-        await challenges.deleteOne({ _id: challenge._id }, { session });
+        if (challenge) await challenges.deleteOne({ _id: challenge._id }, { session });
         const known = current.knownNetworks || [];
         const network = networkRef(req.ip, config.blindIndexKey);
         await users.updateOne({ username: current.username }, {
@@ -385,6 +318,8 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
         await challenges.deleteMany({ username: user.username }, { session });
         await audit(req, { actor: user.username, role: user.role, action: "Password set", details: `Used ${record.purpose} link`, severity: "warning" }, session);
       });
+      // Roles that need an authenticator add it now; the others go straight to sign-in
+      if (!mfaRequired(user.role)) return res.json({ next: "login" });
       await startChallenge(res, user.username, "enroll");
       res.json({ next: "enroll" });
     } catch (error) {
@@ -566,30 +501,94 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
     }
   });
 
-  // ---------- Personal signing keys (non-repudiation) ----------
-  const signingKeySchema = z.object({
-    publicKey: z.object({ kty: z.literal("EC"), crv: z.literal("P-256"), x: z.string().regex(/^[A-Za-z0-9_-]{43}$/), y: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict(),
-    label: z.string().trim().min(1).max(60).regex(/^[^<>]*$/)
-  }).strict();
-  const keyIdSchema = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) }).strict();
-  router.post("/signing-keys", requireAuth, validate(signingKeySchema), async (req, res, next) => {
+  // ---------- PIN switch for shared tablets ----------
+  // A person on the floor sets a PIN once (with their password). On a tablet that is already signed
+  // in, they pick their name and enter it: the current session ends and theirs begins. Only roles
+  // without a required authenticator can switch this way, so a PIN never stands in for an Admin's code.
+  const PIN_MAX_FAILURES = 5;
+  const PIN_LOCK_MS = 15 * 60 * 1000;
+  const pinSchema = z.string().regex(/^\d{4,6}$/, "!A PIN is 4 to 6 digits.");
+  const setPinSchema = z.object({ currentPassword: z.string().min(1).max(MAX_LENGTH), pin: pinSchema }).strict();
+  const switchSchema = z.object({ username: z.string().trim().toLowerCase().min(1).max(64), pin: pinSchema }).strict();
+  const PIN_FAILED = "That PIN is not right, or PIN sign-in is paused for this person. Try again or use your password.";
+  // Easy guesses are refused: one digit repeated, or a run such as 1234 or 9876
+  function weakPin(pin) {
+    const d = [...pin].map(Number);
+    const steps = new Set(d.slice(1).map((n, i) => n - d[i]));
+    return steps.size === 1 && [0, 1, -1].includes([...steps][0]);
+  }
+
+  router.put("/pin", requireAuth, validate(setPinSchema), async (req, res, next) => {
     try {
-      res.status(201).json(await middleware.signatures.register(req, req.body));
-    } catch (error) {
-      next(error);
-    }
-  });
-  router.get("/signing-keys", requireAuth, async (req, res, next) => {
-    try {
-      res.json({ keys: await middleware.signatures.list(req.auth.user.username) });
-    } catch (error) {
-      next(error);
-    }
-  });
-  router.delete("/signing-keys/:id", requireAuth, validate(keyIdSchema, "params"), async (req, res, next) => {
-    try {
-      await middleware.signatures.revoke(req, req.params.id);
+      const { user } = req.auth;
+      if (!PIN_ROLES.includes(user.role)) throw new AppError(403, "forbidden", "Your role signs in with an authenticator, not a PIN.");
+      if (!(await verifyPassword(user.passwordHash, req.body.currentPassword))) {
+        await audit(req, { actor: user.username, role: user.role, action: "PIN change refused", details: "Wrong password", severity: "warning" });
+        throw new AppError(400, "wrong_password", "Your current password is not right.");
+      }
+      if (weakPin(req.body.pin)) throw new AppError(400, "weak_pin", "Choose a PIN that is harder to guess than a repeated digit or a run like 1234.");
+      const hash = await hashPassword(req.body.pin);
+      await atomically(async (session) => {
+        await users.updateOne({ username: user.username }, { $set: { pin: { hash, failed: 0, lockedUntil: null, setAt: new Date() } } }, { session });
+        await audit(req, { actor: user.username, role: user.role, action: "PIN set", details: "For switching on shared tablets", severity: "info" }, session);
+      });
       res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.delete("/pin", requireAuth, async (req, res, next) => {
+    try {
+      const { user } = req.auth;
+      await atomically(async (session) => {
+        await users.updateOne({ username: user.username }, { $unset: { pin: "" } }, { session });
+        await audit(req, { actor: user.username, role: user.role, action: "PIN removed", details: "No longer switches in with a PIN", severity: "info" }, session);
+      });
+      res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+  // The people who can switch in on this tablet: names only, and only to someone already signed in
+  router.get("/switch/people", requireAuth, async (req, res, next) => {
+    try {
+      const { user } = req.auth;
+      const list = await users.find({ status: "Active", role: { $in: [...PIN_ROLES] }, "pin.hash": { $exists: true } }, { projection: { username: 1, name: 1, role: 1 } }).sort({ name: 1 }).limit(100).toArray();
+      res.json({
+        people: list.filter((u) => u.username !== user.username).map((u) => ({ username: u.username, name: u.name, role: u.role })),
+        hasPin: Boolean(user.pin && user.pin.hash), pinAllowed: PIN_ROLES.includes(user.role)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post("/switch", requireAuth, authLimiter, validate(switchSchema), async (req, res, next) => {
+    try {
+      const from = req.auth.user;
+      const target = await users.findOne({ username: req.body.username });
+      const usable = Boolean(target && target.status === "Active" && PIN_ROLES.includes(target.role) && target.pin && target.pin.hash);
+      const pinLocked = usable && Boolean(target.pin.lockedUntil) && target.pin.lockedUntil.getTime() > Date.now();
+      // The hash is always checked, so the time taken reveals nothing about the person
+      const ok = await verifyPassword(usable ? target.pin.hash : null, req.body.pin);
+      if (!usable || pinLocked || isLocked(target) || !ok) {
+        if (usable && !pinLocked && !ok) {
+          const failures = (target.pin.failed || 0) + 1;
+          const lock = failures >= PIN_MAX_FAILURES;
+          await users.updateOne({ username: target.username }, { $set: { "pin.failed": lock ? 0 : failures, "pin.lockedUntil": lock ? new Date(Date.now() + PIN_LOCK_MS) : null } });
+          if (lock) await audit(req, { actor: target.username, role: target.role, action: "PIN locked", details: `${PIN_MAX_FAILURES} wrong PINs on a shared tablet`, severity: "high" });
+        }
+        await audit(req, { actor: from.username, role: from.role, action: "PIN switch failed", details: `To ${req.body.username}`, severity: "warning" });
+        throw new AppError(401, "pin_failed", PIN_FAILED);
+      }
+      const token = await atomically(async (session) => {
+        await sessions.revoke(req.auth.session.jti, null, session);
+        await users.updateOne({ username: target.username }, { $set: { "pin.failed": 0, "pin.lockedUntil": null } }, { session });
+        const issued = await sessions.create(target, req, session);
+        await audit(req, { actor: target.username, role: target.role, action: "Signed in", details: `PIN switch on a shared tablet (from ${from.username})`, severity: "info" }, session);
+        return issued;
+      });
+      sessions.setCookie(res, token);
+      res.json({ username: target.username, name: target.name, role: target.role });
     } catch (error) {
       next(error);
     }
@@ -603,7 +602,7 @@ function createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middlewar
       const dead = all.filter((s) => !sessions.isLive(s)).map((s) => s.jti);
       if (dead.length) await db.collection("sessions").deleteMany({ jti: { $in: dead } });
       res.json({
-        sessions: list.map((s) => ({ id: s.sid, createdAt: s.createdAt, lastSeenAt: s.lastSeenAt, ip: s.ip, country: countryOf(s.ip), userAgent: s.userAgent, current: s.jti === session.jti }))
+        sessions: list.map((s) => ({ id: s.sid, createdAt: s.createdAt, lastSeenAt: s.lastSeenAt, ip: s.ip, userAgent: s.userAgent, current: s.jti === session.jti }))
       });
     } catch (error) {
       next(error);

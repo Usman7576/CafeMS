@@ -1,7 +1,7 @@
 // Orders and tables. Every query that touches an order is limited to the signed-in waiter, so
 // another waiter's order looks the same as one that does not exist (no IDOR).
 const { AppError } = require("../lib/errors");
-const { TABLES, calculateTotals } = require("../lib/domain");
+const { calculateTotals } = require("../lib/domain");
 const { nextSequence } = require("../lib/tx");
 const { recordEvent } = require("./auditLog");
 
@@ -14,13 +14,13 @@ function mergeLines(lines) {
   return [...merged].map(([id, qty]) => ({ id, qty }));
 }
 
-function createOrderService({ db, catalog }) {
+function createOrderService({ db, catalog, settings }) {
   const orders = db.collection("orders");
   const tables = db.collection("tables");
 
   const waiterView = (o) => ({
     id: o._id, table: o.table, items: o.items, notes: o.notes, status: o.status, waiter: o.waiter,
-    createdAt: o.createdAt, updatedAt: o.updatedAt, billed: o.billed, billNo: o.billNo || null, version: o.version, totals: calculateTotals(o.items)
+    createdAt: o.createdAt, updatedAt: o.updatedAt, billed: o.billed, billNo: o.billNo || null, version: o.version, totals: calculateTotals(o.items, 0, settings.taxRate())
   });
   // The kitchen needs to cook, not to see prices or who is paying
   const kitchenView = (o) => ({
@@ -33,6 +33,7 @@ function createOrderService({ db, catalog }) {
 
   async function place(req, input, session) {
     const actor = req.auth.user;
+    if (!settings.hasTable(input.table)) throw new AppError(400, "invalid_input", "Choose a valid table.");
     await lockTable(input.table, session);
     const open = await orders.find({ table: input.table, ...OPEN_FILTER }, { session }).toArray();
     if (open.some((o) => o.waiter !== actor.username)) throw new AppError(409, "table_taken", `Table ${input.table} is being served by another waiter.`);
@@ -115,9 +116,9 @@ function createOrderService({ db, catalog }) {
   async function tableStates(username) {
     const [open, tableDocs] = await Promise.all([orders.find(OPEN_FILTER).toArray(), tables.find().toArray()]);
     const requested = new Map(tableDocs.filter((t) => t.billRequestedAt).map((t) => [t._id, t.billRequestedAt]));
-    return TABLES.map((t) => {
+    return settings.get().tables.map((t) => {
       const onTable = open.filter((o) => o.table === t.no);
-      const base = { no: t.no, seats: t.seats };
+      const base = { no: t.no, seats: t.seats, area: t.area };
       if (!onTable.length) return { ...base, state: "free", label: "Free" };
       if (onTable.some((o) => o.waiter !== username)) return { ...base, state: "other", label: "Other staff" };
       const orderIds = onTable.map((o) => o._id);

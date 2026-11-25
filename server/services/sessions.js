@@ -98,7 +98,8 @@ function createSessionService(config, db) {
     }
 
     // Automatic background refreshes must not keep an idle session alive
-    const isBackground = req.get("x-background-refresh") === "1";
+    // (a live-update stream is one of them: it stays open while the person is away)
+    const isBackground = req.get("x-background-refresh") === "1" || req.get("accept") === "text/event-stream";
     if (!isBackground && now - session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
       await sessions.updateOne({ jti: session.jti }, { $set: { lastSeenAt: new Date(now) } });
     }

@@ -22,7 +22,10 @@ const PERMISSIONS = Object.freeze({
   "settings.write": ["Admin"],
   "audit.read": ["Admin"],
   "alerts.manage": ["Admin"],
-  "risk.read": ["Admin"]
+  // Staff requests: Role 1 (submitters) own their requests; Role 2 (Manager) reviews them
+  "requests.read": ["Waiter", "Kitchen", "Cashier", "Manager"],
+  "requests.submit": ["Waiter", "Kitchen", "Cashier"],
+  "requests.review": ["Manager"]
 });
 
 // Protected pages: checked on the server before the HTML is sent.
@@ -38,13 +41,14 @@ const PAGES = Object.freeze({
   "/reports.html": ["Manager", "Admin"],
   "/menu.html": ["Admin"],
   "/users.html": ["Admin"],
+  "/settings.html": ["Admin"],
   "/audit.html": ["Admin"],
   "/security.html": ["Admin"],
-  "/risk.html": ["Admin"],
+  "/requests.html": ["Waiter", "Kitchen", "Cashier", "Manager"],
   "/account.html": ["Waiter", "Kitchen", "Cashier", "Manager", "Admin"]
 });
 
-const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/setup.html", "/privacy.html", "/404.html"]);
+const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/register.html", "/setup.html", "/privacy.html", "/404.html"]);
 
 const HOME = Object.freeze({
   Waiter: "/dashboard.html",
@@ -54,8 +58,14 @@ const HOME = Object.freeze({
   Admin: "/overview.html"
 });
 
+// Admins and Managers hold the keys to money and accounts, so they must use an authenticator.
+// The roles that share tablets on the floor may switch to themselves with a PIN instead.
+const MFA_ROLES = Object.freeze(["Manager", "Admin"]);
+const PIN_ROLES = Object.freeze(["Waiter", "Kitchen", "Cashier"]);
+const mfaRequired = (role) => MFA_ROLES.includes(role);
+
 function can(role, permission) {
   return Object.hasOwn(PERMISSIONS, permission) && PERMISSIONS[permission].includes(role);
 }
 
-module.exports = { ROLES, PERMISSIONS, PAGES, PUBLIC_PAGES, HOME, can };
+module.exports = { ROLES, PERMISSIONS, PAGES, PUBLIC_PAGES, HOME, MFA_ROLES, PIN_ROLES, mfaRequired, can };

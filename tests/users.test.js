@@ -70,7 +70,7 @@ describe("invitations", () => {
   test("the whole flow: invite, set password, enrol, sign in", async () => {
     const a = await admin();
     await stepUp(a);
-    const created = await a.client.post(INVITE, invitation("new.waiter"));
+    const created = await a.client.post(INVITE, invitation("new.manager", "Manager"));
     assert.equal(created.status, 201);
     const token = tokenOf(created.body.setupUrl);
 
@@ -79,7 +79,7 @@ describe("invitations", () => {
     assert.deepEqual((await person.post("/api/v1/auth/setup", { token, password: NEW_PASSWORD })).body, { next: "enroll" });
     const start = await person.post("/api/v1/auth/mfa/enroll/start", {});
     assert.equal((await person.post("/api/v1/auth/mfa/enroll/confirm", { code: authenticator.generate(start.body.manualKey) })).status, 200);
-    assert.equal((await person.get("/api/v1/auth/me")).body.role, "Waiter");
+    assert.equal((await person.get("/api/v1/auth/me")).body.role, "Manager");
   });
 
   test("a link works once, and only its hash is stored", async () => {

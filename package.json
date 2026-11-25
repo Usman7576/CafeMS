@@ -8,24 +8,22 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test --test-concurrency=2 \"tests/**/*.test.js\"",
+    "test:quiz": "node --test --test-reporter=spec tests/quiz.test.js",
+    "setup": "node scripts/setup.js",
     "setup:env": "node scripts/setup-env.js",
     "db:setup": "node scripts/db-setup.js",
     "deps:report": "node scripts/dependency-report.js",
-    "trace": "node scripts/check-traceability.js",
     "seed:dev": "node scripts/seed-dev.js",
-    "vendor": "node -e \"require('fs').copyFileSync('node_modules/three/build/three.module.min.js','public/vendor/three.module.min.js')\"",
     "backup": "node scripts/backup.js",
     "restore": "node scripts/restore.js",
     "lint": "eslint .",
     "test:coverage": "node --test --test-concurrency=2 --experimental-test-coverage --test-coverage-include=\"server/**\" --test-coverage-lines=90 --test-coverage-branches=85 --test-coverage-functions=90 \"tests/**/*.test.js\"",
-    "load-test": "node scripts/load-test.js",
-    "concepts": "node scripts/check-concepts.js"
+    "load-test": "node scripts/load-test.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "@ip-location-db/iptoasn-country": "2.3.2026061719",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.3",
     "argon2": "^0.45.1",
@@ -37,7 +35,6 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.8.0",
     "nodemailer": "^10.3.1",
-    "openid-client": "^6.8.8",
     "otplib": "^13.6.0",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
@@ -53,7 +50,6 @@
     "mongodb-memory-server": "^10.4.3",
     "selfsigned": "^5.5.0",
     "smtp-server": "^3.21.3",
-    "supertest": "^7.3.1",
-    "three": "^0.170.0"
+    "supertest": "^7.3.1"
   }
 }

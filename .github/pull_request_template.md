@@ -22,5 +22,4 @@ Tick each one, or say why it does not apply. This is the code review the course'
 
 **Evidence**
 - [ ] Tests prove the new behaviour, including the way it could be abused
-- [ ] New requirements or threats are added to `docs/security/traceability.json` (`npm run trace`)
 - [ ] The risk register is updated if exposure or a failure mode changed

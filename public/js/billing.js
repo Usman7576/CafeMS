@@ -187,7 +187,7 @@
     const add = function () { Array.prototype.forEach.call(arguments, function (n) { if (n) r.appendChild(n); }); };
     const row = function (a, c, cls) { return h("div", { class: "r-row " + (cls || "") }, [h("span", { text: a }), h("span", { text: c })]); };
     add(
-      h("div", { class: "r-head" }, [h("div", { class: "r-logo" }, [App.I("coffee", 22)]), h("b", { text: Store.cafe().name }), Store.cafe().address ? h("small", { text: Store.cafe().address }) : null, Store.cafe().phone ? h("small", { text: Store.cafe().phone }) : null]),
+      h("div", { class: "r-head" }, [h("div", { class: "r-logo" }, [App.I("coffee", 22)]), h("b", { text: Store.cafe().name }), Store.cafe().address ? h("small", { text: Store.cafe().address }) : null, Store.cafe().phone ? h("small", { text: Store.cafe().phone }) : null, Store.receipt().header ? h("small", { text: Store.receipt().header }) : null]),
       h("div", { class: "r-sep" }),
       row("Receipt", b.no), row("Date", CMS.dateTime(b.createdAt)), row("Table", String(b.table)), row("Cashier", Store.staffName(b.cashier)),
       b.phone ? row("Customer", b.phone) : null,
@@ -204,7 +204,7 @@
       b.method === "Cash" ? row("Change", CMS.money(b.change || 0)) : row("Card / wallet no.", "Not stored"),
       b.status === "Refunded" ? h("div", { class: "r-refunded", text: "REFUNDED · " + (b.refund ? b.refund.reason : "") }) : null,
       h("div", { class: "r-sep" }),
-      h("p", { class: "r-foot", text: "Thank you for visiting! Keep this receipt for returns within 24 hours." })
+      h("p", { class: "r-foot", text: Store.receipt().footer || "Thank you for visiting!" })
     );
     CMS.openModal("receiptModal");
   }

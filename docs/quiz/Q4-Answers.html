@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Q4 Dependency Matrix, Graph and Failure Analysis — CafeMS</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  body { font: 10.5pt/1.45 "Segoe UI", Arial, sans-serif; color: #1d1d1f; margin: 0; }
+  h1 { font-size: 17pt; margin: 0 0 2px; }
+  .meta { color: #555; margin-bottom: 14px; font-size: 9.5pt; }
+  h2 { font-size: 12.5pt; margin: 18px 0 6px; padding-bottom: 3px; border-bottom: 2px solid #8a4b1f; color: #5a2f12; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 12px 0 4px; break-after: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; break-inside: avoid; }
+  th, td { border: 1px solid #b9b0a8; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #f3ebe4; }
+  .matrix { width: auto; }
+  .matrix th, .matrix td { text-align: center; width: 46px; }
+  .matrix td.one { background: #fde3cf; font-weight: 700; }
+  .matrix td.diag { background: #eee; }
+  .graph { text-align: center; break-inside: avoid; margin: 4px 0; }
+  ul { margin: 4px 0 6px 18px; padding: 0; }
+  li { margin: 2px 0; }
+  .box { border: 1px solid #d9cfc6; background: #fbf8f5; border-radius: 6px; padding: 8px 12px; margin: 6px 0; break-inside: avoid; }
+  .small { font-size: 9pt; color: #555; }
+  code { font-family: Consolas, monospace; font-size: 9.5pt; background: #f1ece7; padding: 0 3px; border-radius: 3px; }
+</style>
+</head>
+<body>
+  <h1>Q4. Dependency Matrix, Graph &amp; Failure Analysis</h1>
+  <div class="meta">Grand Development Quiz · Cafe Management System (CafeMS), Staff Requests module from Q1–Q3 · M. Usman (22L-7991)</div>
+
+  <h2>A. Five system components</h2>
+  <table>
+    <tr><th style="width:9%">Symbol</th><th style="width:31%">Component</th><th>Main responsibility</th></tr>
+    <tr><td><b>C1</b></td><td>Frontend (login page, Staff requests page)</td><td>Shows forms, lists, details and history; sends API calls with the session cookie; displays success, validation and conflict messages</td></tr>
+    <tr><td><b>C2</b></td><td>Backend API (Express routes and workflow service)</td><td>Validates input; enforces Pending → In Review → Resolved / Rejected with version checks; search, filters, sorting and pagination</td></tr>
+    <tr><td><b>C3</b></td><td>Authentication &amp; authorization (JWT sessions, role guards)</td><td>Checks the password hash and the signed JWT plus the server session record; derives identity and role; returns 401 / 403</td></tr>
+    <tr><td><b>C4</b></td><td>Database (MongoDB replica set)</td><td>Stores users, sessions, staff_requests and request_history; unique index on owner + normalized title; transactions</td></tr>
+    <tr><td><b>C5</b></td><td>Audit &amp; history logger</td><td>Appends a history event (actor, record ID, old/new status, version, time) in the same transaction as each change</td></tr>
+  </table>
+
+  <h2>B. Direct dependency matrix</h2>
+  <p class="small">Row depends on column. 1 = direct dependency, otherwise 0; the diagonal is 0.</p>
+  <table class="matrix">
+    <tr><th></th><th>C1</th><th>C2</th><th>C3</th><th>C4</th><th>C5</th></tr>
+    <tr><th>C1</th><td class="diag">0</td><td class="one">1</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><th>C2</th><td>0</td><td class="diag">0</td><td class="one">1</td><td class="one">1</td><td class="one">1</td></tr>
+    <tr><th>C3</th><td>0</td><td>0</td><td class="diag">0</td><td class="one">1</td><td>0</td></tr>
+    <tr><th>C4</th><td>0</td><td>0</td><td>0</td><td class="diag">0</td><td>0</td></tr>
+    <tr><th>C5</th><td>0</td><td>0</td><td>0</td><td class="one">1</td><td class="diag">0</td></tr>
+  </table>
+  <ul class="small">
+    <li><b>C1→C2:</b> every page action is an API call.</li>
+    <li><b>C2→C3:</b> every protected route runs the auth and role guard first.</li>
+    <li><b>C2→C4:</b> records are read and written in MongoDB.</li>
+    <li><b>C2→C5:</b> each create or transition writes a history event in the same transaction.</li>
+    <li><b>C3→C4:</b> users, password hashes and sessions are read from the database.</li>
+    <li><b>C5→C4:</b> history and audit entries are stored in MongoDB.</li>
+  </ul>
+
+  <h2 style="break-before: page">C. Directed dependency graph</h2>
+  <p class="small">Arrows point from the dependent component to the component it depends on. There are 6 edges, matching the six 1s in Part B.</p>
+  <div class="graph">
+    <svg width="560" height="370" viewBox="0 0 560 370" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="12">
+      <defs><marker id="a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5a2f12"/></marker></defs>
+      <g stroke="#8a4b1f" stroke-width="1.5" fill="#fde3cf">
+        <rect x="200" y="15" width="160" height="44" rx="22"/>
+        <rect x="200" y="115" width="160" height="44" rx="22"/>
+        <rect x="30" y="210" width="190" height="44" rx="22"/>
+        <rect x="340" y="210" width="190" height="44" rx="22"/>
+        <rect x="190" y="310" width="180" height="44" rx="22"/>
+      </g>
+      <g stroke="#5a2f12" stroke-width="1.8" fill="none" marker-end="url(#a)">
+        <line x1="280" y1="59" x2="280" y2="113"/>
+        <line x1="245" y1="159" x2="150" y2="208"/>
+        <line x1="280" y1="159" x2="280" y2="308"/>
+        <line x1="315" y1="159" x2="410" y2="208"/>
+        <line x1="150" y1="254" x2="228" y2="308"/>
+        <line x1="410" y1="254" x2="332" y2="308"/>
+      </g>
+      <g text-anchor="middle" fill="#1d1d1f">
+        <text x="280" y="33" font-weight="700">C1</text><text x="280" y="50">Frontend</text>
+        <text x="280" y="133" font-weight="700">C2</text><text x="280" y="150">Backend API</text>
+        <text x="125" y="228" font-weight="700">C3</text><text x="125" y="245">Auth &amp; authorization</text>
+        <text x="435" y="228" font-weight="700">C5</text><text x="435" y="245">Audit &amp; history</text>
+        <text x="280" y="328" font-weight="700">C4</text><text x="280" y="345">Database (MongoDB)</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>D. Failure analysis and mitigation</h2>
+
+  <h3>1. Database failure (C4 fails)</h3>
+  <div class="box">
+    <ul>
+      <li><b>Direct effects:</b> C2 cannot read or save requests; C3 cannot check sessions or passwords; C5 cannot write history.</li>
+      <li><b>Indirect effects:</b> in C1, users cannot sign in or out, list, submit, claim, resolve or reject.</li>
+      <li><b>Safe handling:</b> the API returns <b>503 "database unavailable, nothing was saved"</b>. Each change and its history run in one transaction, so there is no half-saved record and no false success.</li>
+      <li><b>Can continue safely:</b> static and public pages load; the liveness health check answers; data already committed stays safe on disk and is available again when the database returns.</li>
+    </ul>
+  </div>
+
+  <h3>2. Authentication failure (C3 fails, or the token is missing, invalid or expired)</h3>
+  <div class="box">
+    <ul>
+      <li><b>Must stop:</b> every protected operation: create, list, detail, history, claim, resolve, reject and every staff page. The system <b>fails closed</b> with 401 (not signed in) or 403 (wrong role) and never guesses the user or role.</li>
+      <li><b>Can continue safely:</b> public pages (home, menu, public reservation form), static files and health checks. Stored records and history stay unchanged, because nothing is written without a verified identity.</li>
+    </ul>
+  </div>
+
+  <h3>3. Critical component and recovery</h3>
+  <div class="box">
+    <p><b>Critical component: C4, the database.</b> It has the most dependents: C2, C3 and C5 directly, and C1 indirectly. It is the single point of failure; if it stops, every function stops.</p>
+    <p><b>Failure-handling strategy:</b> run MongoDB as a <b>3-node replica set with automatic failover</b> (<code>deploy/docker-compose.ha.yml</code>), with <b>encrypted daily backups</b> (<code>npm run backup</code>) and a tested restore.</p>
+    <p><b>Justification:</b></p>
+    <ul>
+      <li>If the primary crashes, the other nodes elect a new primary in about 10 seconds, without manual work.</li>
+      <li>Majority write concern and transaction retries mean no committed data is lost.</li>
+      <li>During the switch-over the app shows 503 instead of saving partial data.</li>
+      <li>Backups cover the worst case, such as accidental deletion or ransomware.</li>
+    </ul>
+  </div>
+</body>
+</html>

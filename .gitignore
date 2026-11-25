@@ -4,12 +4,13 @@ submission/
 uploads/
 backups/
 node_modules/
-.seed-credentials.txt
-.mongo-keyfile
-
-# Production secrets and data, made by: npm run setup:env -- --production
-deploy/.env
-deploy/.mongo-keyfile
-deploy/.mongo-encryption-key
-deploy/backups/
 coverage/
+
+# Logins and test credentials created on this computer (never committed)
+.seed-credentials.txt
+.seed-credentials.*.old.txt
+.quiz-demo-credentials.json
+.local-mongo-logins.txt
+
+# Old copies kept from earlier activities, including the retired Docker secrets
+archive/

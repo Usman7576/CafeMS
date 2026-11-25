@@ -10,7 +10,6 @@ const { createAuthMiddleware, publicRoute } = require("./middleware/auth");
 const { createSessionService } = require("./services/sessions");
 const { createMfaService } = require("./services/mfa");
 const { createPasskeyService } = require("./services/passkeys");
-const { createOidcService } = require("./services/oidc");
 const { recordEvent } = require("./services/auditLog");
 const { createAuthRouter } = require("./routes/auth");
 const { createUsersRouter } = require("./routes/users");
@@ -25,8 +24,10 @@ const { createAlertService } = require("./services/alerts");
 const { createCustomerService } = require("./services/customers");
 const { createPhotoService } = require("./services/photos");
 const { createCafeService } = require("./services/cafe");
-const { createRiskService } = require("./services/riskRegister");
 const { createPublicCache } = require("./services/publicCache");
+const { createEventBus } = require("./services/events");
+const { createSettingsService } = require("./services/settings");
+const { createStaffRequestService } = require("./services/staffRequests");
 const { createPublicRouter } = require("./routes/public");
 const { createSimulatedGateway, verifyCallback } = require("./services/gateway");
 const { bindAudit, recordEvent: audit } = require("./services/auditLog");
@@ -49,9 +50,6 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const sessions = createSessionService(config, db);
   const mfa = createMfaService(config, db);
   const passkeys = createPasskeyService({ config, db });
-  const oidc = createOidcService({ config, db });
-  // Loads the country table now, so the first sign-in is not the one that waits for it
-  setImmediate(() => require("./lib/geo").countryOf("1.0.0.1"));
   const userLimiter = rateLimit({
     windowMs: 60 * 1000,
     limit: config.limits.userPerMinute,
@@ -64,17 +62,19 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
 
   const catalog = createCatalogService({ db });
   const approvals = createApprovalService({ db });
-  const orderService = createOrderService({ db, catalog });
-  const billing = createBillingService({ config, db, orderService, approvals, gateway, logger });
+  const settings = createSettingsService({ db });
+  const events = createEventBus();
+  const orderService = createOrderService({ db, catalog, settings });
+  const billing = createBillingService({ config, db, orderService, approvals, gateway, logger, settings });
   const reservations = createReservationService({ config, db });
   const userService = createUserService({ config, db, approvals });
   const alerts = createAlertService({ db, logger });
   const customers = createCustomerService({ config, db });
   const photos = createPhotoService({ config, db });
   const cafe = createCafeService({ db });
-  const risk = createRiskService();
   const publicCache = createPublicCache();
-  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, risk, publicCache };
+  const staffRequests = createStaffRequestService({ config, db });
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),
@@ -92,9 +92,12 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   // ---------- API ----------
   const api = express.Router();
   api.use(noStore);
+  // Operating settings are read from the database once, before the first request needs them
+  api.use((_req, _res, next) => settings.ready().then(() => next(), next));
+  // Each successful change tells the open screens which area to re-read
+  api.use(events.announce);
   api.use(limiter(60 * 1000, config.limits.apiPerMinute, "Too many requests. Please wait a moment."));
-  // The exact bytes are kept, because a personal signature covers the body as it was sent
-  api.use(express.json({ limit: config.limits.jsonBody, strict: true, verify: (req, _res, buf) => { req.rawBody = buf; } }));
+  api.use(express.json({ limit: config.limits.jsonBody, strict: true }));
 
   // Only failures count, so staff signing in from one shared cafe network do not lock each other out
   const authLimiter = limiter(15 * 60 * 1000, config.limits.authPer15Minutes, "Too many attempts. Please wait a few minutes and try again.", { skipSuccessfulRequests: true });
@@ -128,7 +131,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   // Every state-changing API request passes this; signed-in requests also need the session's CSRF token
   api.use(csrfOriginProtection(config));
 
-  api.use("/auth", createAuthRouter({ config, db, sessions, mfa, passkeys, oidc, middleware, authLimiter }));
+  api.use("/auth", createAuthRouter({ config, db, sessions, mfa, passkeys, middleware, authLimiter }));
   // Limits one person's sensitive reads, such as bulk exports (keyed by user, not by address)
   // One limiter per name, so a limit such as "export" is shared across every route that uses it
   const personalLimiters = new Map();
@@ -216,6 +219,10 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
     }
 
     if (!(error instanceof AppError)) req.log.error({ err }, "Request failed");
+    // The database cannot be reached: say so plainly, and that nothing was saved, without technical detail
+    if (/^Mongo(NetworkError|NetworkTimeoutError|ServerSelectionError|NotConnectedError|TopologyClosedError)$/.test(String(err && err.name))) {
+      error = new AppError(503, "database_unavailable", "The database is not available right now, so nothing was saved. Please try again shortly.");
+    }
     const status = error instanceof AppError ? error.status : 500;
     const code = error instanceof AppError ? error.code : "server_error";
     const message = error instanceof AppError ? error.message : `Something went wrong. Quote this reference if you report it: ${req.id}`;

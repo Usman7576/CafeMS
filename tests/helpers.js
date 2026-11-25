@@ -37,7 +37,7 @@ function testEnv(extra = {}) {
 
 function testConfig(limits = {}) {
   const config = loadConfig(testEnv());
-  return { ...config, limits: { ...config.limits, authPer15Minutes: 100000, apiPerMinute: 100000, userPerMinute: 100000, sitePerMinute: 100000, publicReadsPerMinute: 100000, ...limits } };
+  return { ...config, limits: { ...config.limits, authPer15Minutes: 100000, apiPerMinute: 100000, userPerMinute: 100000, sitePerMinute: 100000, publicReadsPerMinute: 100000, publicRegistrationsPerHour: 100000, ...limits } };
 }
 
 async function startDb() {
@@ -56,25 +56,6 @@ function buildApp(db, limits, gateway) {
 
 // A small browser stand-in. It keeps cookies by hand because they are all marked Secure
 // and tests run over plain HTTP. It always sends the correct Origin unless told otherwise.
-// Signs a request as the browser does, with the person's device key
-// The body is digested with Web Crypto, as in the browser; this is a message digest, not password storage
-async function signHeaders(key, method, path, body) {
-  const signedAt = String(Date.now());
-  const bodyHash = Buffer.from(await crypto.webcrypto.subtle.digest("SHA-256", Buffer.from(body === undefined ? "" : JSON.stringify(body)))).toString("hex");
-  const text = ["cafems-action-v1", method.toUpperCase(), path, signedAt, bodyHash].join("\n");
-  const signature = crypto.sign("sha256", Buffer.from(text), { key: key.privateKey, dsaEncoding: "ieee-p1363" }).toString("base64");
-  return { "X-Signing-Key": key.id, "X-Signed-At": signedAt, "X-Action-Signature": signature };
-}
-
-// Gives a person a device key, as the browser does after sign-in
-async function addSigningKey(db, username) {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-  const jwk = publicKey.export({ format: "jwk" });
-  const id = crypto.randomBytes(16).toString("base64url");
-  await db.collection("signing_keys").insertOne({ _id: id, username, label: "Test device", publicKey: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y }, createdAt: new Date(), revokedAt: null });
-  return { id, privateKey };
-}
-
 function browser(app) {
   const jar = {};
   let csrf = null;
@@ -92,15 +73,12 @@ function browser(app) {
   }
 
   async function send(method, path, body, opts = {}) {
-    // Sign-in requests are never signed, as in the browser
-    const signed = method !== "get" && self.signingKey && !opts.unsigned && !path.startsWith("/api/v1/auth/") ? await signHeaders(self.signingKey, method, path, body) : null;
     let req = request(app)[method](path);
     const cookie = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join("; ");
     if (cookie) req = req.set("Cookie", cookie);
     if (opts.headers) req = req.set(opts.headers);
     if (method !== "get" && opts.origin !== null) req = req.set("Origin", opts.origin || ORIGIN);
     if (method !== "get" && csrf && !opts.noCsrf) req = req.set("X-CSRF-Token", opts.csrf || csrf);
-    if (signed) req = req.set(signed);
     if (body !== undefined) req = req.send(body);
     return req.then(capture);
   }
@@ -153,8 +131,7 @@ async function signIn(app, db, user) {
   const verify = await client.post("/api/v1/auth/mfa/verify", { code: await freshCode(db, user) });
   if (verify.status !== 200) throw new Error(`MFA failed: ${verify.status}`);
   await client.loadCsrf();
-  client.signingKey = await addSigningKey(db, user.username);
   return client;
 }
 
-module.exports = { ORIGIN, PASSWORD, testEnv, testConfig, startDb, buildApp, browser, createUser, freshCode, signIn, addSigningKey, signHeaders };
+module.exports = { ORIGIN, PASSWORD, testEnv, testConfig, startDb, buildApp, browser, createUser, freshCode, signIn };

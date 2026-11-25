@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff sign in — Cafe Management System</title>
   <meta name="description" content="Staff sign in for the Cafe Management System.">
-  <meta name="theme-color" content="#1d110b">
+  <meta name="theme-color" content="#f8f7f5">
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/fonts.css?v=6.0">
-  <link rel="stylesheet" href="css/style.css?v=6.0">
+  <link rel="stylesheet" href="css/fonts.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.0">
 </head>
 <body>
   <div class="auth">
     <aside class="auth-aside">
-      <div class="coffee-scene auth-scene" data-coffee-scene><img class="scene-fallback" src="assets/cup.svg" alt="" width="320" height="280"></div>
+      <img class="auth-photo" src="assets/hero.jpg" alt="" width="1200" height="900">
       <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
       <div>
         <h2>Everything for your shift, in one place.</h2>
@@ -61,7 +61,7 @@
               <button type="submit" class="btn btn-dark btn-lg btn-block" id="loginBtn" disabled>Sign in</button>
               <noscript><p class="field-error auth-noscript">JavaScript is required to sign in.</p></noscript>
             </form>
-            <a class="btn btn-secondary btn-lg btn-block" id="oidcLink" href="/api/v1/auth/oidc/start" hidden>Sign in with your organisation account</a>
+            <p class="auth-switch">New staff member? <a href="register.html">Register for an account</a></p>
           </section>
 
           <!-- Step 2: authenticator code -->
@@ -139,11 +139,10 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=6.0"></script>
+  <script src="js/icons.js?v=7.0"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=6.0"></script>
-  <script src="js/validate.js?v=6.0"></script>
-  <script src="js/login.js?v=6.0"></script>
-  <script type="module" src="js/coffee-scene.js?v=6.0"></script>
+  <script src="js/common.js?v=7.0"></script>
+  <script src="js/validate.js?v=7.0"></script>
+  <script src="js/login.js?v=7.0"></script>
 </body>
 </html>

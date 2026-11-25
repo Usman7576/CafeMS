@@ -80,7 +80,6 @@
         act.appendChild(h("li", { class: "sev-" + e.severity }, [h("span", { class: "dot" }), h("div", null, [h("b", { text: e.action }), h("span", { text: e.details }), h("small", { text: e.actor + " · " + CMS.timeAgo(e.at) })])]));
       });
       act.appendChild(h("li", { class: "more" }, [h("a", { href: "audit.html", text: "Open full audit log →" })]));
-      renderSettings();
     } else {
       document.getElementById("activityTitle").textContent = "Latest bills";
       document.getElementById("activitySub").textContent = "Payments recorded by cashiers today";
@@ -93,33 +92,4 @@
     }
   }
 
-  // Filled once only, so a background refresh never overwrites what the Admin is typing
-  let settingsReady = false;
-  function renderSettings() {
-    if (settingsReady) return;
-    settingsReady = true;
-    const panel = document.getElementById("settingsPanel");
-    panel.hidden = false;
-    const cafe = Store.cafe();
-    const field = function (key, label, max, type) {
-      const input = h(type || "input", { class: type === "textarea" ? "textarea" : "input", id: "cafe-" + key, maxlength: String(max), autocomplete: "off" });
-      input.value = cafe[key] || "";
-      return h("div", { class: "field" }, [h("label", { for: "cafe-" + key, text: label }), input]);
-    };
-    const err = h("div", { class: "alert alert-error", role: "alert" });
-    const save = h("button", { class: "btn btn-primary", type: "submit", text: "Save details" });
-    const form = h("form", { class: "cafe-form" }, [
-      err, field("name", "Cafe name", 40), field("tagline", "Tagline", 80), field("about", "Short description", 300, "textarea"),
-      field("address", "Address", 120), field("phone", "Phone", 20), field("hours", "Opening hours", 80), save
-    ]);
-    form.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      CMS.clearError(err);
-      const details = {};
-      ["name", "tagline", "about", "address", "phone", "hours"].forEach(function (k) { details[k] = document.getElementById("cafe-" + k).value; });
-      const ok = await CMS.busy(save, function () { return CMS.attempt(function () { return Store.saveCafe(details); }, err); });
-      if (ok) CMS.toast("Cafe details saved", "ok");
-    });
-    document.getElementById("settingsBody").replaceChildren(form);
-  }
 })();

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings · CafeMS</title>
+  <meta name="theme-color" content="#f8f7f5">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/fonts.css?v=7.0">
+  <link rel="stylesheet" href="css/style.css?v=7.0">
+</head>
+<body data-page="settings">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Settings</h2><p>How your cafe runs: its details, tax, discount limits, receipt and tables.</p></div>
+      <div class="head-actions"><button type="button" class="btn btn-primary" id="saveOps" disabled><i data-icon="check" data-size="17"></i>Save changes</button></div>
+    </div>
+
+    <div class="settings-layout">
+      <nav class="settings-nav" aria-label="Settings sections">
+        <a href="#profile"><i data-icon="home" data-size="16"></i>Cafe profile</a>
+        <a href="#money"><i data-icon="receipt" data-size="16"></i>Tax and discounts</a>
+        <a href="#receipt"><i data-icon="file" data-size="16"></i>Receipt</a>
+        <a href="#tables"><i data-icon="grid" data-size="16"></i>Tables</a>
+      </nav>
+
+      <div class="stack">
+        <section class="panel" id="profile">
+          <div class="panel-head"><div><h3>Cafe profile</h3><p>Shown on your website and at the top of receipts.</p></div></div>
+          <form class="panel-body" id="profileForm" method="post" novalidate>
+            <div class="alert alert-error" id="profileErr" role="alert"></div>
+            <div class="form-grid">
+              <div class="field"><label for="cafe-name">Cafe name</label><input class="input" id="cafe-name" maxlength="40" autocomplete="off"></div>
+              <div class="field"><label for="cafe-phone">Phone</label><input class="input" id="cafe-phone" maxlength="20" autocomplete="off"></div>
+              <div class="field span-2"><label for="cafe-tagline">Tagline</label><input class="input" id="cafe-tagline" maxlength="80" autocomplete="off"></div>
+              <div class="field span-2"><label for="cafe-about">Short description</label><textarea class="textarea" id="cafe-about" maxlength="300" rows="3"></textarea></div>
+              <div class="field"><label for="cafe-address">Address</label><input class="input" id="cafe-address" maxlength="120" autocomplete="off"></div>
+              <div class="field"><label for="cafe-hours">Opening hours</label><input class="input" id="cafe-hours" maxlength="80" autocomplete="off"></div>
+            </div>
+            <button type="submit" class="btn btn-secondary" id="saveProfile">Save profile</button>
+          </form>
+        </section>
+
+        <div class="alert alert-error" id="opsErr" role="alert"></div>
+
+        <section class="panel" id="money">
+          <div class="panel-head"><div><h3>Tax and discounts</h3><p>Tax is added to every new bill. Bills already paid keep the rate they were paid at.</p></div></div>
+          <div class="panel-body form-grid three">
+            <div class="field"><label for="taxRate">Sales tax</label><div class="input-group"><input class="input" id="taxRate" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span class="addon">%</span></div></div>
+            <div class="field"><label for="limitCashier">Cashier discount limit</label><div class="input-group"><input class="input" id="limitCashier" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="addon">%</span></div></div>
+            <div class="field"><label for="limitManager">Manager discount limit</label><div class="input-group"><input class="input" id="limitManager" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="addon">%</span></div></div>
+          </div>
+        </section>
+
+        <section class="panel" id="receipt">
+          <div class="panel-head"><div><h3>Receipt</h3><p>A short line above the items and a closing line at the bottom.</p></div></div>
+          <div class="panel-body receipt-edit">
+            <div>
+              <div class="field"><label for="receiptHeader">Header</label><input class="input" id="receiptHeader" maxlength="80" autocomplete="off"></div>
+              <div class="field mb-0"><label for="receiptFooter">Footer</label><input class="input" id="receiptFooter" maxlength="120" autocomplete="off"></div>
+            </div>
+            <div class="receipt-preview" aria-label="Receipt preview">
+              <b id="previewName">CafeMS</b>
+              <small id="previewHeader"></small>
+              <div class="r-sep"></div>
+              <div class="r-line"><span>1 × Cappuccino</span><span>Rs 450</span></div>
+              <div class="r-line"><span>Tax</span><span id="previewTax">Rs 72</span></div>
+              <div class="r-line r-total"><span>Total</span><span id="previewTotal">Rs 522</span></div>
+              <div class="r-sep"></div>
+              <small id="previewFooter"></small>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="tables">
+          <div class="panel-head">
+            <div><h3>Tables <span class="pill no-dot" id="tableCount">0</span></h3><p>A table with open orders cannot be removed until its bill is paid.</p></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="addTable"><i data-icon="plus" data-size="15"></i>Add table</button>
+          </div>
+          <div class="table-wrap flush">
+            <table class="data-table">
+              <thead><tr><th scope="col">Number</th><th scope="col">Seats</th><th scope="col">Area</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
+              <tbody id="tableRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/icons.js?v=7.0"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=7.0"></script>
+  <script src="js/validate.js?v=7.0"></script>
+  <script src="js/store.js?v=7.0"></script>
+  <script src="js/app.js?v=7.0"></script>
+  <script src="js/settings.js?v=7.0"></script>
+</body>
+</html>

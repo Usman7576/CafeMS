@@ -1,5 +1,7 @@
 # Concept coverage
 
+> **Historical coursework record (frozen 25 November 2026).** This page shows coverage as it stood at the end of the Secure Software Development course. The Docker deployment stack it refers to (Dockerfile, `deploy/`, Caddy, ZAP) was removed on 25 November 2026 in favour of a local MongoDB; those files remain in git history. The checker that kept this page in sync was retired at the same time.
+
 **All 116 concepts from the eight lecture decks are accounted for: 95 built and tested, 17 written analyses, 1 manual procedure and 3 that cannot be built inside a web app.**
 
 Generated from `concept-coverage.json` by `npm run concepts`; do not edit by hand. A test fails if a file or test named here stops existing, or if this page is out of date.

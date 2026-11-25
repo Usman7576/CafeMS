@@ -1,0 +1,212 @@
+[
+  {
+    "folder": "01-running-stack",
+    "file": "01-docker-mongodb-running.png",
+    "caption": "MongoDB running locally in Docker (replica set, healthy)"
+  },
+  {
+    "folder": "01-running-stack",
+    "file": "02-backend-running.png",
+    "caption": "Backend (Node.js + Express) started and connected to MongoDB"
+  },
+  {
+    "folder": "01-running-stack",
+    "file": "03-frontend-running.png",
+    "caption": "Frontend running at http://localhost:3000"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "01-login-page.png",
+    "caption": "Login page (password, then authenticator code)"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "02-password-stored-as-hash.png",
+    "caption": "Q1.1 Passwords are stored as Argon2id hashes, never plaintext"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "03-login-jwt-issued.png",
+    "caption": "Q1.1 Server checks the password, then the code, then sets a signed JWT in an HttpOnly cookie with expiry"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "04-jwt-claims.png",
+    "caption": "Q1.1 The JWT payload: subject, session ID, issuer, audience and expiry (no role inside)"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "05-refresh-keeps-login.png",
+    "caption": "Q1.1 After refreshing a protected page the user is still signed in"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "06-logout-invalidates-session.png",
+    "caption": "Q1.3 Logout deletes the session on the server; replaying the same cookie fails, also from a second tab"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "07-401-vs-403-safe-errors.png",
+    "caption": "Q1.4 401 = not signed in, 403 = signed in but not allowed; errors never show hashes or exceptions"
+  },
+  {
+    "folder": "02-Q1-authentication",
+    "file": "08-forged-fields-rejected.png",
+    "caption": "Q1.2 / Q2.1 Owner, status and timestamps come only from the server session; forged fields are rejected"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "01-frontend-validation.png",
+    "caption": "Q2.1 Form checks before sending: title of at least 5 characters, description of at least 15, category required"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "02-server-validation.png",
+    "caption": "Q2.1 The server validates again (the browser can be bypassed)"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "03-submission-success.png",
+    "caption": "Q2.4 Submitted from the form: saved as Pending, version 1, title trimmed, shown in the list"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "04-create-returns-committed-record.png",
+    "caption": "Q2.4 201 Created: the response is the record as committed in MongoDB (server owner, unique ID, Pending, timestamps)"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "05-duplicate-conflict-message.png",
+    "caption": "Q2.2 Same title in different case: conflict shown to the user"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "06-concurrent-duplicates.png",
+    "caption": "Q2.2 Five simultaneous submissions (case/space variants): exactly one record"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "07-different-owner-same-title.png",
+    "caption": "Q2.2 A different owner may use the same title"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "08-atomic-creation-rollback.png",
+    "caption": "Q2.3 Forced audit/history write failure: the record is not saved either (one transaction)"
+  },
+  {
+    "folder": "03-Q2-submission-integrity",
+    "file": "09-persistence-after-restart.png",
+    "caption": "Q2.4 The server was stopped and started again: the record is still there (MongoDB on disk)"
+  },
+  {
+    "folder": "04-Q3A-listing-pagination",
+    "file": "01-filters-page-2-ui.png",
+    "caption": "Q3 A Search + category + status filters combined, page 2 of 2 (5 per page), only the owner's records"
+  },
+  {
+    "folder": "04-Q3A-listing-pagination",
+    "file": "02-filters-page-2-api.png",
+    "caption": "Q3 A One listing endpoint: case-insensitive search, filters combined with AND, scope applied before counting and paging"
+  },
+  {
+    "folder": "04-Q3A-listing-pagination",
+    "file": "03-invalid-query-rejected.png",
+    "caption": "Q3 A Invalid page, sort and filter values are rejected"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "01-manager-list-scope.png",
+    "caption": "Q3 B The Manager (Role 2) sees Pending requests from all staff, plus ones they claimed"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "02-detail-before-claim.png",
+    "caption": "Q3 B SR-1054 is Pending, version 1: only \"Claim for review\" is offered"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "03-claimed-in-review.png",
+    "caption": "Q3 B Claimed: In Review, version 2, reviewer recorded, history event added"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "04-reject-needs-reason.png",
+    "caption": "Q3 B A rejection without a reason is refused"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "05-rejected-terminal.png",
+    "caption": "Q3 B Rejected with a reason: terminal (no more actions), version 3, full history"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "06-two-claims-same-version.png",
+    "caption": "Q3 B Two simultaneous claims with the same version: one success, one conflict, one transition event"
+  },
+  {
+    "folder": "05-Q3B-state-machine-concurrency",
+    "file": "07-finalize-rules.png",
+    "caption": "Q3 B Finalize without claim or as the wrong actor is denied; stale versions conflict; terminal records cannot change"
+  },
+  {
+    "folder": "06-Q3C-history-privacy",
+    "file": "01-owner-sees-history-masked-contact.png",
+    "caption": "Q3 C The owner sees the full history (status, actor, time, version) and only a masked contact number"
+  },
+  {
+    "folder": "06-Q3C-history-privacy",
+    "file": "02-history-endpoint-access.png",
+    "caption": "Q3 C History endpoint restricted to the owner and the authorized reviewer"
+  },
+  {
+    "folder": "06-Q3C-history-privacy",
+    "file": "03-other-owner-and-sensitive-field.png",
+    "caption": "Q3 C Role 1 cannot access another owner's record by changing IDs; the contact number is protected"
+  },
+  {
+    "folder": "06-Q3C-history-privacy",
+    "file": "04-failed-transition-unchanged.png",
+    "caption": "Q3 C A failed transition leaves the record and history unchanged"
+  },
+  {
+    "folder": "07-Q3D-errors-and-tests",
+    "file": "01-invalid-payloads-and-ids.png",
+    "caption": "Q3 D Invalid payloads and non-existent IDs get clear, safe errors"
+  },
+  {
+    "folder": "07-Q3D-errors-and-tests",
+    "file": "02-database-stopped-503.png",
+    "caption": "Q3 D Database stopped: the API answers 503 and nothing is saved (no false success)"
+  },
+  {
+    "folder": "07-Q3D-errors-and-tests",
+    "file": "03-automated-tests-1.png",
+    "caption": "Q3 D Automated tests (node:test): Q1 and Q2"
+  },
+  {
+    "folder": "07-Q3D-errors-and-tests",
+    "file": "04-automated-tests-2.png",
+    "caption": "Q3 D Automated tests (node:test): Q3, including concurrency and authorization cases"
+  },
+  {
+    "folder": "08-database",
+    "file": "01-schema-indexes.png",
+    "caption": "Database schema: collections and indexes (unique owner + normalized title; one history event per version)"
+  },
+  {
+    "folder": "08-database",
+    "file": "02-stored-records.png",
+    "caption": "Stored records in MongoDB (staff_requests)"
+  },
+  {
+    "folder": "08-database",
+    "file": "03-status-changes-and-history.png",
+    "caption": "Status changes and their history events in MongoDB"
+  },
+  {
+    "folder": "08-database",
+    "file": "04-least-privilege-history.png",
+    "caption": "The app's database login can only add and read history (append-only), never edit or delete it"
+  }
+]

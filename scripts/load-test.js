@@ -4,8 +4,8 @@
 // Performance under attack (Week 4, SR-20). Staff screen refreshes (six signed-in staff on the cafe's
 // one Wi-Fi address) are timed alone, then again while attackers from 50 network addresses flood the
 // sign-in, booking and page routes. It uses
-// the real rate limits, a throwaway in-memory database and real HTTP on this computer. As in production,
-// staff with a session and everyone else are served by separate app processes (see deploy/Caddyfile).
+// the real rate limits, a throwaway in-memory database and real HTTP on this computer. Staff with a
+// session and everyone else are served by separate app processes, so a public flood cannot starve staff.
 // Pass: every one of the waiter's requests succeeds, and its 95th-percentile time stays within the
 // target. The Week 4 example target is no more than 10% slower; that is reported as well.
 const fs = require("fs");
@@ -43,7 +43,7 @@ async function main() {
   await ensureIndexes(db);
   await ensureAuditIndexes(db);
 
-  // Both app processes share one set of keys, as they do through deploy/.env in production
+  // Both app processes share one set of keys, as they would through one .env file
   const env = testEnv({ NODE_ENV: "test", TRUST_PROXY: "1" });
   const config = loadConfig(env);
   const app = createApp({ config, db, logger: createLogger(config) });

@@ -2,7 +2,7 @@
 const express = require("express");
 const path = require("path");
 const schemas = require("../lib/schemas");
-const { TABLES, ACTIVE_ORDER_STATUSES, TAX_RATE, DISCOUNT_LIMIT } = require("../lib/domain");
+const { ACTIVE_ORDER_STATUSES } = require("../lib/domain");
 const { AppError } = require("../lib/errors");
 const { can } = require("../lib/permissions");
 const { toCsv } = require("../lib/csv");
@@ -18,7 +18,7 @@ const MAX_VIEW_KEYS = 5000;
 
 function createBusinessRouter({ db, middleware, services, personalLimiter, photoLimit }) {
   const router = express.Router();
-  const { requireAuth, requirePermission, requireStepUp, requireSignature, signatures } = middleware;
+  const { requireAuth, requirePermission, requireStepUp } = middleware;
   // Opening customer records is recorded, but screens refresh every few seconds, so the same view by the
   // same person is written once an hour. Opening many different records still adds up to an alert.
   const viewed = new Map();
@@ -37,7 +37,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     return records;
   }
 
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, risk, publicCache } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
@@ -53,7 +53,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   const numericId = (req) => Number(req.validParams.id);
   const tableNumber = (req) => {
     const no = Number(req.validParams.no);
-    if (!TABLES.some((t) => t.no === no)) throw new AppError(404, "not_found", "Table not found.");
+    if (!settings.hasTable(no)) throw new AppError(404, "not_found", "Table not found.");
     return no;
   };
 
@@ -135,7 +135,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
   }));
   router.get("/bills/:no/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.billNo), wrap(async (req, res) => res.json({ phone: await billing.revealPhone(req, req.validParams.no) })));
   // Money leaves the business, so the manager confirms an authenticator code first
-  router.post("/bills/:no/refund", ...allow("billing.refund"), requireStepUp, requireSignature, params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
+  router.post("/bills/:no/refund", ...allow("billing.refund"), requireStepUp, params(schemas.params.billNo), validate(schemas.refund), wrap(async (req, res) => {
     const outcome = await idempotentTransaction(db, req, (session) => billing.refund(req, req.validParams.no, req.body.reason, session));
     if (outcome.status === 200) await billing.reversePayment(req, req.validParams.no);
     res.status(outcome.status).json(outcome.body);
@@ -143,12 +143,12 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
 
   // ---------- Approvals: the deciding person confirms an authenticator code first ----------
   router.get("/approvals", ...allow("approvals.read"), wrap(async (req, res) => res.json({ approvals: await approvals.listFor(req.auth.user.role) })));
-  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, requireSignature, params(schemas.params.approvalId), wrap(async (req, res) => {
+  router.post("/approvals/:id/approve", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
     const result = await inTransaction(db, (session) => approvals.approve(req, req.validParams.id, session));
     if (result && result.refund) await billing.reversePayment(req, result.no);
     res.json(result);
   }));
-  router.post("/approvals/:id/reject", ...allow("approvals.read"), requireStepUp, requireSignature, params(schemas.params.approvalId), wrap(async (req, res) => {
+  router.post("/approvals/:id/reject", ...allow("approvals.read"), requireStepUp, params(schemas.params.approvalId), wrap(async (req, res) => {
     await inTransaction(db, (session) => approvals.reject(req, req.validParams.id, session));
     res.status(204).end();
   }));
@@ -201,7 +201,6 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Audit log reviewed", details: req.body.note, severity: "info" });
     res.status(204).end();
   }));
-  router.get("/audit/signatures/verify", ...allow("audit.read"), personalLimiter("audit-verify", 60), wrap(async (_req, res) => res.json(await signatures.verifyAll())));
   router.get("/audit/public-keys", ...allow("audit.read"), wrap(async (_req, res) => res.json({ keys: publicKeys(db) })));
 
   // ---------- Security alerts and customer data rights ----------
@@ -210,7 +209,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     await alerts.acknowledge(req, req.validParams.id);
     res.status(204).end();
   }));
-  router.post("/customers/erase", ...allow("customer.erase"), requireStepUp, requireSignature, validate(schemas.eraseCustomer), tx((req, session) => customers.erase(req, req.body.phone, session)));
+  router.post("/customers/erase", ...allow("customer.erase"), requireStepUp, validate(schemas.eraseCustomer), tx((req, session) => customers.erase(req, req.body.phone, session)));
   router.get("/audit.csv", ...allow("audit.read"), personalLimiter("export", 10), validate(schemas.auditQuery, "query"), wrap(async (req, res) => {
     const entries = await auditRows(req.validQuery);
     const rows = [["Time", "User", "Role", "Action", "Details", "Severity", "IP"]].concat(entries.map((e) => [e.at.toISOString(), e.actor, e.role, e.action, e.details, e.severity, e.ip]));
@@ -218,23 +217,50 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     res.attachment("audit.csv").type("text/csv").send(toCsv(rows));
   }));
 
-  // ---------- Risk register: WSES, FMEA and the dependency matrix ----------
-  router.get("/risk", ...allow("risk.read"), wrap(async (_req, res) => res.json(risk.get())));
-  router.get("/risk.csv", ...allow("risk.read"), personalLimiter("export", 10), wrap(async (req, res) => {
-    const rows = risk.csvRows();
-    await recordEvent(db, req, { actor: req.auth.user.username, role: req.auth.user.role, action: "Report exported", details: `Risk register CSV · ${rows.length - 1} rows`, severity: "warning" });
-    res.attachment("risk-register.csv").type("text/csv").send(toCsv(rows));
-  }));
 
   // ---------- Cafe details: an allow-list, so no other key can ever be written ----------
   router.put("/settings/cafe", ...allow("settings.write"), validate(schemas.cafeDetails), wrap(async (req, res) => res.json(await cafe.save(req, req.body))));
+
+  // ---------- Operating settings: tables, tax, discount limits and receipt ----------
+  router.get("/settings", ...allow("settings.write"), wrap(async (_req, res) => res.json(settings.get())));
+  router.put("/settings", ...allow("settings.write"), requireStepUp, validate(schemas.operations), wrap(async (req, res) => res.json(await settings.save(req, req.body))));
+
+  // ---------- Staff requests (quiz Q2/Q3). Identity and role come only from the session. ----------
+  router.get("/requests", ...allow("requests.read"), validate(schemas.requestQuery, "query"), wrap(async (req, res) => {
+    res.json(await staffRequests.list(req.auth.user, req.validQuery));
+  }));
+  router.post("/requests", ...allow("requests.submit"), validate(schemas.staffRequest), wrap(async (req, res) => {
+    res.status(201).json(await staffRequests.create(req, req.body));
+  }));
+  router.get("/requests/:id", ...allow("requests.read"), params(schemas.params.requestId), wrap(async (req, res) => {
+    res.json(await staffRequests.get(req.auth.user, req.validParams.id));
+  }));
+  router.get("/requests/:id/history", ...allow("requests.read"), params(schemas.params.requestId), wrap(async (req, res) => {
+    res.json({ history: await staffRequests.history(req.auth.user, req.validParams.id) });
+  }));
+  for (const action of ["claim", "resolve", "reject"]) {
+    router.post(`/requests/:id/${action}`, ...allow("requests.review"), params(schemas.params.requestId),
+      validate(action === "reject" ? schemas.requestReject : schemas.requestTransition),
+      wrap(async (req, res) => res.json(await staffRequests.transition(req, req.validParams.id, action, req.body))));
+  }
+
+  // ---------- Live updates: names of changed areas only; the stream ends with the session ----------
+  router.get("/events", requireAuth, (req, res) => {
+    const { jti } = req.auth.session;
+    const { role } = req.auth.user;
+    events.stream(req, res, async () => {
+      const now = await sessions.load(req);
+      return Boolean(now) && now.session.jti === jti && now.user.role === role;
+    });
+  });
 
   // ---------- Snapshot: one role-filtered read for the screens. Each role gets only its own data. ----------
   router.get("/snapshot", requireAuth, wrap(async (req, res) => {
     const { username, role } = req.auth.user;
     const allowed = (permission) => can(role, permission);
     const snapshot = {
-      constants: { tables: TABLES, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: TAX_RATE, discountLimit: Object.hasOwn(DISCOUNT_LIMIT, role) ? DISCOUNT_LIMIT[role] : 0 }
+      // The receipt text is only for those who print bills
+      constants: { tables: settings.get().tables, activeStatuses: ACTIVE_ORDER_STATUSES, taxRate: settings.taxRate(), discountLimit: settings.discountLimit(role), ...(allowed("billing.read") ? { receipt: settings.get().receipt } : {}) }
     };
     const parts = [];
     // Results are added in this fixed order, not as each query finishes, so identical data gives
