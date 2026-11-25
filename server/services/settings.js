@@ -9,7 +9,8 @@ const { TABLES, TAX_RATE, DISCOUNT_LIMIT } = require("../lib/domain");
 const DOC_ID = "operations";
 const DEFAULTS = Object.freeze({
   taxRatePct: Math.round(TAX_RATE * 100),
-  tables: TABLES.map((t) => ({ no: t.no, seats: t.seats, area: "Main hall" })),
+  // Each table has a place on the floor plan: a cell on a 12 × 8 grid, and a shape
+  tables: TABLES.map((t, i) => ({ no: t.no, seats: t.seats, area: "Main hall", x: (i % 5) * 2 + 1, y: Math.floor(i / 5) * 3 + 1, shape: t.seats > 4 ? "long" : t.seats <= 2 ? "round" : "square" })),
   discountLimits: { ...DISCOUNT_LIMIT },
   receipt: { header: "Thank you for visiting!", footer: "Prices include tax. Please come again." },
   // Menu categories in the order the POS shows them, and the station that prepares each one.
@@ -22,14 +23,24 @@ const DEFAULTS = Object.freeze({
   // A service charge on dine-in bills, and whether a cashier must open a shift before taking money
   serviceChargePct: 0,
   requireShift: false,
+  // Loyalty: points earned per Rs 100 paid, and what one point is worth when spent
+  loyalty: { enabled: true, earnPer100: 1, pointValue: 1 },
+  // Bookings: opening hours, the step between booking times and how long a table is held
+  bookings: { open: "10:00", close: "23:00", slotMinutes: 30, durationMinutes: 90 },
   version: 0
 });
 
+const DEFAULTS_LOYALTY = Object.freeze({ enabled: true, earnPer100: 1, pointValue: 1 });
+const DEFAULTS_BOOKINGS = Object.freeze({ open: "10:00", close: "23:00", slotMinutes: 30, durationMinutes: 90 });
+// Tables saved before the floor plan existed get a place in a simple grid
+const placed = (t, i) => ({ x: (i % 5) * 2 + 1, y: Math.floor(i / 5) * 3 + 1, shape: t.seats > 4 ? "long" : t.seats <= 2 ? "round" : "square", ...t });
 const freeze = (s) => Object.freeze({
   ...s,
-  tables: Object.freeze(s.tables.map((t) => Object.freeze({ ...t }))),
+  tables: Object.freeze(s.tables.map((t, i) => Object.freeze(placed(t, i)))),
   discountLimits: Object.freeze({ ...s.discountLimits }),
   receipt: Object.freeze({ ...s.receipt }),
+  loyalty: Object.freeze({ ...DEFAULTS_LOYALTY, ...(s.loyalty || {}) }),
+  bookings: Object.freeze({ ...DEFAULTS_BOOKINGS, ...(s.bookings || {}) }),
   categories: Object.freeze(s.categories.map((c) => Object.freeze({ ...c }))),
   orderTypes: Object.freeze({ ...s.orderTypes })
 });
@@ -75,10 +86,14 @@ function createSettingsService({ db }) {
     delete next.version;
     const numbers = next.tables.map((t) => t.no);
     if (new Set(numbers).size !== numbers.length) throw new AppError(400, "invalid_input", "Each table needs its own number.");
-    next.tables = [...next.tables].sort((a, b) => a.no - b.no);
+    next.tables = [...next.tables].sort((a, b) => a.no - b.no).map((t, i) => placed(t, i));
+    for (const key of ["loyalty", "bookings"]) if (next[key] === undefined) next[key] = current[key];
     const catNames = next.categories.map((c) => c.name.toLowerCase());
     if (new Set(catNames).size !== catNames.length) throw new AppError(400, "invalid_input", "Each category needs its own name.");
     if (!Object.values(next.orderTypes).some(Boolean)) throw new AppError(400, "invalid_input", "Turn on at least one order type.");
+    if (next.bookings && next.bookings.open >= next.bookings.close) throw new AppError(400, "invalid_input", "Closing time must be after opening time.");
+    const spots = next.tables.map((t) => `${t.area}|${t.x}|${t.y}`);
+    if (new Set(spots).size !== spots.length) throw new AppError(400, "invalid_input", "Two tables are on the same spot of the floor plan. Move one of them.");
     if (next.discountLimits.Cashier > next.discountLimits.Manager) throw new AppError(400, "invalid_input", "A cashier's discount limit cannot be higher than a manager's.");
 
     const saved = await inTransaction(db, async (session) => {

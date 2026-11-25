@@ -10,7 +10,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 
 function createPublicRouter({ config, services }) {
   const router = express.Router();
-  const { catalog, cafe, photos, reservations, publicCache, userService } = services;
+  const { catalog, cafe, photos, reservations, publicCache, userService, guests } = services;
   const REGISTERED = { ok: true, message: "Thank you. An Admin will review your request. You can sign in once it is approved." };
   const bookingLimiter = limiter(60 * 60 * 1000, config.limits.publicBookingsPerHour, "Too many booking requests. Please try again later or call us.");
   // A visitor reads the menu and details once per visit, so this is far below the general API limit
@@ -38,6 +38,19 @@ function createPublicRouter({ config, services }) {
     const { website, ...booking } = req.body;
     if (!website) await reservations.createOnline(req, booking);
     res.status(202).json(ACCEPTED);
+  }));
+
+  // Free booking times for a day and party size, so the website only offers times that can be booked
+  router.get("/availability", publicRoute, validate(schemas.availabilityQuery, "query"), wrap(async (req, res) => {
+    res.json({ times: await reservations.availability(req.validQuery.date, req.validQuery.party) });
+  }));
+
+  // A rating from a guest. A filled-in hidden field marks a bot: it gets the same answer and nothing is saved.
+  const feedbackLimiter = limiter(60 * 60 * 1000, config.limits.publicBookingsPerHour, "Thank you. You have already sent us feedback recently.");
+  router.post("/feedback", publicRoute, feedbackLimiter, validate(schemas.feedback), wrap(async (req, res) => {
+    const { website, ...rating } = req.body;
+    if (!website) await guests.addFeedback(req, rating);
+    res.status(202).json({ ok: true, message: "Thank you for telling us how we did." });
   }));
 
   // Staff self-registration. The account waits as Pending until an Admin approves it and sets the role.

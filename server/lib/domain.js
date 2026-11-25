@@ -14,9 +14,10 @@ const ACTIVE_ORDER_STATUSES = Object.freeze(["Placed", "Preparing", "Ready"]);
 // taxRate and serviceRate come from the settings service; the defaults are those used before settings
 // existed. The service charge (dine-in only) is worked out on the discounted food and drink, and tax
 // on the same amount, so neither is charged on the other.
-function calculateTotals(lines, discountPct = 0, taxRate = TAX_RATE, serviceRate = 0) {
+// fixedDiscount is a rupee amount (from an amount voucher) used instead of a percentage.
+function calculateTotals(lines, discountPct = 0, taxRate = TAX_RATE, serviceRate = 0, fixedDiscount = 0) {
   const sub = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
-  const discount = Math.round((sub * discountPct) / 100);
+  const discount = fixedDiscount ? Math.min(sub, Math.round(fixedDiscount)) : Math.round((sub * discountPct) / 100);
   const service = Math.round((sub - discount) * serviceRate);
   const tax = Math.round((sub - discount) * taxRate);
   return { sub, discount, service, tax, total: sub - discount + service + tax, count: lines.reduce((sum, l) => sum + l.qty, 0) };

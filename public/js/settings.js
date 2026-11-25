@@ -42,7 +42,9 @@
       taxRatePct: number("taxRate"),
       discountLimits: { Cashier: number("limitCashier"), Manager: number("limitManager") },
       receipt: { header: el("receiptHeader").value, footer: el("receiptFooter").value },
-      tables: draft.tables.map(function (t) { return { no: Number(t.no), seats: Number(t.seats), area: String(t.area || "").trim() }; }),
+      tables: draft.tables.map(function (t) { return { no: Number(t.no), seats: Number(t.seats), area: String(t.area || "").trim(), x: t.x, y: t.y, shape: t.shape || "square" }; }),
+      loyalty: { enabled: el("loyaltyOn").checked, earnPer100: number("earnPer100"), pointValue: number("pointValue") },
+      bookings: { open: el("bookOpen").value, close: el("bookClose").value, slotMinutes: number("bookSlot"), durationMinutes: number("bookLength") },
       categories: draft.categories.map(function (c) { return { name: String(c.name || "").trim(), station: c.station }; }),
       orderTypes: { dineIn: el("typeDineIn").checked, takeaway: el("typeTakeaway").checked, delivery: el("typeDelivery").checked },
       serviceChargePct: number("serviceCharge"),
@@ -69,12 +71,19 @@
         const box = h("input", Object.assign({ class: "input input-sm", "aria-label": key + " for row " + (i + 1) }, attrs));
         box.value = t[key];
         box.addEventListener("input", function () { t[key] = box.value; markDirty(); });
+        if (key === "area" || key === "no") box.addEventListener("change", renderFloorEditor);
         return box;
       };
       body.appendChild(h("tr", null, [
         h("td", null, [input("no", { type: "number", min: "1", max: "999", inputmode: "numeric" })]),
         h("td", null, [input("seats", { type: "number", min: "1", max: "20", inputmode: "numeric" })]),
         h("td", null, [input("area", { type: "text", maxlength: "30", list: "areaList" })]),
+        h("td", null, [(function () {
+          const s = h("select", { class: "select input-sm", "aria-label": "Shape for row " + (i + 1) }, [["square", "Square"], ["round", "Round"], ["long", "Long (2 cells)"]].map(function (o) { return h("option", { value: o[0], text: o[1] }); }));
+          s.value = t.shape || "square";
+          s.addEventListener("change", function () { t.shape = s.value; markDirty(); renderFloorEditor(); });
+          return s;
+        })()]),
         h("td", { class: "actions" }, [h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", "aria-label": "Remove table " + t.no, onclick: function () {
           draft.tables.splice(i, 1);
           renderTables();
@@ -87,6 +96,21 @@
     if (!list) { list = h("datalist", { id: "areaList" }); document.body.appendChild(list); }
     list.replaceChildren();
     Array.from(new Set(draft.tables.map(function (t) { return t.area; }).filter(Boolean))).forEach(function (a) { list.appendChild(h("option", { value: a })); });
+  }
+
+  // The first empty cell in an area, for a newly added table
+  function firstFree(area) {
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 12; x++) {
+      if (!draft.tables.some(function (t) { return t.area === area && t.y === y && x >= t.x && x < t.x + (t.shape === "long" ? 2 : 1); })) return [x, y];
+    }
+    return [0, 0];
+  }
+
+  let floorArea = null;
+  function renderFloorEditor() {
+    const tables = draft.tables.map(function (t) { return Object.assign(t, { no: Number(t.no), seats: Number(t.seats) }); });
+    floorArea = FloorPlan.areaTabs(el("floorEditAreas"), tables, floorArea, function (a) { floorArea = a; renderFloorEditor(); });
+    FloorPlan.render(el("floorEdit"), tables, { area: floorArea, editable: true, onMove: function (t, x, y) { t.x = x; t.y = y; markDirty(); renderFloorEditor(); } });
   }
 
   function renderCategories() {
@@ -117,13 +141,14 @@
     const rows = el("categoryRows").querySelectorAll("tr");
     rows[rows.length - 1].querySelector("input").focus();
   });
-  ["typeDineIn", "typeTakeaway", "typeDelivery", "requireShift"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
+  ["typeDineIn", "typeTakeaway", "typeDelivery", "requireShift", "loyaltyOn", "bookSlot"].forEach(function (id) { el(id).addEventListener("change", markDirty); });
+  ["earnPer100", "pointValue", "bookOpen", "bookClose", "bookLength"].forEach(function (id) { el(id).addEventListener("input", markDirty); });
   el("serviceCharge").addEventListener("input", markDirty);
 
   el("addTable").addEventListener("click", function () {
     const next = draft.tables.reduce(function (m, t) { return Math.max(m, Number(t.no) || 0); }, 0) + 1;
     const lastArea = draft.tables.length ? draft.tables[draft.tables.length - 1].area : "Main hall";
-    draft.tables.push({ no: next, seats: 4, area: lastArea });
+    draft.tables.push({ no: next, seats: 4, area: lastArea, shape: "square", x: firstFree(lastArea)[0], y: firstFree(lastArea)[1] });
     renderTables();
     markDirty();
     const rows = el("tableRows").querySelectorAll("tr");
@@ -138,7 +163,12 @@
     el("receiptHeader").value = draft.receipt.header;
     el("receiptFooter").value = draft.receipt.footer;
     renderTables();
+    renderFloorEditor();
     renderCategories();
+    const loyalty = draft.loyalty || { enabled: true, earnPer100: 1, pointValue: 1 };
+    const bookings = draft.bookings || { open: "10:00", close: "23:00", slotMinutes: 30, durationMinutes: 90 };
+    el("loyaltyOn").checked = loyalty.enabled; el("earnPer100").value = loyalty.earnPer100; el("pointValue").value = loyalty.pointValue;
+    el("bookOpen").value = bookings.open; el("bookClose").value = bookings.close; el("bookSlot").value = String(bookings.slotMinutes); el("bookLength").value = bookings.durationMinutes;
     el("typeDineIn").checked = draft.orderTypes.dineIn;
     el("typeTakeaway").checked = draft.orderTypes.takeaway;
     el("typeDelivery").checked = draft.orderTypes.delivery;

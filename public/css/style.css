@@ -1197,3 +1197,25 @@ body[data-page="kitchen"] .avatar { background: var(--accent-50); color: var(--a
 @media (max-width: 640px) { .po-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .text-danger { color: var(--danger); }
 .margin-low { color: var(--danger); font-weight: 600; }
+
+/* ---------- Guests: rating stars, waitlist, floor plan ---------- */
+.stars { border: 0; padding: 0; margin: 0 0 14px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.stars legend { width: 100%; margin-bottom: 6px; }
+.star { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); font-size: 1.4rem; line-height: 1; color: var(--line-2); cursor: pointer; }
+.star.on { color: #f59e0b; border-color: #fcd34d; background: #fffbeb; }
+.rating { color: #f59e0b; letter-spacing: 1px; white-space: nowrap; }
+.member-box { display: grid; gap: 8px; }
+.member-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--accent-50); }
+.member-card b { display: block; }
+.member-card small { color: var(--muted); }
+.member-card .points { margin-left: auto; text-align: right; font-weight: 700; color: var(--accent-600); }
+.floor-areas { margin-bottom: 12px; }
+.floor-plan { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(8, 64px); gap: 6px; padding: 10px; border: 1px dashed var(--line-2); border-radius: var(--radius); background: repeating-linear-gradient(0deg, transparent, transparent 69px, var(--surface-2) 69px, var(--surface-2) 70px); }
+.floor-plan .tbl { margin: 0; padding: 6px 4px; display: grid; place-content: center; }
+.floor-plan .tbl.shape-round { border-radius: 50%; }
+.floor-plan .tbl.shape-long { grid-column-end: span 2; }
+.floor-plan.editing .tbl { cursor: grab; touch-action: none; }
+.floor-plan.editing .tbl.dragging { opacity: .6; cursor: grabbing; box-shadow: var(--shadow-lg); }
+.floor-plan .drop-cell { border-radius: var(--radius-sm); }
+.floor-plan .drop-cell.over { background: var(--accent-50); outline: 2px dashed var(--accent-300); }
+@media (max-width: 760px) { .floor-plan { grid-template-rows: repeat(8, 46px); gap: 4px; padding: 6px; } .floor-plan .tbl small { display: none; } }

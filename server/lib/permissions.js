@@ -25,6 +25,13 @@ const PERMISSIONS = Object.freeze({
   "inventory.write": ["Manager"],
   // Spoiled or dropped stock is logged by whoever threw it away
   "waste.write": ["Kitchen", "Barista", "Manager"],
+  // Guests: look up and enrol loyalty members where the guest is; managers see the list and vouchers
+  "customers.lookup": ["Waiter", "Cashier", "Manager", "Admin"],
+  "customers.enrol": ["Waiter", "Cashier", "Manager"],
+  "customers.read": ["Manager", "Admin"],
+  "vouchers.manage": ["Manager", "Admin"],
+  "waitlist.write": ["Waiter", "Cashier", "Manager"],
+  "feedback.read": ["Manager", "Admin"],
   "reports.read": ["Manager", "Admin"],
   "menu.write": ["Admin"],
   "users.manage": ["Admin"],
@@ -51,6 +58,7 @@ const PAGES = Object.freeze({
   "/menu.html": ["Admin"],
   "/users.html": ["Admin"],
   "/settings.html": ["Admin"],
+  "/guests.html": ["Manager", "Admin"],
   "/audit.html": ["Admin"],
   "/security.html": ["Admin"],
   "/requests.html": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager"],

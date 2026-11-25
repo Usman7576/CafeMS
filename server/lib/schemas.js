@@ -37,6 +37,9 @@ module.exports = {
     billNo: z.object({ no: z.string().regex(/^B-\d{1,12}$/) }).strict(),
     reservationId: z.object({ id: z.string().regex(/^R-\d{1,12}$/) }).strict(),
     shiftId: z.object({ id: z.string().regex(/^S-\d{1,12}$/) }).strict(),
+    waitId: z.object({ id: z.string().regex(/^WL-\d{1,12}$/) }).strict(),
+    customerId: z.object({ id: z.string().regex(/^CU-\d{1,9}$/) }).strict(),
+    voucherCode: z.object({ code: z.string().regex(/^[A-Z0-9-]{3,20}$/) }).strict(),
     supplierId: z.object({ id: z.string().regex(/^SUP-\d{1,9}$/) }).strict(),
     purchaseId: z.object({ id: z.string().regex(/^PO-\d{1,12}$/) }).strict(),
     requestId: z.object({ id: z.string().regex(/^SR-\d{1,12}$/) }).strict(),
@@ -66,12 +69,48 @@ module.exports = {
   kitchenStatus: z.object({ status: z.enum(["Preparing", "Ready"]) }).strict(),
   pay: z.object({
     discountPct: z.number().int().min(0).max(100).optional().default(0),
-    method: z.enum(["Cash", "Card", "Wallet"], "!Choose a payment method."),
+    method: z.enum(["Cash", "Card", "Wallet", "Points"], "!Choose a payment method."),
     tendered: z.number().int().min(0).max(100000000).optional(),
     phone: z.union([z.literal(""), mobile]).optional().default(""),
+    // A loyalty member found by their number earns points on this payment, or pays with points
+    customerId: z.string().regex(/^CU-\d{1,9}$/).optional(),
+    voucher: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,20}$/, "!Enter a valid voucher code.").optional(),
     // Part of the check, for a split bill or a mixed payment; the rest by default
     amount: z.number("!Enter the amount to pay now.").int("!Enter a whole number of rupees.").min(1, "!Enter the amount to pay now.").max(100000000).optional(),
     tip: z.number("!A tip must be a whole number of rupees.").int("!A tip must be a whole number of rupees.").min(0, "!A tip cannot be negative.").max(100000, "!A tip can be at most Rs 100,000.").optional().default(0)
+  }).strict(),
+  customer: z.object({
+    name: text(60, "!The name must be 2-60 characters.").min(2, "!The name must be 2-60 characters.").transform(noControl),
+    phone: mobile
+  }).strict(),
+  customerLookup: z.object({ phone: mobile }).strict(),
+  voucher: z.object({
+    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,20}$/, "!A code is 3-20 letters, numbers or dashes."),
+    kind: z.enum(["percent", "amount"], "!Choose percent or amount."),
+    value: z.number("!Enter the discount.").int("!Enter a whole number.").min(1, "!Enter the discount.").max(100000),
+    minSpend: z.number().int().min(0).max(1000000).optional().default(0),
+    expiresOn: z.union([z.literal(""), isoDate("!Choose a valid expiry date.")]).optional().default(""),
+    maxUses: z.number().int().min(1).max(100000).optional(),
+    active: z.boolean().optional().default(true)
+  }).strict().refine((v) => v.kind !== "percent" || v.value <= 100, { message: "!A percent voucher can be at most 100%.", path: ["value"] }),
+  voucherActive: z.object({ active: z.boolean() }).strict(),
+  waitlistEntry: z.object({
+    name: text(40, "!The name must be 2-40 characters.").min(2, "!The name must be 2-40 characters.").transform(noControl),
+    party: z.number().int().min(1, "!Party size is 1 to 20.").max(20, "!Party size is 1 to 20."),
+    phone: z.union([z.literal(""), mobile]).optional().default(""),
+    quotedMinutes: z.number().int().min(0).max(240).optional().default(15)
+  }).strict(),
+  waitlistSeat: z.object({ table: z.number().int().min(1).max(999).optional() }).strict(),
+  feedback: z.object({
+    rating: z.number("!Choose 1 to 5 stars.").int("!Choose 1 to 5 stars.").min(1, "!Choose 1 to 5 stars.").max(5, "!Choose 1 to 5 stars."),
+    comment: text(300, "!Comments must be 300 characters or fewer.").transform(noControl).optional().default(""),
+    name: text(40, "!Your name must be 40 characters or fewer.").transform(noControl).optional().default(""),
+    bill: z.union([z.literal(""), z.string().trim().toUpperCase().regex(/^B-\d{1,12}$/, "!Enter the receipt number as it is printed, like B-5001.")]).optional().default(""),
+    website: z.string().max(200).optional().default("")
+  }).strict(),
+  availabilityQuery: z.object({
+    date: isoDate("!Choose a valid date."),
+    party: z.string().regex(/^\d{1,2}$/).transform(Number).pipe(z.number().int().min(1).max(20))
   }).strict(),
   openShift: z.object({ float: z.number("!Enter the cash in the drawer.").int("!Enter a whole number of rupees.").min(0, "!The float cannot be negative.").max(10000000, "!That float is too large.") }).strict(),
   cashMovement: z.object({
@@ -183,7 +222,7 @@ module.exports = {
     notes: text(160, "!Notes must be 160 characters or fewer.").transform(noControl).optional().default(""),
     website: z.string().max(200).optional().default("")
   }).strict(),
-  reservationStatus: z.object({ status: z.enum(["Requested", "Confirmed", "Seated", "Completed", "Cancelled"]) }).strict(),
+  reservationStatus: z.object({ status: z.enum(["Requested", "Confirmed", "Seated", "Completed", "Cancelled"]), table: z.number().int().min(1).max(999).optional() }).strict(),
   reservationSearch: z.object({ phone: mobile }).strict(),
   reservationQuery: z.object({
     date: isoDate().optional(),
@@ -243,7 +282,10 @@ module.exports = {
     tables: z.array(z.object({
       no: z.number().int().min(1, "!Table numbers run from 1 to 999.").max(999, "!Table numbers run from 1 to 999."),
       seats: z.number().int().min(1, "!A table seats 1 to 20 people.").max(20, "!A table seats 1 to 20 people."),
-      area: text(30, "!An area name must be 30 characters or fewer.").min(1, "!Give each table an area.").transform(noControl)
+      area: text(30, "!An area name must be 30 characters or fewer.").min(1, "!Give each table an area.").transform(noControl),
+      x: z.number().int().min(0).max(11).optional(),
+      y: z.number().int().min(0).max(7).optional(),
+      shape: z.enum(["square", "round", "long"]).optional()
     }).strict()).min(1, "!The cafe needs at least one table.").max(100, "!Up to 100 tables are supported."),
     discountLimits: z.object({
       Cashier: z.number().int().min(0, "!Discount limits run from 0 to 100%.").max(100, "!Discount limits run from 0 to 100%."),
@@ -259,6 +301,17 @@ module.exports = {
     }).strict()).min(1, "!Keep at least one category.").max(30, "!Up to 30 categories are supported."),
     orderTypes: z.object({ dineIn: z.boolean(), takeaway: z.boolean(), delivery: z.boolean() }).strict(),
     serviceChargePct: z.number().min(0, "!The service charge must be between 0 and 20%.").max(20, "!The service charge must be between 0 and 20%.").multipleOf(0.5, "!The service charge can use steps of 0.5%.").optional().default(0),
-    requireShift: z.boolean().optional().default(false)
+    requireShift: z.boolean().optional().default(false),
+    loyalty: z.object({
+      enabled: z.boolean(),
+      earnPer100: z.number().int("!Points per Rs 100 must be a whole number.").min(0).max(20, "!Points per Rs 100 can be at most 20."),
+      pointValue: z.number().min(0.1, "!A point must be worth Rs 0.10 to Rs 10.").max(10, "!A point must be worth Rs 0.10 to Rs 10.")
+    }).strict().optional(),
+    bookings: z.object({
+      open: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "!Enter the opening time as HH:MM."),
+      close: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "!Enter the closing time as HH:MM."),
+      slotMinutes: z.number().int().refine((n) => [15, 30, 60].includes(n), "!Booking times can be every 15, 30 or 60 minutes."),
+      durationMinutes: z.number().int().min(30, "!A booking holds a table for 30 to 240 minutes.").max(240, "!A booking holds a table for 30 to 240 minutes.")
+    }).strict().optional()
   }).strict()
 };

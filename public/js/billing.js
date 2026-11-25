@@ -11,8 +11,10 @@
   let selected = null, discount = 0, method = "Cash", tendered = "", phone = "", query = "", billSignature = "";
   // How much to pay now: the rest, an equal share, chosen items, or a typed amount
   let mode = "full", splitN = 2, customAmount = "", picks = {}, tipPct = 0, tipCustom = "";
+  // A loyalty member found by their number, and a voucher code for the first payment
+  let member = null, memberPhone = "", voucher = "";
 
-  function resetPayment() { discount = 0; tendered = ""; phone = ""; mode = "full"; splitN = 2; customAmount = ""; picks = {}; tipPct = 0; tipCustom = ""; }
+  function resetPayment() { discount = 0; tendered = ""; phone = ""; mode = "full"; splitN = 2; customAmount = ""; picks = {}; tipPct = 0; tipCustom = ""; member = null; memberPhone = ""; voucher = ""; if (method === "Points") method = "Cash"; }
 
   App.ready(function () {
     const m = /^#(t\d+|ORD-\d+)$/.exec(location.hash);
@@ -166,10 +168,10 @@
     })()]) : null;
 
     // Payment method
-    const methods = [["Cash", "cash"], ["Card", "card"], ["Wallet", "wallet"]];
+    const methods = [["Cash", "cash"], ["Card", "card"], ["Wallet", "wallet"]].concat(member && member.worth > 0 ? [["Points", "key"]] : []);
     const methodRow = h("div", { class: "seg", role: "radiogroup", "aria-label": "Payment method" }, methods.map(function (m) {
-      return h("button", { type: "button", role: "radio", class: "seg-btn", "aria-checked": String(m[0] === method), icon: m[1], iconSize: 15, text: m[0] === "Wallet" ? "Mobile wallet" : m[0],
-        onclick: function () { method = m[0]; renderBill(); } });
+      return h("button", { type: "button", role: "radio", class: "seg-btn", "aria-checked": String(m[0] === method), icon: m[1], iconSize: 15, text: m[0] === "Wallet" ? "Mobile wallet" : m[0] === "Points" ? "Points (" + CMS.money(member.worth) + ")" : m[0],
+        onclick: function () { method = m[0]; if (method === "Points") { tipPct = 0; tipCustom = ""; } renderBill(); } });
     }));
 
     const canPay = tab.allServed && amount >= 1;
@@ -198,6 +200,9 @@
         change
       ]);
       setTimeout(updateChange, 0);
+    } else if (method === "Points") {
+      payExtra = h("div", { class: "gateway-note", icon: "key", iconSize: 18 }, [h("span", null, [h("b", { text: member.name + " pays with points. " }), "Up to " + CMS.money(member.worth) + " (" + member.points + " points). Points cannot pay a tip."])]);
+      if (amount > member.worth || tip) payBtn.disabled = true;
     } else {
       payExtra = h("div", { class: "gateway-note", icon: "shield", iconSize: 18 }, [h("span", null, [
         h("b", { text: method === "Card" ? "Card payment via secure gateway. " : "Mobile wallet payment via secure gateway. " }),
@@ -227,6 +232,7 @@
         h("div", { class: "pay-now" }, [h("span", { text: "This payment" }), h("b", { text: CMS.money(amount) + (tip ? " + " + CMS.money(tip) + " tip" : "") })])]),
       h("div", { class: "bill-section" }, [h("div", { class: "label" }, ["Tip ", h("span", { class: "opt", text: "Optional · goes to the staff" })]), tipRow, tipInput]),
       h("div", { class: "bill-section" }, [h("div", { class: "label", text: "Payment method" }), methodRow, payExtra]),
+      memberSection(tab),
       h("div", { class: "bill-section" }, [h("label", { class: "label", for: "custPhone" }, ["Customer mobile ", h("span", { class: "opt", text: "Optional · for e-receipt" })]), phoneInput]),
       h("div", { class: "bill-section" }, [
         !tab.allServed ? h("div", { class: "alert alert-warn show", icon: "alert", iconSize: 18 }, [h("span", { text: tab.no ? "Some orders on this table haven't been served yet, so it can't be billed." : "This order is still being prepared. Hand it over when it is ready, then take payment." })]) : null,
@@ -235,6 +241,59 @@
         payBtn
       ])
     );
+  }
+
+  // Loyalty member and voucher. The member is found by the exact number; a voucher applies when
+  // payment starts and replaces the discount buttons.
+  function memberSection(tab) {
+    const box = h("div", { class: "member-box" });
+    if (member) {
+      box.appendChild(h("div", { class: "member-card" }, [h("span", { class: "avatar", text: member.name.split(" ").map(function (p) { return p[0]; }).join("").slice(0, 2).toUpperCase() }),
+        h("div", null, [h("b", { text: member.name }), h("small", { text: member.phone + " · " + member.visits + " visit" + (member.visits === 1 ? "" : "s") })]),
+        h("div", { class: "points" }, [member.points + " pts", h("small", { class: "sub-line", text: "worth " + CMS.money(member.worth) })]),
+        h("button", { type: "button", class: "btn btn-ghost btn-sm icon-only", "aria-label": "Remove member from this payment", onclick: function () { member = null; memberPhone = ""; if (method === "Points") method = "Cash"; renderBill(); } }, [App.I("x", 15)])]));
+    } else {
+      const input = h("input", { class: "input", id: "memberPhone", type: "tel", inputmode: "numeric", maxlength: "13", placeholder: "Member's mobile number", value: memberPhone, autocomplete: "off" });
+      input.addEventListener("input", function () { memberPhone = input.value; });
+      const find = h("button", { type: "button", class: "btn btn-secondary", text: "Find", onclick: function () {
+        const digits = memberPhone.replace(/[\s-]/g, "");
+        if (!/^03\d{9}$/.test(digits)) { CMS.toast("Enter the number as 03XXXXXXXXX.", "err"); return; }
+        CMS.busy(find, async function () {
+          try {
+            member = await Api.call("POST", "/customers/lookup", { phone: digits });
+            memberPhone = digits;
+            renderBill();
+          } catch (e) {
+            if (e.status !== 404) { CMS.toast(e.userMessage || "Could not look up the member.", "err"); return; }
+            const join = await CMS.confirm({ title: "Not a member yet", message: "Add this guest to the loyalty scheme? They earn points on this payment.", okText: "Add member", icon: "users" });
+            if (join) enrol(digits);
+          }
+        });
+      } });
+      box.appendChild(h("div", { class: "input-group" }, [input, find]));
+    }
+    let voucherRow = null;
+    if (!tab.check) {
+      const code = h("input", { class: "input", id: "voucherCode", maxlength: "20", placeholder: "Voucher code", value: voucher, autocomplete: "off" });
+      code.addEventListener("change", function () { voucher = code.value.trim().toUpperCase(); if (voucher) discount = 0; renderBill(); });
+      voucherRow = h("div", null, [code, voucher ? h("p", { class: "muted small", text: "The voucher is checked and applied when you charge. It replaces any discount." }) : null]);
+    }
+    return h("div", { class: "bill-section" }, [h("div", { class: "label" }, ["Loyalty and vouchers ", h("span", { class: "opt", text: "Optional" })]), box, voucherRow]);
+  }
+
+  function enrol(digits) {
+    const name = h("input", { class: "input", maxlength: "60", autocomplete: "off" });
+    CMS.formDialog({
+      id: "enrolModal", icon: "users", title: "Add loyalty member", sub: "Their number " + digits.slice(0, 4) + "-•••••" + digits.slice(-2) + " is stored encrypted.",
+      fields: [CMS.field("Name", name)], okText: "Add member",
+      submit: async function () {
+        member = await Api.call("POST", "/customers", { name: name.value.trim(), phone: digits });
+        memberPhone = digits;
+        renderBill();
+        CMS.toast(member.name + " joined the loyalty scheme", "ok");
+        return true;
+      }
+    });
   }
 
   // A counter order this person took is handed over here once every station has it ready
@@ -290,7 +349,9 @@
     if (!ok) return;
     const btn = document.getElementById("payBtn");
     if (btn) { btn.disabled = true; btn.textContent = method === "Cash" ? "Recording…" : "Waiting for gateway…"; }
-    const opts = { discountPct: tab.check ? 0 : discount, method: method, tendered: tendered, phone: phone, tip: tip };
+    const opts = { discountPct: tab.check || voucher ? 0 : discount, method: method, tendered: tendered, phone: phone, tip: tip };
+    if (member) opts.customerId = member.id;
+    if (voucher && !tab.check) opts.voucher = voucher;
     if (part) opts.amount = amount;
     const bill = await CMS.attempt(function () { return Store.pay(tab, opts); });
     if (!bill) { renderBill(); return; }
@@ -304,7 +365,8 @@
       CMS.toast(bill.status === "Payment Failed" ? bill.no + " was declined. Try again or take another payment method." : "The gateway did not answer, so " + bill.no + " is pending. You can retry it below.", "err");
       return;
     }
-    CMS.toast("Payment recorded · " + bill.no + (done ? "" : " · " + CMS.money(bill.check.remaining) + " left"), "ok");
+    if (member) member = await Api.call("POST", "/customers/lookup", { phone: memberPhone }).catch(function () { return member; });
+    CMS.toast("Payment recorded · " + bill.no + (done ? "" : " · " + CMS.money(bill.check.remaining) + " left") + (bill.pointsEarned ? " · " + bill.pointsEarned + " points earned" : ""), "ok");
     showReceipt(bill);
   }
 

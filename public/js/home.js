@@ -68,7 +68,7 @@
     rName: { label: "Your name", required: true, min: 2, max: 60, format: "personName", collapseSpaces: true },
     rPhone: { label: "Mobile number", required: true, max: 13, format: "mobile" },
     rDate: { label: "Date", required: true, format: "date", notBefore: today, notAfter: function () { return Validate.today(60); }, notAfterMessage: "Online bookings can be made up to 60 days ahead. Please call us for later dates." },
-    rTime: { label: "Time", required: true, format: "time", timeFrom: "10:00", timeTo: "23:00" },
+    rTime: { label: "Time", required: true, requiredMessage: "Choose a time." },
     rParty: { label: "Guests", required: true, number: { min: 1, max: 20 } },
     rNotes: { label: "Notes", max: 160, collapseSpaces: true }
   }, { summary: el("reserveErr") });
@@ -88,12 +88,58 @@
     if (!result) return;
     e.target.reset();
     el("rDate").value = today();
+    loadTimes();
+    ok.textContent = result.message;
+    ok.classList.add("show");
+  });
+
+  // Only times with a free table are offered; the server checks again when the booking arrives
+  async function loadTimes() {
+    const select = el("rTime");
+    const date = el("rDate").value, party = Number(el("rParty").value);
+    if (!date || !(party >= 1 && party <= 20)) return;
+    const result = await Api.call("GET", "/public/availability?date=" + encodeURIComponent(date) + "&party=" + party, undefined, { public: true }).catch(function () { return null; });
+    const keep = select.value;
+    select.replaceChildren();
+    const times = result ? result.times : [];
+    if (!times.length) { select.appendChild(h("option", { value: "", text: "No times left on this day" })); return; }
+    select.appendChild(h("option", { value: "", text: "Choose a time" }));
+    times.forEach(function (t) { select.appendChild(h("option", { value: t.available ? t.time : "", disabled: !t.available, text: t.time + (t.available ? "" : " · full") })); });
+    if (keep && times.some(function (t) { return t.time === keep && t.available; })) select.value = keep;
+  }
+  el("rDate").addEventListener("change", loadTimes);
+  el("rParty").addEventListener("change", loadTimes);
+
+  // Feedback: stars, then an optional comment
+  let rating = 0;
+  const stars = el("stars");
+  [1, 2, 3, 4, 5].forEach(function (n) {
+    stars.appendChild(h("button", { type: "button", class: "star", "aria-label": n + " star" + (n === 1 ? "" : "s"), "aria-pressed": "false", text: "★", onclick: function () {
+      rating = n;
+      stars.querySelectorAll(".star").forEach(function (s, i) { s.classList.toggle("on", i < n); s.setAttribute("aria-pressed", String(i < n)); });
+    } }));
+  });
+  el("feedbackForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const err = el("feedbackErr"), ok = el("feedbackOk");
+    CMS.clearError(err);
+    ok.classList.remove("show");
+    if (!rating) { err.replaceChildren(h("span", { text: "Choose 1 to 5 stars." })); err.classList.add("show"); return; }
+    const body = { rating: rating, comment: el("fComment").value.trim(), name: el("fName").value.trim(), bill: el("fBill").value.trim().toUpperCase(), website: el("fWebsite").value };
+    const result = await CMS.busy(el("feedbackBtn"), function () {
+      return CMS.attempt(function () { return Api.call("POST", "/public/feedback", body, { public: true }); }, err);
+    });
+    if (!result) return;
+    e.target.reset();
+    rating = 0;
+    stars.querySelectorAll(".star").forEach(function (s) { s.classList.remove("on"); s.setAttribute("aria-pressed", "false"); });
     ok.textContent = result.message;
     ok.classList.add("show");
   });
 
   el("rDate").min = today();
   el("rDate").value = today();
+  loadTimes();
   loadInfo();
   loadMenu();
 })();

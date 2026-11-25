@@ -13,9 +13,27 @@
     document.getElementById("reservationForm").addEventListener("reset", function () {
       setTimeout(function () { date.value = today; document.getElementById("partySize").value = "2"; CMS.clearError(document.getElementById("reservationErr")); }, 0);
     });
+    date.addEventListener("change", loadTimes);
+    document.getElementById("partySize").addEventListener("change", loadTimes);
+    loadTimes();
     renderRecent();
     Store.on(renderRecent);
   });
+
+  // Only times with a free table are offered; the server checks again when the booking is saved
+  async function loadTimes() {
+    const select = document.getElementById("reservationTime");
+    const day = document.getElementById("reservationDate").value, party = Number(document.getElementById("partySize").value);
+    if (!day || !(party >= 1 && party <= 20)) return;
+    const result = await Api.call("GET", "/reservations/availability?date=" + encodeURIComponent(day) + "&party=" + party).catch(function () { return null; });
+    const keep = select.value;
+    select.replaceChildren();
+    const times = result ? result.times : [];
+    if (!times.length) { select.appendChild(h("option", { value: "", text: "No times left on this day" })); return; }
+    select.appendChild(h("option", { value: "", text: "Choose a time" }));
+    times.forEach(function (t) { select.appendChild(h("option", { value: t.available ? t.time : "", disabled: !t.available, text: t.time + (t.available ? "" : " · full") })); });
+    if (keep && times.some(function (t) { return t.time === keep && t.available; })) select.value = keep;
+  }
 
   let rules = null;
   function formRules() {
@@ -24,7 +42,7 @@
       guestName: { label: "Guest name", required: true, min: 2, max: 60, format: "personName", collapseSpaces: true },
       guestPhone: { label: "Mobile number", required: true, max: 13, format: "mobile" },
       reservationDate: { label: "Reservation date", required: true, format: "date", notBefore: function () { return Validate.today(0); } },
-      reservationTime: { label: "Reservation time", required: true, format: "time", timeFrom: "10:00", timeTo: "23:00" },
+      reservationTime: { label: "Reservation time", required: true, requiredMessage: "Choose a time." },
       partySize: { label: "Party size", required: true, number: { min: 1, max: 20 } },
       reservationNotes: { label: "Notes", max: 160, collapseSpaces: true }
     }, { summary: document.getElementById("reservationErr") });

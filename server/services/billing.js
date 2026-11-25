@@ -9,7 +9,7 @@ const { withTimeout } = require("./gateway");
 
 const OPEN_FOR_PAYMENT = ["Pending Payment", "Payment Failed"];
 
-function createBillingService({ config, db, orderService, approvals, gateway, logger, settings }) {
+function createBillingService({ config, db, orderService, approvals, gateway, logger, settings, guests }) {
   const bills = db.collection("bills");
   const orders = db.collection("orders");
   const tables = db.collection("tables");
@@ -22,7 +22,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
   // Bills always leave the server masked. Seeing a full number is a separate, logged action.
   const billView = (b) => ({
     no: b._id, table: b.table, type: b.type || "dine-in", label: b.label || `Table ${b.table}`, orderIds: b.orderIds, lines: b.lines, discountPct: b.discountPct, subtotal: b.subtotal, discount: b.discount,
-    service: b.service || 0, tax: b.tax, total: b.total, tip: b.tip || 0, charge: chargeOf(b), checkId: b.checkId || null, part: b.part || 1, share: b.share === undefined ? 1 : b.share, method: b.method, tendered: b.tendered, change: b.change, cashier: b.cashier, createdAt: b.createdAt,
+    service: b.service || 0, tax: b.tax, total: b.total, tip: b.tip || 0, customerId: b.customerId || null, pointsEarned: b.pointsEarned || 0, pointsSpent: b.pointsSpent || 0, voucher: b.voucher || null, charge: chargeOf(b), checkId: b.checkId || null, part: b.part || 1, share: b.share === undefined ? 1 : b.share, method: b.method, tendered: b.tendered, change: b.change, cashier: b.cashier, createdAt: b.createdAt,
     status: b.status, phone: b.phoneMask || "", refund: b.refund || null, refundPending: Boolean(b.refundPending)
   });
 
@@ -114,20 +114,27 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       if (JSON.stringify(check.orderIds) !== JSON.stringify(orderIds)) throw new AppError(409, "check_changed", `The orders on ${label} changed after payment started. Ask a manager to void the extra order.`);
       if (input.discountPct && input.discountPct !== check.discountPct) throw new AppError(409, "discount_locked", `The discount for ${label} was set with the first payment (${check.discountPct}%).`);
     } else {
+      if (input.voucher && input.discountPct) throw new AppError(400, "invalid_input", "Use either a voucher or a discount, not both.");
       const limit = settings.discountLimit(actor.role);
-      if (input.discountPct > limit) {
+      if (!input.voucher && input.discountPct > limit) {
         await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Access denied", details: `Tried a ${input.discountPct}% discount on ${label}`, severity: "warning" });
         throw new AppError(403, "discount_limit", `Your role can apply a discount of up to ${limit}%. Ask a manager for more.`);
       }
       const lines = aggregateLines(open);
-      const totals = calculateTotals(lines, input.discountPct, settings.taxRate(), type === "dine-in" ? settings.serviceRate() : 0);
+      // A voucher was approved when a manager created it, so it is not limited by the cashier's discount limit
+      const sub = calculateTotals(lines).sub;
+      const voucher = input.voucher ? await guests.redeemVoucher(input.voucher, sub, session) : null;
+      const discountPct = voucher ? voucher.discountPct : input.discountPct;
+      const totals = calculateTotals(lines, discountPct, settings.taxRate(), type === "dine-in" ? settings.serviceRate() : 0, voucher ? voucher.fixed : 0);
       check = {
         _id: `C-${await nextSequence(db, "check", 1000, session)}`, ref: checkRef, table: no, type, label, orderIds, lines,
-        discountPct: input.discountPct, subtotal: totals.sub, discount: totals.discount, service: totals.service, tax: totals.tax, total: totals.total,
+        discountPct, voucher: input.voucher || null, subtotal: totals.sub, discount: totals.discount, service: totals.service, tax: totals.tax, total: totals.total,
         allocated: { total: 0, subtotal: 0, discount: 0, service: 0, tax: 0 }, parts: 0, status: "Open", cashier: actor.username, createdAt: new Date()
       };
       await checks.insertOne(check, { session });
-      if (input.discountPct) {
+      if (input.voucher) {
+        await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Voucher used", details: `${check._id} · ${label} · ${input.voucher} (Rs ${check.discount})`, severity: "warning" }, { session });
+      } else if (input.discountPct) {
         await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Discount applied", details: `${check._id} · ${label} · ${input.discountPct}% (Rs ${check.discount})`, severity: input.discountPct > 10 ? "high" : "warning" }, { session });
       }
     }
@@ -136,6 +143,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     const amount = input.amount === undefined ? remaining : input.amount;
     if (amount > remaining) throw new AppError(400, "bad_amount", `Only Rs ${remaining.toLocaleString()} is left to pay on ${label}.`);
     const tip = input.tip || 0;
+    if (input.method === "Points" && (!input.customerId || tip)) throw new AppError(400, "invalid_input", "Find the member first. A tip cannot be paid with points.");
     const charge = amount + tip;
     let tendered = charge;
     if (input.method === "Cash") {
@@ -164,14 +172,17 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       _id: billNo, table: no, type, label, checkId: check._id, part: updated.parts, share: amount / check.total, orderIds, lines: check.lines,
       discountPct: check.discountPct, subtotal: part.subtotal, discount: part.discount, service: part.service, tax: part.tax, total: amount, tip,
       method: input.method, tendered, change: tendered - charge, cashier: actor.username, shiftId: shift ? shift._id : null,
-      createdAt: new Date(), status: input.method === "Cash" ? "Paid" : "Pending Payment"
+      createdAt: new Date(), status: input.method === "Cash" || input.method === "Points" ? "Paid" : "Pending Payment",
+      ...(input.customerId ? { customerId: input.customerId } : {})
     };
+    if (input.method === "Points") bill.pointsSpent = await guests.spend(input.customerId, amount, billNo, session);
     if (input.phone) {
       bill.phoneEnc = encrypt(input.phone, `bill-phone:${billNo}`, config.data);
       bill.phoneIndex = blindIndex(input.phone, config.blindIndexKey);
       bill.phoneMask = maskPhone(input.phone);
     }
     await bills.insertOne(bill, { session });
+    if (bill.status === "Paid") bill.pointsEarned = await guests.earn(bill, session);
     if (last) {
       await orders.updateMany({ _id: { $in: orderIds } }, { $set: { billed: true, billNo } }, { session });
       if (byTable) await tables.updateOne({ _id: no }, { $unset: { billRequestedAt: "" } }, { session });
@@ -218,6 +229,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
         details: `${no} · Rs ${chargeOf(bill)} · ${bill.method}`, severity: status === "Paid" ? "info" : "warning"
       }, { session });
       if (status === "Paid" && bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
+      if (status === "Paid") await guests.earn(updated, session);
       return updated;
     }).then(async (bill) => {
       if (conflict) await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment conflict", details: conflict, severity: "high" });
@@ -278,6 +290,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
         await bills.updateOne({ _id: no }, { $set: { status: "Paid", method, tendered: input.tendered, change: input.tendered - chargeOf(bill), settledAt: new Date(), ...(shift ? { shiftId: shift._id } : {}) } }, { session });
         await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Payment recorded", details: `${no} · Rs ${chargeOf(bill)} · Cash after retry` }, { session });
         if (bill.phoneEnc) await enqueue(db, "receipt", { billNo: no }, session);
+        await guests.earn({ ...bill, method: "Cash" }, session);
       } else {
         await bills.updateOne({ _id: no }, { $set: { status: "Pending Payment", method, tendered: chargeOf(bill), change: 0 } }, { session });
       }
@@ -315,6 +328,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
       { returnDocument: "after", session }
     );
     if (!updated) throw new AppError(409, "already_refunded", `${no} has already been refunded.`);
+    await guests.reverse(updated, session);
     await recordEvent(db, req, { actor: actor.username, role: actor.role, action: "Refund issued", details: `${no} · Rs ${updated.total} · ${reason}`, severity: "high" }, { session });
     return billView(updated);
   }
@@ -347,7 +361,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
   // once per bill. If the gateway cannot do it, a person is alerted to return the money by hand.
   async function reversePayment(req, no) {
     const bill = await bills.findOneAndUpdate(
-      { _id: no, status: "Refunded", method: { $ne: "Cash" }, "refund.reversalStartedAt": null },
+      { _id: no, status: "Refunded", method: { $nin: ["Cash", "Points"] }, "refund.reversalStartedAt": null },
       { $set: { "refund.reversalStartedAt": new Date() } },
       { returnDocument: "after" }
     );
@@ -383,7 +397,7 @@ function createBillingService({ config, db, orderService, approvals, gateway, lo
     const paid = rows.filter((b) => b.status === "Paid");
     const refunded = rows.filter((b) => b.status === "Refunded");
     const byHour = new Array(24).fill(0);
-    const byMethod = { Cash: 0, Card: 0, Wallet: 0 };
+    const byMethod = { Cash: 0, Card: 0, Wallet: 0, Points: 0 };
     // A Map, so a category an Admin names "__proto__" or "constructor" is counted like any other
     const byCat = new Map();
     const items = new Map();

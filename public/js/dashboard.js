@@ -172,18 +172,24 @@
   }
 
   // ----- Floor plan + table actions -----
+  // The floor as laid out in Settings, one area at a time
+  let floorArea = null;
   function renderFloor() {
-    const map = document.getElementById("floorMap");
-    map.replaceChildren();
-    Store.TABLES.forEach(function (t) {
-      const st = Store.tableState(t.no);
-      const btn = h("button", { class: "tbl " + st.state, type: "button", "aria-label": "Table " + t.no + ", " + t.seats + " seats, " + st.label }, [
-        h("b", { text: "T" + t.no }), h("small", { text: t.seats + " seats" }), h("span", { class: "st", text: st.label })
-      ]);
-      if (st.state === "other") btn.disabled = true;
-      else if (st.state === "free") btn.addEventListener("click", function () { location.href = "order.html?table=" + t.no; });
-      else btn.addEventListener("click", function () { tableActions(t, st); });
-      map.appendChild(btn);
+    floorArea = FloorPlan.areaTabs(document.getElementById("floorAreas"), Store.TABLES, floorArea, function (a) { floorArea = a; renderFloor(); });
+    FloorPlan.render(document.getElementById("floorMap"), Store.TABLES, {
+      area: floorArea,
+      decorate: function (btn, t) {
+        const st = Store.tableState(t.no);
+        btn.classList.add(st.state);
+        btn.appendChild(h("span", { class: "st", text: st.label }));
+        btn.setAttribute("aria-label", "Table " + t.no + ", " + t.seats + " seats, " + st.label);
+        if (st.state === "other") btn.disabled = true;
+      },
+      onPick: function (t) {
+        const st = Store.tableState(t.no);
+        if (st.state === "free") location.href = "order.html?table=" + t.no;
+        else if (st.state !== "other") tableActions(t, st);
+      }
     });
   }
   function tableActions(t, st) {

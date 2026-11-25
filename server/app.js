@@ -28,6 +28,7 @@ const { createPublicCache } = require("./services/publicCache");
 const { createEventBus } = require("./services/events");
 const { createShiftService } = require("./services/shifts");
 const { createPurchasingService } = require("./services/purchasing");
+const { createGuestService } = require("./services/guests");
 const { createSettingsService } = require("./services/settings");
 const { createStaffRequestService } = require("./services/staffRequests");
 const { createPublicRouter } = require("./routes/public");
@@ -63,14 +64,15 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const middleware = createAuthMiddleware(config, db, sessions, { userLimiter });
 
   const settings = createSettingsService({ db });
+  const guests = createGuestService({ config, db, settings });
   const catalog = createCatalogService({ db, settings });
   const approvals = createApprovalService({ db });
   const events = createEventBus();
   const shiftService = createShiftService({ db });
   const purchasing = createPurchasingService({ db });
   const orderService = createOrderService({ config, db, catalog, settings });
-  const billing = createBillingService({ config, db, orderService, approvals, gateway, logger, settings });
-  const reservations = createReservationService({ config, db });
+  const billing = createBillingService({ config, db, orderService, approvals, gateway, logger, settings, guests });
+  const reservations = createReservationService({ config, db, settings });
   const userService = createUserService({ config, db, approvals });
   const alerts = createAlertService({ db, logger });
   const customers = createCustomerService({ config, db });
@@ -78,7 +80,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const cafe = createCafeService({ db });
   const publicCache = createPublicCache();
   const staffRequests = createStaffRequestService({ config, db });
-  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing };
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),

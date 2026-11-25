@@ -37,7 +37,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     return records;
   }
 
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing, guests } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
@@ -144,6 +144,25 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     const bill = await billing.settle(req, outcome.body.no);
     res.status(bill.status === "Paid" ? 201 : 202).json({ ...bill, check: outcome.body.check });
   }));
+  // ---------- Guests: loyalty members, vouchers, waitlist and feedback ----------
+  // The number is sent in the body, never in the address, so it does not end up in logs
+  router.post("/customers/lookup", ...allow("customers.lookup"), personalLimiter("member-lookup", 120), validate(schemas.customerLookup), wrap(async (req, res) => res.json(await guests.lookup(req.body.phone))));
+  router.post("/customers", ...allow("customers.enrol"), validate(schemas.customer), wrap(async (req, res) => res.status(201).json(await guests.enrol(req, req.body))));
+  router.get("/customers", ...allow("customers.read"), wrap(async (req, res) => {
+    const list = await guests.list();
+    await recordView(req, "Customer records viewed", "members", `Loyalty members · ${list.length} records`);
+    res.json({ customers: list });
+  }));
+  router.get("/customers/:id/history", ...allow("customers.read"), params(schemas.params.customerId), wrap(async (req, res) => res.json({ history: await guests.history(req.validParams.id) })));
+  router.get("/vouchers", ...allow("vouchers.manage"), wrap(async (_req, res) => res.json({ vouchers: await guests.listVouchers() })));
+  router.post("/vouchers", ...allow("vouchers.manage"), validate(schemas.voucher), wrap(async (req, res) => res.status(201).json(await guests.createVoucher(req, req.body))));
+  router.post("/vouchers/:code/active", ...allow("vouchers.manage"), params(schemas.params.voucherCode), validate(schemas.voucherActive), wrap(async (req, res) => res.json(await guests.setVoucherActive(req, req.validParams.code, req.body.active))));
+  router.get("/waitlist", ...allow("waitlist.write"), wrap(async (_req, res) => res.json({ waitlist: await guests.listWaitlist() })));
+  router.post("/waitlist", ...allow("waitlist.write"), validate(schemas.waitlistEntry), wrap(async (req, res) => res.status(201).json(await guests.addWaiting(req, req.body))));
+  router.post("/waitlist/:id/seat", ...allow("waitlist.write"), params(schemas.params.waitId), validate(schemas.waitlistSeat), wrap(async (req, res) => res.json(await guests.closeWaiting(req, req.validParams.id, "Seated", req.body.table))));
+  router.post("/waitlist/:id/left", ...allow("waitlist.write"), params(schemas.params.waitId), wrap(async (req, res) => res.json(await guests.closeWaiting(req, req.validParams.id, "Left"))));
+  router.get("/feedback", ...allow("feedback.read"), wrap(async (_req, res) => res.json(await guests.listFeedback())));
+
   // ---------- Shifts and the cash drawer ----------
   router.get("/shifts/current", ...allow("shifts.own"), wrap(async (req, res) => res.json({ shift: await shiftService.mine(req) })));
   router.post("/shifts", ...allow("shifts.own"), validate(schemas.openShift), wrap(async (req, res) => res.status(201).json(await shiftService.open(req, req.body.float))));
@@ -205,7 +224,8 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     res.json({ reservations: found });
   }));
   router.post("/reservations/:id/status", ...allow("reservations.write"), params(schemas.params.reservationId), validate(schemas.reservationStatus),
-    tx((req, session) => reservations.setStatus(req, req.validParams.id, req.body.status, session)));
+    tx((req, session) => reservations.setStatus(req, req.validParams.id, req.body.status, session, req.body.table)));
+  router.get("/reservations/availability", ...allow("reservations.write"), validate(schemas.availabilityQuery, "query"), wrap(async (req, res) => res.json({ times: await reservations.availability(req.validQuery.date, req.validQuery.party) })));
   router.get("/reservations/:id/phone", ...allow("customer.phone"), personalLimiter("phone", 30), params(schemas.params.reservationId), wrap(async (req, res) => res.json({ phone: await reservations.revealPhone(req, req.validParams.id) })));
 
   // ---------- Reports and exports: limited and recorded, because bulk export is how insiders take data ----------

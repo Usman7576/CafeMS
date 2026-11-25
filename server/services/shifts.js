@@ -20,7 +20,7 @@ function createShiftService({ db }) {
     const paid = rows.filter((b) => b.status === "Paid");
     const refunded = rows.filter((b) => b.status === "Refunded");
     const charge = (b) => b.total + (b.tip || 0);
-    const byMethod = { Cash: 0, Card: 0, Wallet: 0 };
+    const byMethod = { Cash: 0, Card: 0, Wallet: 0, Points: 0 };
     for (const b of paid.concat(refunded)) byMethod[b.method] += charge(b);
     const sum = (list, f) => list.reduce((s, b) => s + f(b), 0);
     const cashIn = sum(shift.movements.filter((m) => m.type === "in"), (m) => m.amount);

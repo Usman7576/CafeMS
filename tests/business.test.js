@@ -253,14 +253,14 @@ describe("reservations", () => {
     assert.match(await message({ phone: "123" }), /03XXXXXXXXX/);
     assert.match(await message({ date: "2020-01-01" }), /past date/);
     assert.match(await message({ date: "2099-02-31" }), /valid reservation date/);
-    assert.match(await message({ time: "09:00" }), /between 10:00 and 23:00/);
-    assert.match(await message({ time: "23:30" }), /between 10:00 and 23:00/);
+    assert.match(await message({ time: "09:00" }), /between 10:00 and 21:30/);
+    assert.match(await message({ time: "23:30" }), /between 10:00 and 21:30/);
     assert.match(await message({ party: 21 }), /1 to 20/);
     assert.match(await message({ notes: "x".repeat(161) }), /160/);
   });
 
   test("today is allowed", async () => {
-    assert.equal((await post(clients.Waiter, booking({ date: localDate(), time: "22:00", phone: "03001112223" }))).status, 201);
+    assert.equal((await post(clients.Waiter, booking({ date: localDate(), time: "21:30", phone: "03001112223" }))).status, 201);
   });
 
   test("duplicates are refused, even when submitted at the same moment", async () => {

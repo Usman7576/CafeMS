@@ -15,12 +15,14 @@ function createCustomerService({ config, db }) {
     const index = blindIndex(phone, config.blindIndexKey);
     const bills = await db.collection("bills").updateMany({ phoneIndex: index }, eraseBill(), { session });
     const reservations = await db.collection("reservations").updateMany({ phoneIndex: index }, eraseReservation(), { session });
+    // A loyalty member keeps their totals but loses their name and number
+    const members = await db.collection("customers").updateMany({ phoneIndex: index }, { $unset: { nameEnc: "", phoneEnc: "", phoneIndex: "" }, $set: { phoneMask: "", erasedAt: new Date() } }, { session });
     // The record of the erasure holds counts only, never the number that was erased
     await recordEvent(db, req, {
       actor: req.auth.user.username, role: req.auth.user.role, action: "Customer data erased",
-      details: `${bills.modifiedCount} bills, ${reservations.modifiedCount} reservations`, severity: "high"
+      details: `${bills.modifiedCount} bills, ${reservations.modifiedCount} reservations, ${members.modifiedCount} loyalty member`, severity: "high"
     }, { session });
-    return { bills: bills.modifiedCount, reservations: reservations.modifiedCount };
+    return { bills: bills.modifiedCount, reservations: reservations.modifiedCount, members: members.modifiedCount };
   }
 
   return { erase };

@@ -472,7 +472,7 @@ describe("customer data rights", () => {
     assert.equal((await admin.post(ERASE, { phone: PHONE })).body.error.code, "step_up_required");
     await stepUp(admin);
     const res = await admin.post(ERASE, { phone: PHONE });
-    assert.deepEqual(res.body, { bills: 1, reservations: 1 });
+    assert.deepEqual(res.body, { bills: 1, reservations: 1, members: 0 });
 
     const stored = await db.collection("bills").findOne({ _id: bill.no });
     assert.equal(stored.phoneEnc, undefined);

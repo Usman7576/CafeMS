@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log", "customers", "loyalty_ledger", "vouchers", "waitlist", "feedback"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
@@ -60,6 +60,11 @@ async function ensureIndexes(db) {
   await db.collection("purchase_orders").createIndex({ createdAt: -1 });
   await db.collection("stock_counts").createIndex({ at: -1 });
   await db.collection("waste_log").createIndex({ at: -1 });
+  // One member per number; an erased member has no number and no longer counts
+  await db.collection("customers").createIndex({ phoneIndex: 1 }, { unique: true, partialFilterExpression: { phoneIndex: { $exists: true } }, name: "one_member_per_number" });
+  await db.collection("loyalty_ledger").createIndex({ customerId: 1, at: -1 });
+  await db.collection("waitlist").createIndex({ createdAt: -1 });
+  await db.collection("feedback").createIndex({ at: -1 });
   await db.collection("staff_requests").createIndex({ owner: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ status: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ reviewer: 1, createdAt: -1, seq: -1 });

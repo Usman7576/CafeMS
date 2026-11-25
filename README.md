@@ -16,12 +16,12 @@ Every rule is enforced on the server. The browser only shows what the server all
 
 | Who | What they can do |
 | --- | --- |
-| **Customer** | Browse the live menu, see opening hours, request a table online |
-| **Waiter** | Take dine-in, takeaway and delivery orders on the POS (with item options), hold and send them, move them between tables, serve, request the bill, manage reservations |
+| **Customer** | Browse the live menu, see opening hours, book a table at a time that is still free, rate their visit |
+| **Waiter** | Take dine-in, takeaway and delivery orders on the POS (with item options), hold and send them, move them between tables, serve, request the bill, manage reservations and the walk-in waitlist on a real floor plan, enrol loyalty members |
 | **Barista** | Bar display: makes the drinks part of each order |
 | **Kitchen** | Kitchen display: moves the food part of each order from Placed to Preparing to Ready, and logs waste; never sees prices or customer data |
-| **Cashier** | Take counter (takeaway and delivery) orders; bill tables and counter orders with cash, card or wallet, split bills and mixed payments, tips, and discounts up to the limit set in Settings; open and close a shift with a cash drawer count and Z-report |
-| **Manager** | Billing with a higher discount limit; voids and refunds after a fresh authenticator code; every shift's Z-report; stock with suppliers, purchase orders (bought in packs, received with cost), stocktakes and the waste log; reports, reservations |
+| **Cashier** | Take counter (takeaway and delivery) orders; bill tables and counter orders with cash, card or wallet, split bills and mixed payments, tips, loyalty points and vouchers, and discounts up to the limit set in Settings; open and close a shift with a cash drawer count and Z-report |
+| **Manager** | Billing with a higher discount limit; voids and refunds after a fresh authenticator code; every shift's Z-report; stock with suppliers, purchase orders (bought in packs, received with cost), stocktakes and the waste log; loyalty members, vouchers and guest feedback; reports, reservations |
 | **Admin** | Menu, photos and item options, with each dish's ingredient cost and margin; staff and roles; settings (cafe details, tax, discount limits, receipt, tables, categories and their station, order types); audit log, security alerts |
 
 The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.

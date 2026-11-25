@@ -231,6 +231,8 @@
     pay: function (tab, opts) {
       const body = { discountPct: opts.discountPct, method: opts.method, phone: String(opts.phone || "").trim(), tip: Number(opts.tip) || 0 };
       if (opts.amount !== undefined) body.amount = Number(opts.amount);
+      if (opts.customerId) body.customerId = opts.customerId;
+      if (opts.voucher) body.voucher = opts.voucher;
       if (opts.method === "Cash") body.tendered = Number(opts.tendered);
       return changeOnce("POST", tab.no ? "/billing/tables/" + tab.no + "/pay" : "/billing/orders/" + encodeURIComponent(tab.orderId) + "/pay", body);
     },
@@ -243,7 +245,7 @@
     addReservation: function (d) {
       return changeOnce("POST", "/reservations", { name: d.name, phone: d.phone, date: d.date, time: d.time, party: Number(d.party), notes: d.notes });
     },
-    updateReservation: function (id, status) { return change("POST", "/reservations/" + encodeURIComponent(id) + "/status", { status: status }); },
+    updateReservation: function (id, status, table) { return change("POST", "/reservations/" + encodeURIComponent(id) + "/status", table ? { status: status, table: table } : { status: status }); },
     saveMenuItem: function (d) {
       const body = { name: d.name, cat: d.cat, price: d.price, desc: d.desc, available: d.available };
       if (d.options) body.options = d.options;

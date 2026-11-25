@@ -87,13 +87,34 @@
             <div class="field"><label for="rName">Your name</label><input class="input" id="rName" maxlength="60" autocomplete="name" required></div>
             <div class="field"><label for="rPhone">Mobile number</label><input class="input" id="rPhone" type="tel" maxlength="13" autocomplete="tel" placeholder="03XXXXXXXXX" required></div>
             <div class="field"><label for="rDate">Date</label><input class="input" id="rDate" type="date" required></div>
-            <div class="field"><label for="rTime">Time</label><input class="input" id="rTime" type="time" min="10:00" max="23:00" required></div>
+            <div class="field"><label for="rTime">Time</label><select class="select" id="rTime" required><option value="">Choose a date first</option></select></div>
             <div class="field"><label for="rParty">Guests</label><input class="input" id="rParty" type="number" min="1" max="20" value="2" required></div>
             <div class="field"><label for="rNotes">Notes <span class="opt">Optional</span></label><input class="input" id="rNotes" maxlength="160" autocomplete="off"></div>
           </div>
           <div class="hp-field" aria-hidden="true"><label for="rWebsite">Leave this empty</label><input id="rWebsite" tabindex="-1" autocomplete="off"></div>
           <button class="btn btn-primary btn-lg btn-block" id="reserveBtn" type="submit">Request my table</button>
           <p class="field-hint">We use your number only to confirm this booking. See our <a href="privacy.html">privacy notice</a>.</p>
+        </form>
+      </div>
+    </section>
+    <section class="site-section tinted" id="feedback">
+      <div class="container reserve-layout">
+        <header class="section-title">
+          <p class="eyebrow">How did we do?</p>
+          <h2>Tell us about your visit</h2>
+          <p>A few words help us look after you better next time. Your receipt number is optional.</p>
+        </header>
+        <form method="post" class="reserve-card" id="feedbackForm" novalidate>
+          <div class="alert alert-error" id="feedbackErr" role="alert"></div>
+          <div class="alert alert-ok" id="feedbackOk" role="status"></div>
+          <fieldset class="stars" id="stars"><legend class="label">Your rating</legend></fieldset>
+          <div class="field"><label for="fComment">Comments <span class="opt">Optional</span></label><textarea class="textarea" id="fComment" maxlength="300" rows="3"></textarea></div>
+          <div class="reserve-grid">
+            <div class="field"><label for="fName">Name <span class="opt">Optional</span></label><input class="input" id="fName" maxlength="40" autocomplete="name"></div>
+            <div class="field"><label for="fBill">Receipt number <span class="opt">Optional</span></label><input class="input" id="fBill" maxlength="14" placeholder="B-5001" autocomplete="off"></div>
+          </div>
+          <div class="hp-field" aria-hidden="true"><label for="fWebsite">Leave this empty</label><input id="fWebsite" tabindex="-1" autocomplete="off"></div>
+          <button class="btn btn-primary btn-lg btn-block" id="feedbackBtn" type="submit">Send feedback</button>
         </form>
       </div>
     </section>

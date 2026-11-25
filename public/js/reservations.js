@@ -37,7 +37,7 @@
     const body = document.getElementById("reservationBody");
     body.replaceChildren();
     if (!rows.length) {
-      body.appendChild(h("tr", null, [h("td", { colspan: "6" }, [h("div", { class: "empty-state pad-28", text: "No reservations match these filters." })])]));
+      body.appendChild(h("tr", null, [h("td", { colspan: "7" }, [h("div", { class: "empty-state pad-28", text: "No reservations match these filters." })])]));
       return;
     }
     rows.forEach(function (r) {
@@ -46,6 +46,7 @@
         h("td", null, [h("b", { text: r.name }), h("div", { class: "muted small", text: r.phone })]),
         h("td", { class: "nowrap", text: r.date + " · " + r.time }),
         h("td", { text: String(r.party) }),
+        h("td", { text: r.table ? "T" + r.table : "—" }),
         h("td", null, [h("span", { class: "pill " + STATUS_CLASS[r.status], text: r.status })]),
         h("td", { class: "actions" }, [h("button", { class: "btn btn-secondary btn-sm", text: "View", onclick: function () { open(r.id); } })])
       ]));
@@ -63,7 +64,8 @@
       h("div", { class: "field" }, [h("label", { text: "Mobile number" }), h("p", { text: current.phone }), canReveal ? h("button", { class: "btn btn-ghost btn-sm", type: "button", text: "Show full number", onclick: function () { const id = current.id; CMS.showPhone(function () { return Store.reservationPhone(id); }); } }) : null]),
       h("div", { class: "field" }, [h("label", { text: "Created by" }), h("p", { text: current.createdBy })]),
       h("div", { class: "field span-2" }, [h("label", { text: "Notes" }), h("p", { text: current.notes || "No notes provided." })]),
-      h("div", { class: "field span-2" }, [h("label", { for: "detailStatus", text: "Update status" }), h("select", { class: "select", id: "detailStatus", disabled: current.status === "Completed" || current.status === "Cancelled" }, ["Requested", "Confirmed", "Seated", "Completed", "Cancelled"].map(function (s) { return h("option", { value: s, text: s, selected: s === current.status }); }))])
+      h("div", { class: "field" }, [h("label", { for: "detailTable", text: "Table" }), h("select", { class: "select", id: "detailTable", disabled: current.status === "Completed" || current.status === "Cancelled" }, [h("option", { value: "", text: current.table ? "Keep T" + current.table : "Choose for me" })].concat(Store.TABLES.filter(function (t) { return t.seats >= current.party && t.no !== current.table; }).map(function (t) { return h("option", { value: String(t.no), text: "T" + t.no + " · " + t.seats + " seats · " + (t.area || "") }); })))]),
+      h("div", { class: "field" }, [h("label", { for: "detailStatus", text: "Update status" }), h("select", { class: "select", id: "detailStatus", disabled: current.status === "Completed" || current.status === "Cancelled" }, ["Requested", "Confirmed", "Seated", "Completed", "Cancelled"].map(function (s) { return h("option", { value: s, text: s, selected: s === current.status }); }))])
     ]));
     document.getElementById("saveReservationStatus").disabled = current.status === "Completed" || current.status === "Cancelled";
     CMS.openModal("reservationDetail");
@@ -72,8 +74,10 @@
   async function saveStatus(e) {
     if (!current) return;
     const next = document.getElementById("detailStatus").value;
+    const table = Number(document.getElementById("detailTable").value) || undefined;
+    // Moving to another table keeps the status; the server checks the table is free
     const result = await CMS.busy(e.currentTarget, function () {
-      return CMS.attempt(function () { return Store.updateReservation(current.id, next); });
+      return CMS.attempt(function () { return Store.updateReservation(current.id, next, table); });
     });
     if (!result) return;
     CMS.closeModal("reservationDetail");

@@ -6,21 +6,21 @@ const { EventEmitter } = require("events");
 // The first part of an API path names the area it changes
 const TOPIC_OF = Object.freeze({
   orders: "orders", kitchen: "orders", tables: "orders",
-  billing: "bills", bills: "bills", payments: "bills", customers: "bills", shifts: "bills",
+  billing: "bills", bills: "bills", payments: "bills", shifts: "bills",
   inventory: "inventory", suppliers: "inventory", "purchase-orders": "inventory", "stock-counts": "inventory", waste: "inventory",
-  menu: "menu", reservations: "reservations",
+  menu: "menu", reservations: "reservations", customers: "guests", vouchers: "guests", waitlist: "reservations", feedback: "guests",
   users: "users", register: "users", setup: "users", settings: "settings",
   alerts: "alerts", approvals: "approvals", requests: "requests"
 });
 
 // Which areas each role's screens show
 const TOPICS_FOR = Object.freeze({
-  Waiter: ["orders", "menu", "reservations", "settings", "requests"],
+  Waiter: ["orders", "menu", "reservations", "settings", "requests", "guests"],
   Kitchen: ["orders", "menu", "settings", "requests"],
   Barista: ["orders", "menu", "settings", "requests"],
-  Cashier: ["orders", "bills", "menu", "settings", "requests"],
-  Manager: ["orders", "bills", "inventory", "menu", "reservations", "approvals", "settings", "requests"],
-  Admin: ["orders", "bills", "inventory", "menu", "reservations", "users", "settings", "alerts", "approvals"]
+  Cashier: ["orders", "bills", "menu", "settings", "requests", "guests", "reservations"],
+  Manager: ["orders", "bills", "inventory", "menu", "reservations", "approvals", "settings", "requests", "guests"],
+  Admin: ["orders", "bills", "inventory", "menu", "reservations", "users", "settings", "alerts", "approvals", "guests"]
 });
 
 const HEARTBEAT_MS = 25 * 1000;

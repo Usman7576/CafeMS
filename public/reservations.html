@@ -22,11 +22,12 @@
       <div class="kpi"><div class="icon-tile ok"><i data-icon="users"></i></div><div><small>Seated</small><strong id="rSeated">0</strong><div class="sub">Guests on the floor</div></div></div>
       <div class="kpi"><div class="icon-tile"><i data-icon="check-circle"></i></div><div><small>Online requests</small><strong id="rRequested">0</strong><div class="sub">Waiting to be confirmed</div></div></div>
     </section>
+    <section class="panel mb-20" id="waitlistPanel"></section>
     <section class="panel">
       <div class="panel-head">
         <div class="toolbar"><div class="input-wrap w-250"><i data-icon="search" data-size="16"></i><label class="sr-only" for="reservationSearch">Search reservations</label><input class="input input-sm" id="reservationSearch" type="search" maxlength="60" placeholder="Search ID, guest or phone"></div><input class="input input-sm" id="queueDate" type="date" aria-label="Filter by date"><select class="select input-sm" id="queueStatus" aria-label="Filter by status"><option value="all">All statuses</option><option>Requested</option><option>Confirmed</option><option>Seated</option><option>Completed</option><option>Cancelled</option></select></div>
       </div>
-      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Reference</th><th>Guest</th><th>Date &amp; time</th><th>Party</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="reservationBody"></tbody></table></div>
+      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Reference</th><th>Guest</th><th>Date &amp; time</th><th>Party</th><th>Table</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="reservationBody"></tbody></table></div>
     </section>
   </main>
   <div class="modal-backdrop" id="reservationDetail" role="dialog" aria-modal="true" aria-labelledby="reservationDetailTitle">
@@ -38,6 +39,7 @@
   <script src="js/validate.js?v=7.0"></script>
   <script src="js/store.js?v=7.3"></script>
   <script src="js/app.js?v=7.3"></script>
-  <script src="js/reservations.js?v=7.0"></script>
+  <script src="js/reservations.js?v=7.4"></script>
+  <script src="js/waitlist.js?v=7.4"></script>
 </body>
 </html>
