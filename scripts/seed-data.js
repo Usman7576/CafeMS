@@ -1,25 +1,26 @@
 // Starting menu and stock. Quantities are in thousandths of a unit (see lib/domain.js).
-const ingredient = (id, name, unit, qty, reorder, supplier) => ({ _id: id, name, unit, qtyMilli: Math.round(qty * 1000), reorderMilli: Math.round(reorder * 1000), supplier });
+// cost is in rupees per unit
+const ingredient = (id, name, unit, qty, reorder, supplier, cost) => ({ _id: id, name, unit, qtyMilli: Math.round(qty * 1000), reorderMilli: Math.round(reorder * 1000), supplier, costPaisa: Math.round(cost * 100) });
 const r = (ing, qty) => ({ ing, qtyMilli: Math.round(qty * 1000) });
 const item = (id, name, cat, price, desc, recipe) => ({ _id: id, name, cat, price, desc, available: true, recipe });
 
 const INVENTORY = [
-  ingredient(1, "Coffee beans", "kg", 4.2, 2, "Bean Roasters Co."),
-  ingredient(2, "Milk", "L", 18, 8, "Premier Dairy"),
-  ingredient(3, "Sugar", "kg", 6, 2, "Metro Wholesale"),
-  ingredient(4, "Caramel syrup", "L", 0.4, 0.5, "Sweet Supplies"),
-  ingredient(5, "Mango pulp", "kg", 0, 2, "FreshFarm Produce"),
-  ingredient(6, "Tea leaves", "kg", 1.5, 0.5, "Metro Wholesale"),
-  ingredient(7, "Limes", "pcs", 40, 20, "FreshFarm Produce"),
-  ingredient(8, "Chicken breast", "kg", 3.5, 2, "Metro Wholesale"),
-  ingredient(9, "Bread slices", "pcs", 64, 30, "Metro Wholesale"),
-  ingredient(10, "Potatoes", "kg", 9, 5, "FreshFarm Produce"),
-  ingredient(11, "Cheese", "kg", 1.2, 1.5, "Premier Dairy"),
-  ingredient(12, "Chocolate", "kg", 2, 1, "Sweet Supplies"),
-  ingredient(13, "Cream cheese", "kg", 0, 1, "Premier Dairy"),
-  ingredient(14, "Croissant dough", "pcs", 18, 10, "Sweet Supplies"),
-  ingredient(15, "Green tea", "kg", 0.6, 0.3, "Metro Wholesale"),
-  ingredient(16, "Vanilla syrup", "L", 1.1, 0.5, "Sweet Supplies")
+  ingredient(1, "Coffee beans", "kg", 4.2, 2, "Bean Roasters Co.", 6500),
+  ingredient(2, "Milk", "L", 18, 8, "Premier Dairy", 220),
+  ingredient(3, "Sugar", "kg", 6, 2, "Metro Wholesale", 160),
+  ingredient(4, "Caramel syrup", "L", 0.4, 0.5, "Sweet Supplies", 2400),
+  ingredient(5, "Mango pulp", "kg", 0, 2, "FreshFarm Produce", 450),
+  ingredient(6, "Tea leaves", "kg", 1.5, 0.5, "Metro Wholesale", 1800),
+  ingredient(7, "Limes", "pcs", 40, 20, "FreshFarm Produce", 15),
+  ingredient(8, "Chicken breast", "kg", 3.5, 2, "Metro Wholesale", 1100),
+  ingredient(9, "Bread slices", "pcs", 64, 30, "Metro Wholesale", 12),
+  ingredient(10, "Potatoes", "kg", 9, 5, "FreshFarm Produce", 120),
+  ingredient(11, "Cheese", "kg", 1.2, 1.5, "Premier Dairy", 2600),
+  ingredient(12, "Chocolate", "kg", 2, 1, "Sweet Supplies", 3200),
+  ingredient(13, "Cream cheese", "kg", 0, 1, "Premier Dairy", 2800),
+  ingredient(14, "Croissant dough", "pcs", 18, 10, "Sweet Supplies", 70),
+  ingredient(15, "Green tea", "kg", 0.6, 0.3, "Metro Wholesale", 4000),
+  ingredient(16, "Vanilla syrup", "L", 1.1, 0.5, "Sweet Supplies", 2200)
 ];
 
 const MENU = [
@@ -44,6 +45,18 @@ async function seedCatalog(db) {
   if (!(await db.collection("menu").countDocuments())) await db.collection("menu").insertMany(MENU);
   if (!(await db.collection("inventory").countDocuments())) await db.collection("inventory").insertMany(INVENTORY);
   await db.collection("counters").updateOne({ _id: "menu" }, { $max: { value: MENU.length } }, { upsert: true });
+  // Suppliers named on the stock list become supplier records, once
+  if (!(await db.collection("suppliers").countDocuments())) {
+    const names = [...new Set((await db.collection("inventory").find({}, { projection: { supplier: 1 } }).toArray()).map((i) => i.supplier).filter(Boolean))].sort();
+    for (const [i, name] of names.entries()) {
+      const id = `SUP-${i + 1}`;
+      await db.collection("suppliers").insertOne({ _id: id, name, phone: "", email: "", notes: "", active: true, createdAt: new Date() });
+      await db.collection("inventory").updateMany({ supplier: name }, { $set: { supplierId: id } });
+    }
+    await db.collection("counters").updateOne({ _id: "supplier" }, { $max: { value: names.length } }, { upsert: true });
+  }
+  // Starting costs for ingredients that have none yet; costs an Admin or Manager has set are kept
+  for (const ing of INVENTORY) await db.collection("inventory").updateOne({ _id: ing._id, costPaisa: { $exists: false } }, { $set: { costPaisa: ing.costPaisa } });
 }
 
 // Starting photos (free-licence, credited in seed-photos/CREDITS.md). Each is copied into the upload folder

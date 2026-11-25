@@ -23,6 +23,8 @@ const PERMISSIONS = Object.freeze({
   "reservations.write": ["Waiter", "Manager"],
   "inventory.read": ["Manager", "Admin"],
   "inventory.write": ["Manager"],
+  // Spoiled or dropped stock is logged by whoever threw it away
+  "waste.write": ["Kitchen", "Barista", "Manager"],
   "reports.read": ["Manager", "Admin"],
   "menu.write": ["Admin"],
   "users.manage": ["Admin"],

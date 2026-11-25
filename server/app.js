@@ -27,6 +27,7 @@ const { createCafeService } = require("./services/cafe");
 const { createPublicCache } = require("./services/publicCache");
 const { createEventBus } = require("./services/events");
 const { createShiftService } = require("./services/shifts");
+const { createPurchasingService } = require("./services/purchasing");
 const { createSettingsService } = require("./services/settings");
 const { createStaffRequestService } = require("./services/staffRequests");
 const { createPublicRouter } = require("./routes/public");
@@ -66,6 +67,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const approvals = createApprovalService({ db });
   const events = createEventBus();
   const shiftService = createShiftService({ db });
+  const purchasing = createPurchasingService({ db });
   const orderService = createOrderService({ config, db, catalog, settings });
   const billing = createBillingService({ config, db, orderService, approvals, gateway, logger, settings });
   const reservations = createReservationService({ config, db });
@@ -76,7 +78,7 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
   const cafe = createCafeService({ db });
   const publicCache = createPublicCache();
   const staffRequests = createStaffRequestService({ config, db });
-  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService };
+  const services = { catalog, approvals, orderService, billing, reservations, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing };
 
   approvals.register("refund", {
     approve: (req, approval, session) => billing.applyRefund(req, approval.payload.no, approval.payload.reason, approval.requestedBy, session),

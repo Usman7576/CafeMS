@@ -37,7 +37,7 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
     return records;
   }
 
-  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService } = services;
+  const { catalog, orderService, billing, reservations, approvals, userService, alerts, customers, photos, cafe, publicCache, staffRequests, settings, events, sessions, shiftService, purchasing } = services;
   // Any successful staff change clears the public website's short cache, so an edit shows at once
   router.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") res.on("finish", () => { if (res.statusCode < 400) publicCache.clear(); });
@@ -88,6 +88,23 @@ function createBusinessRouter({ db, middleware, services, personalLimiter, photo
 
   // ---------- Inventory ----------
   router.get("/inventory", ...allow("inventory.read"), wrap(async (_req, res) => res.json({ items: await catalog.listInventory() })));
+  router.post("/inventory", ...allow("inventory.write"), validate(schemas.ingredient), wrap(async (req, res) => res.status(201).json(await purchasing.addIngredient(req, req.body))));
+  router.put("/inventory/:id", ...allow("inventory.write"), params(schemas.params.numericId), validate(schemas.ingredientDetails), wrap(async (req, res) => res.json(await purchasing.updateIngredient(req, numericId(req), req.body))));
+
+  // ---------- Suppliers, purchase orders, stocktakes and waste ----------
+  router.get("/suppliers", ...allow("inventory.read"), wrap(async (_req, res) => res.json({ suppliers: await purchasing.listSuppliers() })));
+  router.post("/suppliers", ...allow("inventory.write"), validate(schemas.supplier), wrap(async (req, res) => res.status(201).json(await purchasing.saveSupplier(req, null, req.body))));
+  router.put("/suppliers/:id", ...allow("inventory.write"), params(schemas.params.supplierId), validate(schemas.supplier), wrap(async (req, res) => res.json(await purchasing.saveSupplier(req, req.validParams.id, req.body))));
+  router.get("/purchase-orders", ...allow("inventory.read"), wrap(async (_req, res) => res.json({ orders: await purchasing.listOrders() })));
+  router.post("/purchase-orders", ...allow("inventory.write"), validate(schemas.purchaseOrder), wrap(async (req, res) => res.status(201).json(await purchasing.createOrder(req, req.body))));
+  router.post("/purchase-orders/:id/receive", ...allow("inventory.write"), params(schemas.params.purchaseId), validate(schemas.receiveOrder), wrap(async (req, res) => res.json(await purchasing.receiveOrder(req, req.validParams.id, req.body))));
+  router.post("/purchase-orders/:id/cancel", ...allow("inventory.write"), params(schemas.params.purchaseId), wrap(async (req, res) => res.json(await purchasing.cancelOrder(req, req.validParams.id))));
+  router.get("/stock-counts", ...allow("inventory.read"), wrap(async (_req, res) => res.json({ counts: await purchasing.listCounts() })));
+  router.post("/stock-counts", ...allow("inventory.write"), validate(schemas.stocktake), wrap(async (req, res) => res.status(201).json(await purchasing.stocktake(req, req.body))));
+  router.get("/waste", ...allow("inventory.read"), validate(schemas.salesQuery, "query"), wrap(async (req, res) => res.json({ waste: await purchasing.listWaste(req.validQuery.date) })));
+  // The kitchen and bar see only names and units, never costs or suppliers
+  router.get("/waste/choices", ...allow("waste.write"), wrap(async (_req, res) => res.json({ items: await purchasing.wasteChoices() })));
+  router.post("/waste", ...allow("waste.write"), validate(schemas.waste), wrap(async (req, res) => res.status(201).json(await purchasing.logWaste(req, req.body))));
   router.post("/inventory/:id/adjust", ...allow("inventory.write"), params(schemas.params.numericId), validate(schemas.stockAdjustment),
     tx((req, session) => catalog.adjustStock(req, numericId(req), req.body.delta, req.body.reason, session)));
 

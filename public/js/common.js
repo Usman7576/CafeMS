@@ -274,6 +274,39 @@
     }
   });
 
+  // ---------- A small form in a modal, rebuilt each time it opens ----------
+  // fields are elements; submit runs the save and returns a truthy value when it worked, which closes
+  // the modal. Errors from the server are shown inside the form.
+  function formDialog(o) {
+    const err = h("div", { class: "alert alert-error", role: "alert" });
+    const ok = h("button", { class: "btn " + (o.danger ? "btn-danger" : "btn-primary"), type: "submit", text: o.okText || "Save" });
+    const old = document.getElementById(o.id);
+    if (old) old.remove();
+    const form = h("form", { class: "modal" + (o.wide ? " wide" : ""), novalidate: true }, [
+      h("div", { class: "modal-head" }, [h("div", { class: "icon-tile" }, [Icons.node(o.icon || "clipboard", 20)]), h("div", null, [h("h3", { text: o.title }), o.sub ? h("p", { text: o.sub }) : null])]),
+      h("div", { class: "modal-body" }, [err].concat(o.fields)),
+      h("div", { class: "modal-actions" }, [h("button", { class: "btn btn-secondary", type: "button", "data-close": o.id, text: "Cancel" }), ok])
+    ]);
+    const modal = h("div", { class: "modal-backdrop", id: o.id, role: "dialog", "aria-modal": "true", "aria-label": o.title }, [form]);
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearError(err);
+      busy(ok, async function () {
+        const result = await attempt(o.submit, err);
+        if (result) { closeModal(o.id); modal.remove(); }
+      });
+    });
+    document.body.appendChild(modal);
+    openModal(o.id);
+    const first = form.querySelector("input, select, textarea");
+    if (first) first.focus();
+  }
+  // A labelled field around an input, select or textarea
+  function field(label, control, hint) {
+    if (!control.id) control.id = "f" + Math.random().toString(36).slice(2, 9);
+    return h("div", { class: "field" }, [h("label", { class: "label", for: control.id, text: label }), control, hint ? h("div", { class: "field-hint", text: hint }) : null]);
+  }
+
   // ---------- Printing on an 80 mm receipt printer ----------
   // Copies one element (or the element with that id) into a print-only area, prints it on a narrow
   // "ticket" page, then removes the copy. The rest of the screen is hidden while printing.
@@ -553,7 +586,7 @@
     h: h, safeUrl: safeUrl, money: money, timeAgo: timeAgo, clock: clock, dateLong: dateLong, dateTime: dateTime, compact: compact, qty: qty,
     toast: toast, openModal: openModal, closeModal: closeModal, confirm: confirmDialog,
     attempt: attempt, clearError: clearError, busy: busy, withStepUp: withStepUp, showLink: showLink, copyText: copyText, codeActions: codeActions, renderApprovals: renderApprovals, showPhone: showPhone,
-    barChart: barChart, hBars: hBars, donut: donut, printArea: printArea
+    barChart: barChart, hBars: hBars, donut: donut, printArea: printArea, formDialog: formDialog, field: field
   };
   window.Session = Session;
   window.Api = Api;

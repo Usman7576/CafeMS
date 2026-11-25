@@ -52,7 +52,7 @@
     const rows = Store.menu().filter(function (m) { return (cat === "All" || m.cat === cat) && (!query || m.name.toLowerCase().indexOf(query) !== -1); });
     const body = document.getElementById("menuBody");
     body.replaceChildren();
-    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "6" }, [h("div", { class: "empty-state pad-28", text: "No menu items match." })])])); return; }
+    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "8" }, [h("div", { class: "empty-state pad-28", text: "No menu items match." })])])); return; }
     rows.forEach(function (m) {
       const reason = Store.unavailableReason(m.id);
       const status = !reason ? ["Available", "pill-ready"] : m.available ? [reason, "pill-preparing"] : ["Hidden", "pill-served"];
@@ -66,6 +66,9 @@
         h("td", null, [h("div", { class: "person" }, [m.hasPhoto ? h("img", { class: "menu-thumb", src: Store.photoUrl(m.id), alt: "", loading: "lazy" }) : null, h("div", null, [h("b", { text: m.name }), h("small", { class: "sub-line", text: m.desc || "No description" })])])]),
         h("td", { class: "hide-sm", text: m.cat }),
         h("td", { class: "num nowrap", text: CMS.money(m.price) }),
+        h("td", { class: "num nowrap hide-sm", text: m.recipe && m.recipe.length ? "Rs " + m.cost.toLocaleString("en-PK", { maximumFractionDigits: 2 }) : "—" }),
+        // A margin under 60% on food and drink is worth a look
+        h("td", { class: "num nowrap hide-sm" + (m.recipe && m.recipe.length && m.margin < 60 ? " margin-low" : ""), text: m.recipe && m.recipe.length ? m.margin + "%" : "—" }),
         h("td", null, [h("span", { class: "pill " + status[1], text: status[0] })]),
         h("td", null, [sw]),
         h("td", { class: "actions" }, [h("div", { class: "row-actions" }, [

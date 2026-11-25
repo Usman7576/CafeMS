@@ -61,13 +61,17 @@ function createCatalogService({ db, settings }) {
 
   async function listForAdmin() {
     const [items, stock] = await Promise.all([menu.find().sort({ _id: 1 }).toArray(), stockMap()]);
-    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, station: settings.stationOf(m.cat), price: m.price, desc: m.desc, options: m.options || [], hasPhoto: Boolean(m.photo), available: m.available, reason: unavailableReason(m, stock), recipe: (m.recipe || []).map((r) => ({ ing: r.ing, qty: fromMilli(r.qtyMilli), name: stock.has(r.ing) ? stock.get(r.ing).name : "Unknown" })) }));
+    return items.map((m) => ({ id: m._id, name: m.name, cat: m.cat, station: settings.stationOf(m.cat), price: m.price, desc: m.desc, options: m.options || [], hasPhoto: Boolean(m.photo), available: m.available, cost: recipeCost(m, stock), margin: m.price ? Math.round(((m.price - recipeCost(m, stock)) / m.price) * 1000) / 10 : 0, reason: unavailableReason(m, stock), recipe: (m.recipe || []).map((r) => ({ ing: r.ing, qty: fromMilli(r.qtyMilli), name: stock.has(r.ing) ? stock.get(r.ing).name : "Unknown" })) }));
   }
 
   const inventoryView = (ing, usedIn) => ({
     id: ing._id, name: ing.name, unit: ing.unit, qty: fromMilli(ing.qtyMilli), reorder: fromMilli(ing.reorderMilli),
-    supplier: ing.supplier, status: stockStatus(ing), usedIn
+    supplier: ing.supplier, supplierId: ing.supplierId || "", cost: (ing.costPaisa || 0) / 100,
+    value: Math.round((Math.max(0, ing.qtyMilli) * (ing.costPaisa || 0)) / 1000) / 100, status: stockStatus(ing), usedIn
   });
+
+  // What one portion costs in ingredients, from the current average costs
+  const recipeCost = (m, stock) => Math.round((m.recipe || []).reduce((s, r) => s + (r.qtyMilli * ((stock.get(r.ing) || {}).costPaisa || 0)) / 1000, 0)) / 100;
 
   async function listInventory() {
     const [rows, items] = await Promise.all([inventory.find().sort({ _id: 1 }).toArray(), menu.find().toArray()]);

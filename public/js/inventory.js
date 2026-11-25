@@ -32,6 +32,7 @@
     const counts = { ok: 0, low: 0, out: 0 };
     inv.forEach(function (i) { counts[statusOf(i)]++; });
     document.getElementById("kItems").textContent = inv.length;
+    document.getElementById("kValue").textContent = CMS.money(inv.reduce(function (s, i) { return s + (i.value || 0); }, 0));
     document.getElementById("kOk").textContent = counts.ok;
     document.getElementById("kLow").textContent = counts.low;
     document.getElementById("kOut").textContent = counts.out;
@@ -45,7 +46,7 @@
 
     const body = document.getElementById("stockBody");
     body.replaceChildren();
-    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "7" }, [h("div", { class: "empty-state pad-28", text: "No stock items match." })])])); return; }
+    if (!rows.length) { body.appendChild(h("tr", null, [h("td", { colspan: "9" }, [h("div", { class: "empty-state pad-28", text: "No stock items match." })])])); return; }
     rows.forEach(function (i) {
       const st = statusOf(i);
       const pct = Math.min(100, i.qty / (i.reorder * 3) * 100);
@@ -55,11 +56,14 @@
         h("td", { class: "num nowrap", text: CMS.qty(i.qty) + " " + i.unit }),
         h("td", { class: "hide-sm" }, [h("div", { class: "level", title: "Reorder at " + i.reorder + " " + i.unit }, [h("div", { class: "level-fill " + st, css: { width: Math.max(pct, 2) + "%" } }), h("i", { class: "level-mark", css: { left: (100 / 3) + "%" } })])]),
         h("td", null, [h("span", { class: "pill " + LABEL[st][1], text: LABEL[st][0] })]),
+        h("td", { class: "hide-sm num nowrap", text: "Rs " + (i.cost || 0).toLocaleString("en-PK", { maximumFractionDigits: 2 }) + " / " + i.unit }),
+        h("td", { class: "hide-sm num nowrap", text: CMS.money(i.value || 0) }),
         h("td", { class: "hide-sm muted", text: i.supplier }),
         h("td", { class: "hide-md muted small", text: used.length ? used.join(", ") : "—" }),
         h("td", { class: "actions" }, [h("div", { class: "row-actions" }, [
           h("button", { class: "btn btn-secondary btn-sm", icon: "plus", iconSize: 14, text: "Restock", "aria-label": "Restock " + i.name, onclick: function () { open(i.id, "restock"); } }),
-          h("button", { class: "btn btn-ghost btn-sm", text: "Write off", "aria-label": "Write off " + i.name, disabled: i.qty <= 0 ? true : null, onclick: function () { open(i.id, "writeoff"); } })
+          h("button", { class: "btn btn-ghost btn-sm", text: "Write off", "aria-label": "Write off " + i.name, disabled: i.qty <= 0 ? true : null, onclick: function () { open(i.id, "writeoff"); } }),
+          h("button", { class: "btn btn-ghost btn-sm", text: "Edit", "aria-label": "Edit cost, reorder level and supplier of " + i.name, onclick: function () { window.StockPage.editIngredient(i); } })
         ])])
       ]));
     });

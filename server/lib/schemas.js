@@ -37,6 +37,8 @@ module.exports = {
     billNo: z.object({ no: z.string().regex(/^B-\d{1,12}$/) }).strict(),
     reservationId: z.object({ id: z.string().regex(/^R-\d{1,12}$/) }).strict(),
     shiftId: z.object({ id: z.string().regex(/^S-\d{1,12}$/) }).strict(),
+    supplierId: z.object({ id: z.string().regex(/^SUP-\d{1,9}$/) }).strict(),
+    purchaseId: z.object({ id: z.string().regex(/^PO-\d{1,12}$/) }).strict(),
     requestId: z.object({ id: z.string().regex(/^SR-\d{1,12}$/) }).strict(),
     numericId: z.object({ id: z.string().regex(/^\d{1,9}$/) }).strict(),
     tableNo: z.object({ no: z.string().regex(/^\d{1,3}$/) }).strict(),
@@ -114,6 +116,51 @@ module.exports = {
         price: z.number("!An extra price must be a whole number from 0 to Rs 5,000.").int("!An extra price must be a whole number from 0 to Rs 5,000.").min(0, "!An extra price must be a whole number from 0 to Rs 5,000.").max(5000, "!An extra price must be a whole number from 0 to Rs 5,000.")
       }).strict()).min(1, "!Each option group needs at least one choice.").max(10, "!An option group can have at most 10 choices.")
     }).strict()).max(5, "!An item can have at most 5 option groups.").optional()
+  }).strict(),
+  supplier: z.object({
+    name: text(60, "!The supplier name must be 2-60 characters.").min(2, "!The supplier name must be 2-60 characters.").transform(noControl),
+    phone: text(20, "!The phone number must be 20 characters or fewer.").regex(/^[0-9+\-\s]*$/, "!The phone number can use only digits, spaces, + and -.").optional().default(""),
+    email: z.union([z.literal(""), z.string().trim().max(100).email("!Enter a valid email address.")]).optional().default(""),
+    notes: text(200, "!Notes must be 200 characters or fewer.").transform(noControl).optional().default(""),
+    active: z.boolean().optional().default(true)
+  }).strict(),
+  ingredient: z.object({
+    name: text(40, "!The name must be 2-40 characters.").min(2, "!The name must be 2-40 characters.").transform(noControl),
+    unit: z.enum(["kg", "g", "L", "ml", "pcs"], "!Choose a unit."),
+    reorder: z.number("!Enter a reorder level.").min(0, "!The reorder level cannot be negative.").max(100000),
+    cost: z.number("!Enter the cost per unit.").min(0, "!The cost cannot be negative.").max(1000000, "!That cost is too large."),
+    supplierId: z.union([z.literal(""), z.string().regex(/^SUP-\d{1,9}$/)]).optional().default("")
+  }).strict(),
+  ingredientDetails: z.object({
+    reorder: z.number("!Enter a reorder level.").min(0, "!The reorder level cannot be negative.").max(100000),
+    cost: z.number("!Enter the cost per unit.").min(0, "!The cost cannot be negative.").max(1000000, "!That cost is too large."),
+    supplierId: z.union([z.literal(""), z.string().regex(/^SUP-\d{1,9}$/)]).optional().default("")
+  }).strict(),
+  purchaseOrder: z.object({
+    supplierId: z.string().regex(/^SUP-\d{1,9}$/, "!Choose a supplier."),
+    lines: z.array(z.object({
+      ing: z.number().int().min(1),
+      packs: z.number("!Enter how many packs.").int("!Packs must be a whole number.").min(1, "!Order at least one pack.").max(10000),
+      packSize: z.number("!Enter the pack size.").positive("!Enter the pack size.").max(10000),
+      packCost: z.number("!Enter the price per pack.").min(0, "!The price cannot be negative.").max(10000000)
+    }).strict()).min(1, "!Add at least one item.").max(50, "!An order can have at most 50 lines."),
+    notes: text(200, "!Notes must be 200 characters or fewer.").transform(noControl).optional().default("")
+  }).strict(),
+  receiveOrder: z.object({
+    lines: z.array(z.object({
+      ing: z.number().int().min(1),
+      packs: z.number("!Enter how many packs arrived.").int().min(0, "!Packs cannot be negative.").max(10000),
+      packCost: z.number().min(0).max(10000000).optional()
+    }).strict()).max(50).optional().default([])
+  }).strict(),
+  stocktake: z.object({
+    counts: z.array(z.object({ ing: z.number().int().min(1), counted: z.number("!Enter what you counted.").min(0, "!A count cannot be negative.").max(1000000) }).strict()).min(1, "!Count at least one item.").max(500),
+    note: text(120, "!The note must be 120 characters or fewer.").transform(noControl).optional().default("")
+  }).strict(),
+  waste: z.object({
+    ing: z.number().int().min(1, "!Choose what was wasted."),
+    qty: z.number("!Enter how much was wasted.").positive("!Enter how much was wasted.").max(1000, "!Enter how much was wasted."),
+    reason: text(60, "!Give a reason of 3-60 characters.").min(3, "!Give a reason of 3-60 characters.").transform(noControl)
   }).strict(),
   stockAdjustment: z.object({
     delta: z.number("!Enter a quantity between 0 and 1000.").finite().min(-1000, "!Enter a quantity between 0 and 1000.").max(1000, "!Enter a quantity between 0 and 1000.").refine((n) => n !== 0, "!Enter a quantity between 0 and 1000."),

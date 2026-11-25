@@ -10,7 +10,7 @@ function createClient(config) {
 }
 
 const COLLECTIONS = ["users", "sessions", "auth_challenges", "auth_tokens", "audit_events", "menu", "inventory", "orders", "bills",
-  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts"];
+  "reservations", "tables", "counters", "settings", "approvals", "idempotency", "audit_head", "alerts", "outbox", "notifications", "system_status",  "passkeys", "passkey_challenges", "gateway_callbacks", "staff_requests", "request_history", "checks", "shifts", "suppliers", "purchase_orders", "stock_counts", "waste_log"];
 
 // Transactions need a replica set. Refusing here is safer than failing halfway through a payment.
 async function assertTransactionsAvailable(db) {
@@ -57,6 +57,9 @@ async function ensureIndexes(db) {
   await db.collection("shifts").createIndex({ cashier: 1 }, { unique: true, partialFilterExpression: { status: "Open" }, name: "one_open_shift" });
   await db.collection("shifts").createIndex({ openedAt: -1 });
   await db.collection("bills").createIndex({ shiftId: 1 });
+  await db.collection("purchase_orders").createIndex({ createdAt: -1 });
+  await db.collection("stock_counts").createIndex({ at: -1 });
+  await db.collection("waste_log").createIndex({ at: -1 });
   await db.collection("staff_requests").createIndex({ owner: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ status: 1, createdAt: -1, seq: -1 });
   await db.collection("staff_requests").createIndex({ reviewer: 1, createdAt: -1, seq: -1 });

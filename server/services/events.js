@@ -7,7 +7,8 @@ const { EventEmitter } = require("events");
 const TOPIC_OF = Object.freeze({
   orders: "orders", kitchen: "orders", tables: "orders",
   billing: "bills", bills: "bills", payments: "bills", customers: "bills", shifts: "bills",
-  inventory: "inventory", menu: "menu", reservations: "reservations",
+  inventory: "inventory", suppliers: "inventory", "purchase-orders": "inventory", "stock-counts": "inventory", waste: "inventory",
+  menu: "menu", reservations: "reservations",
   users: "users", register: "users", setup: "users", settings: "settings",
   alerts: "alerts", approvals: "approvals", requests: "requests"
 });

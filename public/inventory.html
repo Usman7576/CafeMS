@@ -8,15 +8,24 @@
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/fonts.css?v=7.0">
-  <link rel="stylesheet" href="css/style.css?v=7.2">
+  <link rel="stylesheet" href="css/style.css?v=7.3">
 </head>
 <body data-page="inventory">
   <main class="content" id="main">
     <div class="page-head">
-      <div><h2>Inventory</h2><p>Stock is deducted automatically when orders are sent to the kitchen. Menu items sell out when an ingredient runs out.</p></div>
+      <div><h2>Inventory</h2><p>Stock is taken automatically when orders are sent. Buy from suppliers, count the shelves and log waste here.</p></div>
+      <div class="head-actions"><button type="button" class="btn btn-secondary" id="addIngredient"><i data-icon="plus" data-size="17"></i>Add ingredient</button><button type="button" class="btn btn-primary" id="newPo"><i data-icon="package" data-size="17"></i>New purchase order</button></div>
     </div>
+    <div class="tabs scroll page-tabs" role="tablist" aria-label="Stock sections" id="pageTabs">
+      <button class="tab" role="tab" data-tab="tabStock" aria-selected="true">Stock</button>
+      <button class="tab" role="tab" data-tab="tabOrders" aria-selected="false">Purchase orders <span class="n" id="nOrders"></span></button>
+      <button class="tab" role="tab" data-tab="tabSuppliers" aria-selected="false">Suppliers</button>
+      <button class="tab" role="tab" data-tab="tabCounts" aria-selected="false">Stocktake</button>
+      <button class="tab" role="tab" data-tab="tabWaste" aria-selected="false">Waste</button>
+    </div>
+    <div id="tabStock" class="page-tab">
     <section class="kpis" aria-label="Stock summary">
-      <div class="kpi"><div class="icon-tile"><i data-icon="package"></i></div><div><small>Items tracked</small><strong id="kItems">0</strong><div class="sub">Ingredients &amp; supplies</div></div></div>
+      <div class="kpi"><div class="icon-tile"><i data-icon="package"></i></div><div><small>Stock value</small><strong id="kValue">Rs 0</strong><div class="sub"><span id="kItems">0</span> items at average cost</div></div></div>
       <div class="kpi"><div class="icon-tile ok"><i data-icon="check-circle"></i></div><div><small>In stock</small><strong id="kOk">0</strong><div class="sub">Above reorder level</div></div></div>
       <div class="kpi"><div class="icon-tile warn"><i data-icon="alert"></i></div><div><small>Running low</small><strong id="kLow">0</strong><div class="sub">Reorder soon</div></div></div>
       <div class="kpi"><div class="icon-tile danger"><i data-icon="x"></i></div><div><small>Out of stock</small><strong id="kOut">0</strong><div class="sub" id="kOutSub">Menu items affected</div></div></div>
@@ -32,11 +41,16 @@
       </div>
       <div class="table-wrap flush">
         <table class="data-table">
-          <thead><tr><th>Item</th><th>In stock</th><th class="hide-sm">Level</th><th>Status</th><th class="hide-sm">Supplier</th><th class="hide-md">Used in</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <thead><tr><th>Item</th><th>In stock</th><th class="hide-sm">Level</th><th>Status</th><th class="hide-sm">Cost</th><th class="hide-sm">Value</th><th class="hide-sm">Supplier</th><th class="hide-md">Used in</th><th><span class="sr-only">Actions</span></th></tr></thead>
           <tbody id="stockBody"></tbody>
         </table>
       </div>
     </section>
+    </div>
+    <div id="tabOrders" class="page-tab" hidden></div>
+    <div id="tabSuppliers" class="page-tab" hidden></div>
+    <div id="tabCounts" class="page-tab" hidden></div>
+    <div id="tabWaste" class="page-tab" hidden></div>
   </main>
 
   <div class="modal-backdrop" id="stockModal" role="dialog" aria-modal="true" aria-labelledby="stockTitle">
@@ -52,10 +66,12 @@
   </div>
   <script src="js/icons.js?v=7.0"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=7.2"></script>
+  <script src="js/common.js?v=7.3"></script>
   <script src="js/validate.js?v=7.0"></script>
-  <script src="js/store.js?v=7.2"></script>
-  <script src="js/app.js?v=7.2"></script>
-  <script src="js/inventory.js?v=7.0"></script>
+  <script src="js/store.js?v=7.3"></script>
+  <script src="js/app.js?v=7.3"></script>
+  <script src="js/inventory.js?v=7.3"></script>
+  <script src="js/waste.js?v=7.3"></script>
+  <script src="js/stock.js?v=7.3"></script>
 </body>
 </html>

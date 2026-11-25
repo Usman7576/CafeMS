@@ -13,6 +13,7 @@
       document.title = "Bar display · CafeMS";
     }
     // While kitchen staff are signed in, the server pauses its kitchen simulation.
+    document.getElementById("logWaste").addEventListener("click", function () { window.Waste.open(); });
     render();
     Store.on(render);
     setInterval(updateTimers, 1000);
