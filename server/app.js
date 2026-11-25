@@ -1,5 +1,6 @@
 const path = require("path");
 const express = require("express");
+const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const pinoHttp = require("pino-http");
@@ -94,6 +95,8 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
     approve: (req, approval, session) => userService.execute(req, approval.payload, session)
   });
 
+  // Text responses are compressed; the event stream is not, so live updates are sent at once
+  app.use(compression({ filter: (req, res) => !String(res.getHeader("Content-Type") || "").startsWith("text/event-stream") && compression.filter(req, res) }));
   app.use(requestId);
   app.use(pinoHttp({ logger, genReqId: (req) => req.id, autoLogging: { ignore: (req) => req.url.startsWith("/assets/") } }));
   app.use(securityHeaders(config));
@@ -212,7 +215,15 @@ function createApp({ config, db, logger, gateway = createSimulatedGateway() }) {
       return next(error);
     }
   });
-  app.use(express.static(PUBLIC_DIR, { dotfiles: "deny", redirect: false, index: "index.html" }));
+  // Shared files with a version in their address never change, so browsers keep them for a year.
+  // Everything else is checked with the server each time; the service worker is never kept stale.
+  app.use((req, res, next) => {
+    if (isAsset(req.path) && req.query.v) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    else if (!res.getHeader("Cache-Control")) res.setHeader("Cache-Control", "no-cache");
+    if (req.path === "/sw.js") res.setHeader("Service-Worker-Allowed", "/");
+    next();
+  });
+  app.use(express.static(PUBLIC_DIR, { dotfiles: "deny", redirect: false, index: "index.html", cacheControl: false }));
 
   app.use((_req, _res, next) => next(new AppError(404, "not_found", "Not found.")));
 

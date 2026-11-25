@@ -74,7 +74,7 @@ const PAGES = Object.freeze({
   "/account.html": ["Waiter", "Barista", "Kitchen", "Cashier", "Manager", "Admin"]
 });
 
-const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/register.html", "/setup.html", "/privacy.html", "/404.html", "/order-online.html", "/track.html"]);
+const PUBLIC_PAGES = Object.freeze(["/", "/index.html", "/login.html", "/register.html", "/setup.html", "/privacy.html", "/404.html", "/order-online.html", "/track.html", "/offline.html", "/manifest.webmanifest", "/sw.js"]);
 
 const HOME = Object.freeze({
   Waiter: "/dashboard.html",

@@ -371,18 +371,20 @@ Each phase ends with:
 
 The app keeps working after every phase.
 
-| Phase | Content | Size |
-| --- | --- | --- |
-| **0. Local database** | Section 2: replica set, auth, migrate data, remove Docker, `npm run setup` | Small |
-| **1. Foundations** | Settings module (tables, tax, hours, receipt); live updates (SSE); new frontend app shell + design system; remove 3D scene, OIDC, signing keys, risk page; MFA policy + PIN switch | Large |
-| **2. Sell** | New POS screen; categories and item options; order types (dine-in, takeaway, delivery); hold/void/transfer; kitchen & bar stations | Large |
-| **3. Pay** | Split bill, mixed payments, tips, service charge; shifts and cash drawer, Z-report; receipt and kitchen ticket print layouts | Medium |
-| **4. Stock** | Suppliers, purchase orders, receiving with cost, stocktake, waste log, unit conversions, recipe cost and margin | Medium |
-| **5. Guests** | Customers and loyalty, vouchers/promo codes; floor-plan editor, time-slot reservations, waitlist; feedback | Medium |
-| **6. Online** | New public website; online takeaway/delivery ordering with order status; QR table ordering | Medium |
-| **7. People** | Clock in/out, timesheets, rota, leave, hours export, tips share | Medium |
-| **8. Insight** | New dashboard, daily close, profit, product mix, staff and labour reports, PDF/CSV export | Medium |
-| **9. Polish** | Accessibility pass, dark mode, installable app (PWA), performance, final docs and demo data | Small |
+| Phase | Content | Size | Status |
+| --- | --- | --- | --- |
+| **0. Local database** | Section 2: replica set, auth, migrate data, remove Docker, `npm run setup` | Small | Done |
+| **1. Foundations** | Settings module (tables, tax, hours, receipt); live updates (SSE); new frontend app shell + design system; remove 3D scene, OIDC, signing keys, risk page; MFA policy + PIN switch | Large | Done |
+| **2. Sell** | New POS screen; categories and item options; order types (dine-in, takeaway, delivery); hold/void/transfer; kitchen & bar stations | Large | Done |
+| **3. Pay** | Split bill, mixed payments, tips, service charge; shifts and cash drawer, Z-report; receipt and kitchen ticket print layouts | Medium | Done |
+| **4. Stock** | Suppliers, purchase orders, receiving with cost, stocktake, waste log, unit conversions, recipe cost and margin | Medium | Done |
+| **5. Guests** | Customers and loyalty, vouchers/promo codes; floor-plan editor, time-slot reservations, waitlist; feedback | Medium | Done |
+| **6. Online** | New public website; online takeaway/delivery ordering with order status; QR table ordering | Medium | Done |
+| **7. People** | Clock in/out, timesheets, rota, leave, hours export, tips share | Medium | Done |
+| **8. Insight** | New dashboard, daily close, profit, product mix, staff and labour reports, PDF/CSV export | Medium | Done |
+| **9. Polish** | Accessibility pass, dark mode, installable app (PWA), performance, final docs and demo data | Small | Done |
+
+All ten phases are built. The vanilla-JS frontend was kept (decision 1), with a new design system. How to use each screen is in [USER-GUIDE.md](USER-GUIDE.md); `npm run demo` adds a week of sales for showing the reports.
 
 The suggested order is 0 → 1 → 2 → 3 first: that gives a modern POS that can take orders and payments end to end. Phases 4–8 can then go in any order.
 

@@ -9,7 +9,7 @@ module.exports = [
   js.configs.recommended,
   security.configs.recommended,
   {
-    files: ["server/**/*.js", "scripts/**/*.js", "tests/**/*.js", ".zap/**/*.js", "eslint.config.js"],
+    files: ["server/**/*.js", "scripts/**/*.js", "tests/**/*.js", "eslint.config.js"],
     languageOptions: { ecmaVersion: 2024, sourceType: "commonjs", globals: { ...globals.node } }
   },
   {
@@ -17,14 +17,15 @@ module.exports = [
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "script",
-      globals: { ...globals.browser, CMS: "writable", Api: "writable", Store: "writable", App: "writable", Session: "writable", FloorPlan: "readonly", SimpleWebAuthnBrowser: "readonly", Icons: "writable", Validate: "writable" }
+      globals: { ...globals.browser, CMS: "writable", Api: "writable", Store: "writable", App: "writable", Session: "writable", FloorPlan: "readonly", Theme: "readonly", SimpleWebAuthnBrowser: "readonly", Icons: "writable", Validate: "writable" }
     }
   },
-  { files: ["public/js/coffee-scene.js"], languageOptions: { sourceType: "module" } },
+  // The service worker runs in its own worker scope
+  { files: ["public/sw.js"], languageOptions: { ecmaVersion: 2024, sourceType: "script", globals: { ...globals.serviceworker } } },
   {
     // Scripts are run by the operator on their own files, and tests read their own fixtures and build
     // patterns from known values, so these two warnings do not apply there.
-    files: ["scripts/**/*.js", "tests/**/*.js", ".zap/**/*.js"],
+    files: ["scripts/**/*.js", "tests/**/*.js"],
     rules: { "security/detect-non-literal-fs-filename": "off", "security/detect-non-literal-regexp": "off" }
   },
   {

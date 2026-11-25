@@ -8,9 +8,10 @@ Every rule is enforced on the server. The browser only shows what the server all
 | --- | --- |
 | **Author** | M. Usman (22L-7991) |
 | **Stack** | Node.js 24, Express, MongoDB (local replica set), vanilla JavaScript |
-| **Evidence** | 400+ automated tests; coursework concept and traceability records in [docs/security](docs/security/) |
+| **Evidence** | 560+ automated tests; coursework concept and traceability records in [docs/security](docs/security/) |
 | **Setup** | Local MongoDB, no Docker: see [LOCAL-SETUP.md](docs/LOCAL-SETUP.md) |
-| **Roadmap** | [PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md](docs/PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md) |
+| **How to use it** | A short guide for each role: [USER-GUIDE.md](docs/USER-GUIDE.md) |
+| **Roadmap** | [PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md](docs/PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md) (phases 0–9 done) |
 
 ## What it does
 
@@ -29,6 +30,8 @@ Guest orders from the website or a table's QR code wait in an incoming queue unt
 Everyone on the floor clocks in and out (on their own screen, or with a PIN on a shared tablet), sees the rota and asks for leave on the **Team** page. Managers plan the rota, approve leave, correct timesheets, export hours as CSV and see how the day's tips are shared by hours worked.
 
 Managers and Admins see **Insights** for any range of up to 92 days: sales by day, the busiest hours of the week, payment methods, order types and categories; product mix with each item's ingredient cost and margin; profit after ingredients, waste and staff pay (from hourly rates); sales by waiter and cashier; and a printable daily close. Each table downloads as CSV, and any view can be printed or saved as PDF.
+
+It works on desktops, tablets and phones, and can be **installed** as an app (it opens full screen, with its own icon). It has a **dark theme**, which follows the device or can be chosen in the account menu. Every page is checked for labels, names, keyboard focus and WCAG AA colour contrast in both themes. Shared files are compressed and cached for a year under versioned addresses; staff pages and the API are never stored on the device.
 
 The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 
@@ -95,6 +98,7 @@ The demo cafe includes a starting photo for each menu item (free-licence photos,
 | Command | What it does |
 | --- | --- |
 | `npm run setup` | One-command setup against the local MongoDB (safe to run again) |
+| `npm run demo` | Adds a realistic past week of sales, clock-ins and rota to the local database, so Insights has something to show; `npm run demo -- --remove` takes it out again |
 | `npm test` | All tests, using a temporary in-memory database (never your data) |
 | `npm run test:coverage` | Tests with coverage thresholds |
 | `npm run lint` | ESLint with security rules |

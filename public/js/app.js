@@ -164,6 +164,7 @@
     h("a", { href: HOME[session.role] }, [I("home", 16), "My workspace"]),
     h("button", { type: "button", id: "openPalette" }, [I("search", 16), "Quick search", h("kbd", { class: "kbd", text: "Ctrl K" })]),
     h("button", { type: "button", id: "openSwitch" }, [I("users", 16), "Switch user"]),
+    h("button", { type: "button", id: "themeBtn", "aria-live": "polite" }, [I("eye", 16), h("span", { id: "themeLabel" })]),
     h("a", { href: "account.html" }, [I("key", 16), "My account"]),
     h("button", { type: "button", class: "danger", "data-signout": true }, [I("logout", 16), "Sign out"])
   ]);
@@ -493,6 +494,17 @@
     });
   });
   document.getElementById("openSwitch").addEventListener("click", openSwitch);
+
+  // Theme: System (follows the device), Light or Dark, remembered on this device
+  const THEMES = ["system", "light", "dark"];
+  const THEME_LABEL = { system: "Theme: as device", light: "Theme: light", dark: "Theme: dark" };
+  const showTheme = function () { document.getElementById("themeLabel").textContent = THEME_LABEL[window.Theme ? Theme.get() : "system"]; };
+  showTheme();
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    if (!window.Theme) return;
+    Theme.set(THEMES[(THEMES.indexOf(Theme.get()) + 1) % THEMES.length]);
+    showTheme();
+  });
 
   window.App = { session: session, signOut: signOut, home: HOME[session.role], I: I, ready: function (fn) { readyPromise.then(fn); } };
 })();

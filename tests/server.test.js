@@ -145,8 +145,9 @@ describe("security headers (finding 13)", () => {
       for (const sink of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function"]) {
         assert.ok(!code.includes(sink), `${file} uses ${sink}`);
       }
-      // common.js only deletes the old prototype's stored data; nothing is stored or read back
-      assert.ok(!/localStorage\.(?:setItem|getItem)/.test(code), `${file} stores data on the device`);
+      // Only theme.js keeps anything on the device: the light or dark choice. common.js removes the rest.
+      if (!["theme.js", "common.js"].includes(file)) assert.ok(!/localStorage\.(?:setItem|getItem)/.test(code), `${file} stores data on the device`);
+      for (const key of code.match(/localStorage\.(?:setItem|getItem)\((?:"[^"]*"|KEY)/g) || []) assert.match(key, /"cms-theme"|KEY/, `${file}: ${key}`);
       assert.ok(!/addEventListener\(["']storage["']/.test(code), `${file} reacts to stored data from other tabs`);
     }
   });

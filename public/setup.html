@@ -4,25 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Set your password — Cafe Management System</title>
-  <meta name="theme-color" content="#f8f7f5">
+  <meta name="theme-color" content="#8b5e3c">
   <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/fonts.css?v=7.0">
-  <link rel="stylesheet" href="css/style.css?v=7.3">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
 </head>
-<body>
-  <div class="auth">
-    <aside class="auth-aside">
-      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
-      <div>
-        <h2>Set up your staff account.</h2>
-        <p>This link works once and expires after 24 hours. Next you will add an authenticator app.</p>
-      </div>
-      <p class="foot">© <span data-year></span> CafeMS</p>
-    </aside>
-    <main class="auth-main">
-      <div class="auth-form-wrap">
-        <div class="auth-form">
+<body class="auth-page">
+  <main class="auth-center">
+    <a href="index.html" class="brand auth-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+    <div class="auth-card">
           <h1>Choose a password</h1>
           <p class="sub">Use something only you know, and not a password from another site.</p>
           <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
@@ -50,15 +44,14 @@
             </div>
             <button type="submit" class="btn btn-dark btn-lg btn-block" id="setupBtn">Continue</button>
           </form>
-        </div>
-      </div>
-    </main>
-  </div>
-  <script src="js/icons.js?v=7.0"></script>
+    </div>
+    <a href="index.html" class="auth-back"><i data-icon="arrow-left" data-size="15"></i>Back to home</a>
+  </main>
+  <script src="js/icons.js?v=9.7"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=7.3"></script>
+  <script src="js/common.js?v=9.7"></script>
   <script src="js/password_strength_helper.js"></script>
-  <script src="js/validate.js?v=7.0"></script>
-  <script src="js/setup.js?v=7.0"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/setup.js?v=9.7"></script>
 </body>
 </html>

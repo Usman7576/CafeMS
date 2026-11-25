@@ -47,6 +47,20 @@
     });
   }
 
+  // The hero shows photos of real items from the menu, a mix of categories where possible
+  function renderHeroPhotos() {
+    const slots = document.querySelectorAll("#heroPhotos .hero-photo");
+    if (!slots.length) return;
+    const withPhoto = items.filter(function (m) { return m.hasPhoto; });
+    const picked = [];
+    const cats = new Set();
+    withPhoto.forEach(function (m) { if (picked.length < slots.length && !cats.has(m.cat)) { picked.push(m); cats.add(m.cat); } });
+    withPhoto.forEach(function (m) { if (picked.length < slots.length && picked.indexOf(m) === -1) picked.push(m); });
+    picked.forEach(function (m, i) {
+      slots[i].replaceChildren(h("img", { src: "/api/v1/public/menu/" + m.id + "/photo", alt: "", decoding: "async" }));
+    });
+  }
+
   async function loadMenu() {
     const result = await Api.call("GET", "/public/menu").catch(function () { return null; });
     if (!result) {
@@ -54,6 +68,7 @@
       return;
     }
     items = result.items;
+    renderHeroPhotos();
     renderCats();
     renderMenu();
   }

@@ -5,32 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff sign in — Cafe Management System</title>
   <meta name="description" content="Staff sign in for the Cafe Management System.">
-  <meta name="theme-color" content="#f8f7f5">
+  <meta name="theme-color" content="#8b5e3c">
   <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/fonts.css?v=7.0">
-  <link rel="stylesheet" href="css/style.css?v=7.3">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
 </head>
-<body>
-  <div class="auth">
-    <aside class="auth-aside">
-      <img class="auth-photo" src="assets/hero.jpg" alt="" width="1200" height="900">
-      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
-      <div>
-        <h2>Everything for your shift, in one place.</h2>
-        <p>Orders, kitchen, billing and stock, with each role seeing only what it needs.</p>
-      </div>
-      <p class="foot">© <span data-year></span> CafeMS</p>
-    </aside>
-
-    <main class="auth-main">
-      <div class="auth-top">
-        <a href="index.html" class="brand auth-mobile-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
-        <a href="index.html"><i data-icon="arrow-left" data-size="16"></i>Back to home</a>
-      </div>
-
-      <div class="auth-form-wrap">
-        <div class="auth-form">
+<body class="auth-page">
+  <main class="auth-center">
+    <a href="index.html" class="brand auth-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+    <div class="auth-card">
           <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
 
           <!-- Step 1: password -->
@@ -118,12 +105,10 @@
             <label class="recovery-confirm"><input type="checkbox" id="recoverySaved"> I have saved these codes</label>
             <button type="button" class="btn btn-dark btn-lg btn-block" id="recoveryDone" disabled>Continue to my workspace</button>
           </section>
-        </div>
-      </div>
-
-      <p class="auth-bottom"><i data-icon="lock" data-size="14"></i>Password and authenticator code · Role-based access</p>
-    </main>
-  </div>
+    </div>
+    <p class="auth-foot"><i data-icon="lock" data-size="14"></i>Password and authenticator code · Role-based access</p>
+    <a href="index.html" class="auth-back"><i data-icon="arrow-left" data-size="15"></i>Back to home</a>
+  </main>
 
   <!-- Forgot password modal -->
   <div class="modal-backdrop" id="forgotModal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
@@ -139,10 +124,10 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=7.0"></script>
+  <script src="js/icons.js?v=9.7"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=7.3"></script>
-  <script src="js/validate.js?v=7.0"></script>
-  <script src="js/login.js?v=7.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/login.js?v=9.7"></script>
 </body>
 </html>

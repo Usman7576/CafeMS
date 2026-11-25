@@ -88,7 +88,9 @@ test("no script builds HTML from strings, and the DOM helper refuses javascript:
 test("passwords and secrets are never written to browser storage", () => {
   for (const file of ours) {
     const src = read(JS, file);
-    assert.doesNotMatch(src, /localStorage\.setItem/, `${file} writes nothing to localStorage`);
+    // The only thing kept in localStorage is the theme choice (light or dark), never anything private
+    for (const w of src.match(/localStorage\.setItem\([^,]+/g) || []) assert.match(w, /\(KEY|\("cms-theme"/, `${file}: ${w}`);
+    if (/localStorage\.setItem\(KEY/.test(src)) assert.match(src, /const KEY = "cms-theme";/, `${file}: KEY is the theme`);
     const writes = src.match(/sessionStorage\.setItem\([^,]+/g) || [];
     for (const w of writes) assert.match(w, /this\.KEY|"cms_flash"/, `${file}: ${w}`);
   }

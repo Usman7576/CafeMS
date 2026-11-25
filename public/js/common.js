@@ -198,8 +198,12 @@
         const key = sessionStorage.key(i);
         if (STORAGE_KEYS.indexOf(key) === -1) sessionStorage.removeItem(key);
       }
-      // This app keeps nothing in localStorage: it lasts after the browser closes
+      // localStorage lasts after the browser closes, so it keeps one thing only: the light or dark theme
+      // chosen on this device (see theme.js). Anything else, or a theme value that is not one of the three
+      // choices, is removed.
+      const theme = localStorage.getItem("cms-theme");
       localStorage.clear();
+      if (["system", "light", "dark"].indexOf(theme) !== -1) localStorage.setItem("cms-theme", theme);
     } catch (e) { /* storage unavailable: nothing to clean */ }
   }
   sweepStorage();

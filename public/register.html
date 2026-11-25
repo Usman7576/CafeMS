@@ -5,32 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register — Cafe Management System</title>
   <meta name="description" content="Request a staff account for the Cafe Management System.">
-  <meta name="theme-color" content="#f8f7f5">
+  <meta name="theme-color" content="#8b5e3c">
   <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/fonts.css?v=7.0">
-  <link rel="stylesheet" href="css/style.css?v=7.3">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
 </head>
-<body>
-  <div class="auth">
-    <aside class="auth-aside">
-      <img class="auth-photo" src="assets/hero.jpg" alt="" width="1200" height="900">
-      <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
-      <div>
-        <h2>Join the team.</h2>
-        <p>Request a staff account. An Admin checks who you are, gives you the right role, and then you can sign in.</p>
-      </div>
-      <p class="foot">© <span data-year></span> CafeMS</p>
-    </aside>
-
-    <main class="auth-main">
-      <div class="auth-top">
-        <a href="index.html" class="brand auth-mobile-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
-        <a href="index.html"><i data-icon="arrow-left" data-size="16"></i>Back to home</a>
-      </div>
-
-      <div class="auth-form-wrap">
-        <div class="auth-form">
+<body class="auth-page">
+  <main class="auth-center">
+    <a href="index.html" class="brand auth-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+    <div class="auth-card">
           <h1>Create a staff account</h1>
           <p class="sub">Your account stays pending until an Admin approves it.</p>
           <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
@@ -75,18 +62,16 @@
             <noscript><p class="field-error auth-noscript">JavaScript is required to register.</p></noscript>
           </form>
           <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
-        </div>
-      </div>
+    </div>
+    <p class="auth-foot"><i data-icon="lock" data-size="14"></i>Admin approval · Role-based access</p>
+    <a href="index.html" class="auth-back"><i data-icon="arrow-left" data-size="15"></i>Back to home</a>
+  </main>
 
-      <p class="auth-bottom"><i data-icon="lock" data-size="14"></i>Admin approval · Role-based access</p>
-    </main>
-  </div>
-
-  <script src="js/icons.js?v=7.0"></script>
+  <script src="js/icons.js?v=9.7"></script>
   <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
-  <script src="js/common.js?v=7.3"></script>
+  <script src="js/common.js?v=9.7"></script>
   <script src="js/password_strength_helper.js"></script>
-  <script src="js/validate.js?v=7.0"></script>
-  <script src="js/register.js?v=7.0"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/register.js?v=9.7"></script>
 </body>
 </html>

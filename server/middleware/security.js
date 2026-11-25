@@ -15,6 +15,7 @@ function securityHeaders(config) {
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'"],
         manifestSrc: ["'self'"],
+        workerSrc: ["'self'"],
         objectSrc: ["'none'"],
         baseUri: ["'none'"],
         formAction: ["'self'"],
