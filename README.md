@@ -1,124 +1,124 @@
-# Cafe Management System (CMS): MongoDB-backed prototype
+# CafeMS: a secure website and management system for cafes
 
-A secure, web-based Cafe Management System built as the semester project for **Secure Software Development (SSD)**.
-The prototype covers the full service loop across all five staff roles. A waiter takes an order, the kitchen prepares it, the cashier bills it, and it all appears in the manager's reports and the admin's tamper-evident audit log.
+CafeMS is a public cafe website with a staff system behind it, built for the **Secure Software Development** course. Customers see the menu and request a table. Staff take orders, run the kitchen, bill tables, manage stock and review reports.
 
-> **Live demo:** _add your public URL here_
+Every rule is enforced on the server. The browser only shows what the server allows.
 
-## Demo accounts
+| | |
+| --- | --- |
+| **Author** | M. Usman (22L-7991) |
+| **Stack** | Node.js 24, Express, MongoDB (local replica set), vanilla JavaScript |
+| **Evidence** | 560+ automated tests; coursework concept and traceability records in [docs/security](docs/security/) |
+| **Setup** | Local MongoDB, no Docker: see [LOCAL-SETUP.md](docs/LOCAL-SETUP.md) |
+| **How to use it** | A short guide for each role: [USER-GUIDE.md](docs/USER-GUIDE.md) |
+| **Roadmap** | [PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md](docs/PLAN-FULL-CAFE-MANAGEMENT-SYSTEM.md) (phases 0–9 done) |
 
-Sign in with any account below and **any password that meets the rules**: 8+ characters, with upper- and lower-case letters and a number. Don't use a real password.
+## What it does
 
-| Role | Username | Lands on |
-|---|---|---|
-| **Waiter** (primary role) | `m.usman` | Waiter dashboard |
-| Kitchen | `chef.imran` | Kitchen display |
-| Cashier | `bilal.ahmed` | Billing |
-| Manager | `sara.khan` | Overview |
-| Admin / Owner | `farah.admin` | Overview |
+| Who | What they can do |
+| --- | --- |
+| **Customer** | Browse the live menu, order takeaway or delivery online or from a QR code on their table, follow the order on a private tracking page, book a table at a time that is still free, rate their visit |
+| **Waiter** | Take dine-in, takeaway and delivery orders on the POS (with item options), hold and send them, move them between tables, serve, request the bill, manage reservations and the walk-in waitlist on a real floor plan, enrol loyalty members |
+| **Barista** | Bar display: makes the drinks part of each order |
+| **Kitchen** | Kitchen display: moves the food part of each order from Placed to Preparing to Ready, and logs waste; never sees prices or customer data |
+| **Cashier** | Take counter (takeaway and delivery) orders; bill tables and counter orders with cash, card or wallet, split bills and mixed payments, tips, loyalty points and vouchers, and discounts up to the limit set in Settings; open and close a shift with a cash drawer count and Z-report |
+| **Manager** | Billing with a higher discount limit; voids and refunds after a fresh authenticator code; every shift's Z-report; stock with suppliers, purchase orders (bought in packs, received with cost), stocktakes and the waste log; loyalty members, vouchers and guest feedback; reports, reservations |
+| **Admin** | Menu, photos and item options, with each dish's ingredient cost and margin; staff and roles; settings (cafe details, tax, discount limits, receipt, tables, categories and their station, order types); audit log, security alerts |
 
-`old.staff` is a **disabled** account, and sign-in is refused. Unknown usernames get the same generic error, so it never reveals which accounts exist.
+Guest orders from the website or a table's QR code wait in an incoming queue until staff accept them (they go to the kitchen) or decline them (stock is returned and the guest sees why).
 
-Activity write-ups: [SUBMISSION.md](SUBMISSION.md) (Activity 1), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md) (Activity 2: role-based prototype), and [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md) (Activity 3: parallel module development and integration).
+Everyone on the floor clocks in and out (on their own screen, or with a PIN on a shared tablet), sees the rota and asks for leave on the **Team** page. Managers plan the rota, approve leave, correct timesheets, export hours as CSV and see how the day's tips are shared by hours worked.
 
-## Pages
+Managers and Admins see **Insights** for any range of up to 92 days: sales by day, the busiest hours of the week, payment methods, order types and categories; product mix with each item's ingredient cost and margin; profit after ingredients, waste and staff pay (from hourly rates); sales by waiter and cashier; and a printable daily close. Each table downloads as CSV, and any view can be printed or saved as PDF.
 
-| Page | Roles | What it does |
-|---|---|---|
-| `index.html` | Public | Landing page: purpose, 9 modules, roles, SR-1 to SR-8, demo accounts |
-| `login.html` | Public | Sign-in with validation, show/hide password, Caps Lock warning, rules checklist, lockout |
-| `dashboard.html` | Waiter | Shift KPIs, my orders (filters), ready-to-serve queue, floor plan, request bill |
-| `order.html` | Waiter | Take or **edit** an order: table picker, menu search/filter, ticket, live totals, notes |
-| `kitchen.html` | Kitchen | Live ticket board (New → Preparing → Ready) with colour-coded ticket timers |
-| `billing.html` | Cashier, Manager | Open tables, role-limited discounts, cash/card/wallet, change calculator, optional customer mobile (masked for cashiers), printable receipt, manager-only refunds |
-| `overview.html` | Manager, Admin | Revenue by hour, live floor, stock alerts, activity feed, admin settings |
-| `inventory.html` | Manager | Stock levels, low-stock alerts, restock / write-off with reasons |
-| `reports.html` | Manager, Admin | KPIs, hourly revenue, payment split, best sellers, categories, tax summary, refunds, CSV export |
-| `menu.html` | Admin | Add / edit / delete items, prices, on/off switch, large-price-change warning |
-| `users.html` | Admin | Create staff, change roles, enable/disable accounts, permission matrix |
-| `audit.html` | Admin | Hash-chained audit log with integrity check, filters, CSV export |
-| `reservation.html` | Waiter, Manager | Create and validate a table reservation |
-| `reservations.html` | Waiter, Manager | Search, filter and update reservation status |
-| `404.html` | Public | Custom not-found page |
+It works on desktops, tablets and phones, and can be **installed** as an app (it opens full screen, with its own icon). It has a **dark theme**, which follows the device or can be chosen in the account menu. Every page is checked for labels, names, keyboard focus and WCAG AA colour contrast in both themes. Shared files are compressed and cached for a year under versioned addresses; staff pages and the API are never stored on the device.
 
-## How the data flows
+The service loop: a waiter sends an order, stock is taken, the kitchen prepares it, the waiter serves it and asks for the bill, the cashier takes payment, and it all appears in the reports and the audit log.
 
-```
-Waiter sends order ──► Kitchen: New → Preparing → Ready ──► Waiter serves ──► Waiter requests bill
-      │ stock deducted per recipe                                                   │
-      ▼                                                                             ▼
-Inventory (low-stock alerts, auto sold-out)            Cashier bills table → receipt → table freed
-                                                                                    │
-                        Manager reports / refunds  ◄────────────────────────────────┘
-                        Admin audit log ◄── every critical action from every role
-```
+## How it is secured
 
-When no kitchen user has the display open, the kitchen is **simulated**: an order moves to Preparing after about 10 s and to Ready about 20 s later. An admin can switch this off. The browser keeps a local cache for offline use, while the Node.js API synchronizes the application state to MongoDB. Use **Reset demo data** in the user menu to start again.
+| Area | Control |
+| --- | --- |
+| Sign-in | Argon2id passwords; authenticator codes required for Admins and Managers; a hashed, lockable PIN to switch user on shared tablets; lockout after 3 failures, rate limits |
+| Sessions | Signed `__Host-` HttpOnly, SameSite=Strict cookie with a revocable server record; 5-minute idle and 8-hour limits |
+| Access | One permission table on every route; waiters reach only their own orders and cashiers only today's bills; a second person for large refunds and Admin changes |
+| Input | Strict schemas that refuse unknown fields; totals worked out on the server |
+| Browser | Strict CSP with Trusted Types, no inline code, no third-party resources, CSRF token and Origin check |
+| Data | AES-256-GCM for customer details, masked numbers, 90-day retention, erasure on request, encrypted backups |
+| Accountability | Hash-chained audit log signed with Ed25519, written in the same transaction as each action; alerts |
+| Database | Local MongoDB replica set with login required; the app uses its own least-privilege login and cannot change or delete audit entries |
+| Pipeline | ESLint, Semgrep, CodeQL, gitleaks, dependency audit and tests on every push |
 
-## Security-aware design
+## Security documents
 
-| Requirement | In this prototype |
-|---|---|
-| SR-1 Strong authentication | Username format and password complexity rules; generic failure messages (no account enumeration) |
-| SR-3 RBAC / least privilege | Each role gets only its own navigation and pages. Opening another role's page redirects and writes an *Access denied* audit entry. Disabled or re-roled users are signed out on their next page load. Discount limits per role (Cashier 10%, Manager 25%). Refunds are manager-only: a cashier who clicks **Refund** gets *Access denied*, the data layer rejects the request again, and the attempt is audited. Admins can't demote or disable themselves, and at least one admin must always remain. |
-| Personal data (least privilege) | Customer mobile numbers are shown in full only to Manager/Admin. Cashiers get a masked value (`0300-•••••43`), and the masking happens in the data layer, so the full number never reaches a cashier's page. |
-| SR-4 Input validation / XSS | All data-layer writes are validated. All user text is rendered with `textContent`, never `innerHTML`. CSV exports neutralise spreadsheet formula injection. |
-| SR-6 Sessions | Auto sign-out after 5 min idle with a 30 s warning. Sign-in pauses after 5 failures. |
-| SR-7 Auditing | Sign-ins, failures, lockouts, access denials, price/menu changes, role and account changes, refunds, discounts, stock changes and exports are logged. Entries are **hash-chained**, so editing or deleting one is detected on the audit page. |
-| SR-8 Payment security | Card and wallet payments go through a (simulated) gateway. No card fields exist, and nothing is stored. |
-| Credential handling | Password never stored; POST-only form that can't submit before its script loads, so credentials never appear in URLs |
+| Document | Contents |
+| --- | --- |
+| [CONCEPT-COVERAGE.md](docs/security/CONCEPT-COVERAGE.md) | Every lecture concept, with the file and test that prove it |
+| [SECURITY-REQUIREMENTS.md](docs/security/SECURITY-REQUIREMENTS.md) | Functional, non-functional and regulatory requirements; review log |
+| [TRACEABILITY.md](docs/security/TRACEABILITY.md) | Requirement to threat to code to test; misuse cases |
+| [THREAT-MODEL.md](docs/security/THREAT-MODEL.md) | Six-step process, attackers, STRIDE, PASTA, OCTAVE and VAST |
+| [RISK-AND-FAILURE-ANALYSIS.md](docs/security/RISK-AND-FAILURE-ANALYSIS.md) | WSES, FMEA, dependency matrix and failure types |
+| [SCAN-RESULTS.md](docs/security/SCAN-RESULTS.md) | What each scanner found, and every accepted exception |
+| [LOAD-TEST.md](docs/security/LOAD-TEST.md) | Staff response times during a simulated flood |
+| [INCIDENT-RESPONSE.md](docs/security/INCIDENT-RESPONSE.md) | Runbook, playbooks, key rotation and the 72-hour breach steps |
+| [RESIDUAL-RISKS.md](docs/security/RESIDUAL-RISKS.md) | What remains, and why |
+| [OUT-OF-SCOPE.md](docs/security/OUT-OF-SCOPE.md) | What cannot be built inside a web app |
+| [BURP-TEST-SCRIPT.md](docs/security/BURP-TEST-SCRIPT.md) | The manual penetration test |
 
-> Hiding a button is **not** a security control. This is a frontend prototype, and everything above will be enforced again on the server: bcrypt/Argon2 hashing, server-side RBAC on every request, parameterised queries, HTTPS and a server-side audit log.
+Screens update live over Server-Sent Events: the stream carries only the names of changed areas, and each screen re-reads its own role-filtered data. The payment gateway and SMS or email delivery are simulated, because real ones need provider accounts.
 
-## Tech
+## Run it locally
 
-Plain HTML5, CSS3 and vanilla JavaScript with no build step and no dependencies. Inter and JetBrains Mono fonts. Inline SVG icons (Lucide-style, MIT). Dependency-free SVG charts.
-
-```
-css/style.css        design system and all components
-js/icons.js          inline SVG icons
-js/common.js         DOM helper, toasts, modals, confirm dialog, charts, CSV export, session
-js/store.js          prototype data layer ("fake backend"): users, menu, stock, orders, bills, audit
-js/app.js            staff app shell: role guard, sidebar, top bar, notifications, Ctrl+K palette, idle timeout
-js/<page>.js         one script per page
-```
-
-Keyboard: **Ctrl/⌘ + K** opens quick search on any staff page. **Esc** closes dialogs.
-
-## Run locally with MongoDB
-
-MongoDB Compass is a graphical client; it does not run the MongoDB database server by itself. Install and start MongoDB Community Server, or use a MongoDB Atlas connection string. Then:
+You need Node.js 24 and a local MongoDB server running as a replica set (one-time steps in [LOCAL-SETUP.md](docs/LOCAL-SETUP.md)). No Docker is needed.
 
 ```bash
 npm install
-copy .env.example .env
+```
+
+```bash
+npm run setup
+```
+
+```bash
 npm start
 ```
 
-Open http://localhost:3000. The default connection is `mongodb://127.0.0.1:27017`, database `cafems`. You can verify the connection at http://localhost:3000/api/health and inspect the `application_state` collection in Compass.
+Open http://localhost:3000.
 
-For MongoDB Atlas, replace `MONGODB_URI` in `.env` with the connection string from Atlas. Never commit `.env`; it is ignored by git.
+`npm run setup` does four things:
+- creates the keys and database passwords in `.env`, which git ignores;
+- checks MongoDB;
+- creates the app's database login and indexes;
+- on an empty database, adds a demo cafe.
 
-To run the UI without MongoDB, use `python -m http.server 8000`; it will use the browser's local cache and will not synchronize to MongoDB.
+The demo cafe includes a starting photo for each menu item (free-licence photos, credited in [scripts/seed-photos/CREDITS.md](scripts/seed-photos/CREDITS.md)). Staff accounts get random passwords, saved to `.seed-credentials.txt`. There are no default passwords. Admins and Managers add an authenticator app at first sign-in; other staff can set a tablet PIN on their account page. The server refuses to start if a key is missing or weak.
 
-## Deploy to Netlify
+## Commands
 
-The repository root contains `index.html` and `netlify.toml`, so no build command or framework adapter is required.
+| Command | What it does |
+| --- | --- |
+| `npm run setup` | One-command setup against the local MongoDB (safe to run again) |
+| `npm run demo` | Adds a realistic past week of sales, clock-ins and rota to the local database, so Insights has something to show; `npm run demo -- --remove` takes it out again |
+| `npm test` | All tests, using a temporary in-memory database (never your data) |
+| `npm run test:coverage` | Tests with coverage thresholds |
+| `npm run lint` | ESLint with security rules |
+| `npm run deps:report` | Dependency matrix report and single points of failure |
+| `npm run load-test` | Staff response times during a simulated flood |
+| `npm run backup` and `npm run restore` | Encrypted backup, and restore into an empty database |
 
-1. Push this repository to GitHub, GitLab or Bitbucket.
-2. In Netlify, choose **Add new site → Import an existing project** and select the repository.
-3. Leave the build command empty. Set the publish directory to `.` if Netlify does not detect it automatically.
-4. Deploy the site. Netlify will use the included `netlify.toml` and the custom `404.html` page.
+## Project layout
 
-For a manual deploy, drag this repository root (the folder containing `index.html`) onto https://app.netlify.com/drop.
+```
+server/        Express app, routes, services, security middleware
+public/        Pages, browser scripts, styles and self-hosted fonts
+scripts/       Setup, seed, backup, first Admin, load test and report tools
+tests/         Automated tests, including attack and failure tests
+docs/          Local setup guide, roadmap, coursework and security documents
+.github/       CI, release checksums, Dependabot and the pull request checklist
+```
 
-After changing CSS or JS, bump the `?v=` number in the HTML files so browsers load the new files.
+Earlier coursework is in [SUBMISSION.md](SUBMISSION.md), [SUBMISSION-ACTIVITY2.md](SUBMISSION-ACTIVITY2.md), [SUBMISSION-ACTIVITY3.md](SUBMISSION-ACTIVITY3.md) and [SUBMISSION-ACTIVITY4.md](SUBMISSION-ACTIVITY4.md). They describe the prototype as it stood at each activity.
 
-## Team
+Activity 6 (backend, JWT and authorization) is in [SUBMISSION-ACTIVITY6.md](SUBMISSION-ACTIVITY6.md). Its evidence is in [docs/activity-6](docs/activity-6/), regenerated by `node scripts/activity6-evidence.js`.
 
-| Name | Roll No. | Role |
-|---|---|---|
-| M. Usman | 22L-7991 | Team Lead |
-| _[Member]_ | _[Roll no.]_ | Backend |
-| _[Member]_ | _[Roll no.]_ | Frontend |
-| _[Member]_ | _[Roll no.]_ | Security / Testing |
+To report a vulnerability, see [SECURITY.md](SECURITY.md).

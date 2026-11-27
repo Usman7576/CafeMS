@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings · CafeMS</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body data-page="settings">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Settings</h2><p>How your cafe runs: its details, tax, discount limits, receipt and tables.</p></div>
+      <div class="head-actions"><button type="button" class="btn btn-primary" id="saveOps" disabled><i data-icon="check" data-size="17"></i>Save changes</button></div>
+    </div>
+
+    <div class="settings-layout">
+      <nav class="settings-nav" aria-label="Settings sections">
+        <a href="#profile"><i data-icon="home" data-size="16"></i>Cafe profile</a>
+        <a href="#money"><i data-icon="receipt" data-size="16"></i>Tax and discounts</a>
+        <a href="#receipt"><i data-icon="file" data-size="16"></i>Receipt</a>
+        <a href="#tables"><i data-icon="grid" data-size="16"></i>Tables</a>
+        <a href="#categories"><i data-icon="utensils" data-size="16"></i>Categories</a>
+        <a href="#ordertypes"><i data-icon="package" data-size="16"></i>Order types</a>
+        <a href="#floor"><i data-icon="grid" data-size="16"></i>Floor plan</a>
+        <a href="#guests"><i data-icon="users" data-size="16"></i>Loyalty and bookings</a>
+        <a href="#online"><i data-icon="send" data-size="16"></i>Online ordering</a>
+      </nav>
+
+      <div class="stack">
+        <section class="panel" id="profile">
+          <div class="panel-head"><div><h3>Cafe profile</h3><p>Shown on your website and at the top of receipts.</p></div></div>
+          <form class="panel-body" id="profileForm" method="post" novalidate>
+            <div class="alert alert-error" id="profileErr" role="alert"></div>
+            <div class="form-grid">
+              <div class="field"><label for="cafe-name">Cafe name</label><input class="input" id="cafe-name" maxlength="40" autocomplete="off"></div>
+              <div class="field"><label for="cafe-phone">Phone</label><input class="input" id="cafe-phone" maxlength="20" autocomplete="off"></div>
+              <div class="field span-2"><label for="cafe-tagline">Tagline</label><input class="input" id="cafe-tagline" maxlength="80" autocomplete="off"></div>
+              <div class="field span-2"><label for="cafe-about">Short description</label><textarea class="textarea" id="cafe-about" maxlength="300" rows="3"></textarea></div>
+              <div class="field"><label for="cafe-address">Address</label><input class="input" id="cafe-address" maxlength="120" autocomplete="off"></div>
+              <div class="field"><label for="cafe-hours">Opening hours</label><input class="input" id="cafe-hours" maxlength="80" autocomplete="off"></div>
+            </div>
+            <button type="submit" class="btn btn-secondary" id="saveProfile">Save profile</button>
+          </form>
+        </section>
+
+        <div class="alert alert-error" id="opsErr" role="alert"></div>
+
+        <section class="panel" id="money">
+          <div class="panel-head"><div><h3>Tax and discounts</h3><p>Tax is added to every new bill. Bills already paid keep the rate they were paid at.</p></div></div>
+          <div class="panel-body form-grid three">
+            <div class="field"><label for="taxRate">Sales tax</label><div class="input-group"><input class="input" id="taxRate" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span class="addon">%</span></div></div>
+            <div class="field"><label for="limitCashier">Cashier discount limit</label><div class="input-group"><input class="input" id="limitCashier" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="addon">%</span></div></div>
+            <div class="field"><label for="limitManager">Manager discount limit</label><div class="input-group"><input class="input" id="limitManager" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="addon">%</span></div></div>
+            <div class="field"><label for="serviceCharge">Service charge <span class="opt">dine-in only</span></label><div class="input-group"><input class="input" id="serviceCharge" type="number" min="0" max="20" step="0.5" inputmode="decimal"><span class="addon">%</span></div></div>
+          </div>
+        </section>
+
+        <section class="panel" id="receipt">
+          <div class="panel-head"><div><h3>Receipt</h3><p>A short line above the items and a closing line at the bottom.</p></div></div>
+          <div class="panel-body receipt-edit">
+            <div>
+              <div class="field"><label for="receiptHeader">Header</label><input class="input" id="receiptHeader" maxlength="80" autocomplete="off"></div>
+              <div class="field mb-0"><label for="receiptFooter">Footer</label><input class="input" id="receiptFooter" maxlength="120" autocomplete="off"></div>
+            </div>
+            <div class="receipt-preview" aria-label="Receipt preview">
+              <b id="previewName">CafeMS</b>
+              <small id="previewHeader"></small>
+              <div class="r-sep"></div>
+              <div class="r-line"><span>1 × Cappuccino</span><span>Rs 450</span></div>
+              <div class="r-line"><span>Tax</span><span id="previewTax">Rs 72</span></div>
+              <div class="r-line r-total"><span>Total</span><span id="previewTotal">Rs 522</span></div>
+              <div class="r-sep"></div>
+              <small id="previewFooter"></small>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="tables">
+          <div class="panel-head">
+            <div><h3>Tables <span class="pill no-dot" id="tableCount">0</span></h3><p>A table with open orders cannot be removed until its bill is paid.</p></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="addTable"><i data-icon="plus" data-size="15"></i>Add table</button>
+          </div>
+          <div class="table-wrap flush">
+            <table class="data-table">
+              <thead><tr><th scope="col">Number</th><th scope="col">Seats</th><th scope="col">Area</th><th scope="col">Shape</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
+              <tbody id="tableRows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="panel" id="floor">
+          <div class="panel-head"><div><h3>Floor plan</h3><p>Drag each table to where it stands, or select it and use the arrow keys. Waiters see this layout.</p></div></div>
+          <div class="panel-body"><div id="floorEditAreas"></div><div id="floorEdit"></div></div>
+        </section>
+
+        <section class="panel" id="guests">
+          <div class="panel-head"><div><h3>Loyalty and bookings</h3><p>Points guests earn and spend, and the times the website offers for bookings.</p></div></div>
+          <div class="panel-body">
+            <label class="setting setting-row"><div><b>Loyalty points</b><small>Members earn points on every paid bill and can pay with them.</small></div><input type="checkbox" class="switch" id="loyaltyOn"></label>
+            <div class="form-grid three mt-12">
+              <div class="field"><label for="earnPer100">Points per Rs 100</label><input class="input" id="earnPer100" type="number" min="0" max="20" step="1" inputmode="numeric"></div>
+              <div class="field"><label for="pointValue">One point is worth</label><div class="input-group"><span class="addon">Rs</span><input class="input" id="pointValue" type="number" min="0.1" max="10" step="0.1" inputmode="decimal"></div></div>
+            </div>
+            <div class="form-grid three">
+              <div class="field"><label for="bookOpen">Bookings from</label><input class="input" id="bookOpen" type="time"></div>
+              <div class="field"><label for="bookClose">Closing time</label><input class="input" id="bookClose" type="time"></div>
+              <div class="field"><label for="bookSlot">A booking time every</label><select class="select" id="bookSlot"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60">60 minutes</option></select></div>
+              <div class="field"><label for="bookLength">A booking holds the table for</label><div class="input-group"><input class="input" id="bookLength" type="number" min="30" max="240" step="15" inputmode="numeric"><span class="addon">min</span></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="online">
+          <div class="panel-head">
+            <div><h3>Online ordering</h3><p>Guests order takeaway or delivery from the website, or from a QR code on their table. Staff accept each order first.</p></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="showQr"><i data-icon="grid" data-size="15"></i>Table QR codes</button>
+          </div>
+          <div class="panel-body">
+            <label class="setting setting-row"><div><b>Order from the website</b><small>Takeaway and delivery, as switched on under Order types.</small></div><input type="checkbox" class="switch" id="onlineOrdering"></label>
+            <label class="setting setting-row"><div><b>Order from the table</b><small>Each table's QR code opens the menu for that table.</small></div><input type="checkbox" class="switch" id="onlineQr"></label>
+          </div>
+        </section>
+
+        <section class="panel" id="categories">
+          <div class="panel-head">
+            <div><h3>Menu categories</h3><p>Shown on the POS in this order. Each goes to the kitchen or the bar display.</p></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="addCategory"><i data-icon="plus" data-size="15"></i>Add category</button>
+          </div>
+          <div class="table-wrap flush">
+            <table class="data-table">
+              <thead><tr><th scope="col">Name</th><th scope="col">Prepared at</th><th scope="col"><span class="sr-only">Order and remove</span></th></tr></thead>
+              <tbody id="categoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="ordertypes">
+          <div class="panel-head"><div><h3>Order types</h3><p>Which kinds of order the POS offers.</p></div></div>
+          <div class="panel-body">
+            <label class="setting setting-row"><div><b>Dine-in</b><small>Guests sit at a table and pay at the end.</small></div><input type="checkbox" class="switch" id="typeDineIn"></label>
+            <label class="setting setting-row"><div><b>Takeaway</b><small>Ordered at the counter and collected. Needs a customer name.</small></div><input type="checkbox" class="switch" id="typeTakeaway"></label>
+            <label class="setting setting-row"><div><b>Cashiers must open a shift</b><small>Payments are refused until the cashier has opened a shift and counted the float.</small></div><input type="checkbox" class="switch" id="requireShift"></label>
+            <label class="setting setting-row"><div><b>Delivery</b><small>Needs a name, a mobile number and an address. Both are encrypted.</small></div><input type="checkbox" class="switch" id="typeDelivery"></label>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/store.js?v=9.7"></script>
+  <script src="js/app.js?v=9.7"></script>
+  <script src="js/floorplan.js?v=9.7"></script>
+  <script src="js/settings.js?v=9.7"></script>
+</body>
+</html>

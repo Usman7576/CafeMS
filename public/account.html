@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My account — Cafe Management System</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body data-page="account">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>My account</h2><p>Your password, authenticator and signed-in devices.</p></div>
+    </div>
+    <div class="dash-grid">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Change password</h3><p>Your other devices are signed out when it changes.</p></div></div>
+          <form method="post" class="panel-body" id="passwordForm" novalidate>
+            <div class="alert alert-error" id="passwordErr" role="alert"></div>
+            <div class="field"><label for="currentPassword">Current password</label><input class="input" type="password" id="currentPassword" autocomplete="current-password" maxlength="128" required></div>
+            <div class="field"><label for="newPassword">New password</label><input class="input" type="password" id="newPassword" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">
+              <ul class="pw-rules" id="pwRules" aria-label="Password requirements">
+                <li data-rule="len">At least 12 characters</li>
+                <li data-rule="upper">One uppercase letter</li>
+                <li data-rule="lower">One lowercase letter</li>
+                <li data-rule="num">One number</li>
+                <li data-rule="sym">One symbol</li>
+              </ul>
+            </div>
+            <button type="submit" class="btn btn-primary" id="passwordSave">Change password</button>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Authenticator</h3><p id="mfaStatus"></p></div></div>
+          <div class="panel-body">
+            <p class="auth-note">Recovery codes let you sign in if you lose your phone. Making new ones cancels the old ones.</p>
+            <ul class="recovery-list" id="recoveryList" hidden></ul>
+            <div id="recoveryActions"></div>
+            <button type="button" class="btn btn-secondary" id="newCodes">Make new recovery codes</button>
+          </div>
+        </section>
+      </div>
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><div><h3>Passkeys</h3><p>Sign in with your fingerprint, face or device PIN instead of a typed code. They also cannot be used on a fake site.</p></div></div>
+          <ul class="ready-list" id="passkeyList"></ul>
+          <div class="panel-body"><button type="button" class="btn btn-secondary" id="addPasskey">Add a passkey on this device</button></div>
+        </section>
+        <section class="panel" id="pinPanel" hidden>
+          <div class="panel-head"><div><h3>Tablet PIN</h3><p id="pinStatus">On a shared tablet, tap your name and enter this PIN to switch to yourself. You still need your password on a new device.</p></div></div>
+          <form class="panel-body" id="pinForm" method="post" novalidate>
+            <div class="alert alert-error" id="pinErr" role="alert"></div>
+            <div class="form-grid">
+              <div class="field"><label for="pinNew">New PIN</label><input class="input" type="password" id="pinNew" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="4 to 6 digits"></div>
+              <div class="field"><label for="pinPassword">Current password</label><input class="input" type="password" id="pinPassword" autocomplete="current-password" maxlength="128"></div>
+            </div>
+            <div class="row-actions"><button type="submit" class="btn btn-primary" id="pinSave">Save PIN</button><button type="button" class="btn btn-ghost" id="pinRemove" hidden>Remove PIN</button></div>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Security question</h3><p id="questionStatus">Asked as well as a recovery code, if you ever lose your phone.</p></div></div>
+          <form class="panel-body" id="questionForm" method="post" novalidate>
+            <div class="alert alert-error" id="questionErr" role="alert"></div>
+            <div class="field"><label for="questionText">Question</label><input class="input" type="text" id="questionText" maxlength="100" placeholder="For example: What was the name of your first school?"></div>
+            <div class="field"><label for="questionAnswer">Answer</label><input class="input" type="text" id="questionAnswer" maxlength="100" autocomplete="off"></div>
+            <button type="submit" class="btn btn-secondary" id="questionSave">Save question</button>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h3>Signed-in devices</h3><p>If you don't recognise one, sign it out and change your password.</p></div></div>
+          <ul class="ready-list" id="deviceList"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/password_strength_helper.js"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/store.js?v=9.7"></script>
+  <script src="js/app.js?v=9.7"></script>
+  <script src="js/account.js?v=9.7"></script>
+</body>
+</html>

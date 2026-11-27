@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing — Cafe Management System</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body data-page="billing">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2 id="billHeading">Billing &amp; payments</h2><p>Select an open table or counter order, apply any discount, take payment and print the receipt.</p></div>
+      <div class="head-stats" id="billStats"></div>
+    </div>
+    <section class="panel mb-20" id="incomingPanel" hidden></section>
+    <section class="shift-bar" id="shiftBar" aria-label="Your shift"></section>
+
+    <div class="bill-layout">
+      <section class="panel" aria-labelledby="openTitle">
+        <div class="panel-head"><div><h3 id="openTitle">Open orders</h3><p>Tables and counter orders that haven&#39;t been paid</p></div></div>
+        <div class="table-cards" id="openTables"></div>
+      </section>
+
+      <section class="panel bill-panel" aria-labelledby="billTitle" id="billPanel">
+        <div class="panel-head">
+          <div><h3 id="billTitle">Bill</h3><p id="billSub">Select a table to start</p></div>
+          <span class="pill no-dot" id="billState"></span>
+        </div>
+        <div id="billBody"></div>
+      </section>
+    </div>
+
+    <section class="panel mt-20" aria-labelledby="recentTitle">
+      <div class="panel-head">
+        <div><h3 id="recentTitle">Today's bills</h3><p id="recentSub"></p></div>
+        <div class="input-wrap w-240"><i data-icon="search" data-size="16"></i><label class="sr-only" for="billSearch">Search bills</label><input class="input input-sm" id="billSearch" type="search" placeholder="Search bill no. or table" maxlength="20"></div>
+      </div>
+      <div class="table-wrap flush">
+        <table class="data-table">
+          <thead><tr><th>Bill</th><th>Table</th><th class="hide-sm">Time</th><th class="hide-sm">Method</th><th class="hide-sm">Customer</th><th>Total</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody id="billsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="receiptModal" role="dialog" aria-modal="true" aria-label="Receipt">
+    <div class="modal receipt-modal">
+      <div class="receipt" id="receipt"></div>
+      <div class="modal-actions no-print">
+        <button class="btn btn-secondary" data-close="receiptModal">Close</button>
+        <button class="btn btn-dark" id="printReceipt" data-autofocus><i data-icon="file" data-size="16"></i>Print receipt</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/store.js?v=9.7"></script>
+  <script src="js/app.js?v=9.7"></script>
+  <script src="js/billing.js?v=9.7"></script>
+  <script src="js/shift.js?v=9.7"></script>
+  <script src="js/incoming.js?v=9.7"></script>
+</body>
+</html>

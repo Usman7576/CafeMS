@@ -1,0 +1,320 @@
+{
+  "generatedAt": "2026-11-11T11:08:52.312Z",
+  "browser": "chrome.exe",
+  "note": "Produced by scripts/activity5-evidence.js against a throwaway copy of CafeMS. Actual results are read from the page.",
+  "passed": 28,
+  "total": 28,
+  "cases": [
+    {
+      "id": "TC-01",
+      "task": "Task 1",
+      "feature": "Public reservation form (index.html) – mandatory fields",
+      "input": "Name, mobile number, date and time left empty; Request my table pressed",
+      "expected": "Form is not sent; a message appears under each empty required field",
+      "actual": "4 messages shown: rName: Your name is required. | rPhone: Mobile number is required. | rDate: Date is required. | rTime: Time is required. Requests sent to the server: 0",
+      "pass": true,
+      "screenshot": "screenshots/01-reservation-required-fields.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-02",
+      "task": "Task 1",
+      "feature": "Public reservation form – lengths, formats and ranges",
+      "input": "Name \"A\", mobile \"12345\", a date 3 days ago, time 07:30, 25 guests, notes of 170 characters (maxlength bypassed in DevTools)",
+      "expected": "Each field shows its own message: name too short, mobile format, past date, opening hours, guest range, notes too long",
+      "actual": "6 messages shown: rName: Your name must be at least 2 characters. | rPhone: Enter the mobile number as 03XXXXXXXXX (11 digits, starting with 03). | rDate: Date cannot be in the past. | rTime: Choose a time between 10:00 and 23:00. | rParty: Guests must be a whole number from 1 to 20. | rNotes: Notes must be 160 characters or fewer. Requests sent: 0",
+      "pass": true,
+      "screenshot": "screenshots/02-reservation-invalid-formats.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-03",
+      "task": "Task 1",
+      "feature": "Public reservation form – leading and trailing spaces removed",
+      "input": "Name \"   Ayesha    Khan   \", mobile \" 0321-1234567 \", valid date, time and guests",
+      "expected": "Spaces are trimmed (and doubled spaces collapsed) before sending; booking is accepted",
+      "actual": "Confirmation: \"Thank you. We've received your request and will confirm your table soon.\". Sent to the server: name \"Ayesha Khan\", mobile \"03211234567\", notes start \"<img src=x o\"",
+      "pass": true,
+      "screenshot": [
+        "screenshots/03-reservation-typed-with-spaces.png",
+        "screenshots/04-reservation-trimmed-accepted.png"
+      ],
+      "result": "Pass"
+    },
+    {
+      "id": "TC-04",
+      "task": "Task 1",
+      "feature": "Staff sign-in form (login.html) – mandatory fields",
+      "input": "Username and password left empty; Sign in pressed",
+      "expected": "Nothing is sent; \"Enter your username.\" and \"Enter your password.\" appear",
+      "actual": "2 messages shown: username: Enter your username. | password: Enter your password.",
+      "pass": true,
+      "screenshot": "screenshots/05-login-required-fields.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-05",
+      "task": "Task 1",
+      "feature": "Staff reservation form (reservation.html) – required fields and party size",
+      "input": "Guest name, mobile and time empty, party size 0",
+      "expected": "Four messages, one under each field; the reservation is not created",
+      "actual": "4 messages shown: guestName: Guest name is required. | guestPhone: Mobile number is required. | reservationTime: Reservation time is required. | partySize: Party size must be a whole number from 1 to 20.",
+      "pass": true,
+      "screenshot": "screenshots/06-staff-reservation-invalid.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-06",
+      "task": "Task 1",
+      "feature": "Staff reservation form – messages clear when fixed",
+      "input": "Valid name, mobile \"0300 7654321\", date, time and party size 3",
+      "expected": "All messages disappear and the reservation is created",
+      "actual": "0 messages left; toast: \"R-1002 created for Bilal Ahmed\"",
+      "pass": true,
+      "screenshot": "screenshots/07-staff-reservation-valid.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-07",
+      "task": "Task 2",
+      "feature": "Reservation queue (reservations.html) – stored notes shown to staff",
+      "input": "Guest notes submitted on the public form: <img src=x onerror=\"window.__xss=1;alert('XSS')\"> <script>window.__xss=2;alert('XSS')</script>",
+      "expected": "The notes appear as plain text; no image or script element is created, no alert opens, window.__xss stays unset",
+      "actual": "Shown as text: \"<img src=x onerror=\"window.__xss=1;alert('XSS')\"> <script>window.__xss=2;alert('XSS')</script>\" (child elements inside the paragraph: 0). window.__xss: not set; injected <img>: 0; injected <script>: 0; alerts opened: 0",
+      "pass": true,
+      "screenshot": "screenshots/08-xss-reservation-notes-as-text.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-08",
+      "task": "Task 2",
+      "feature": "Unsafe DOM APIs are refused by the browser (Trusted Types) and by CMS.h",
+      "input": "From the page: element.innerHTML = '<img src=x onerror=alert(1)>'; CMS.h('a', { href: 'javascript:alert(1)' }); CMS.h('button', { onclick: 'alert(1)' })",
+      "expected": "innerHTML with a plain string throws; javascript: links are replaced; a string handler is ignored",
+      "actual": "innerHTML: TypeError: Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment; href became \"about:blank#blocked\" (with a hidden tab: \"about:blank#blocked\"); onclick attribute: not set; alerts opened: 0",
+      "pass": true,
+      "screenshot": null,
+      "result": "Pass"
+    },
+    {
+      "id": "TC-09",
+      "task": "Task 5",
+      "feature": "Password strength checker (account.html, Change password)",
+      "input": "\"abc\" typed into New password",
+      "expected": "Weak, shown below the field as the user types",
+      "actual": "Shown: Weak (0 of 6) – \"Try using a longer password.\". checkPasswordStrength() returned Weak, score 0",
+      "pass": true,
+      "screenshot": "screenshots/09-strength-weak-3-characters.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-10",
+      "task": "Task 5",
+      "feature": "Password strength checker (account.html, Change password)",
+      "input": "\"password1\" typed into New password",
+      "expected": "Weak, shown below the field as the user types",
+      "actual": "Shown: Weak (2 of 6) – \"Try using a longer password.\". checkPasswordStrength() returned Weak, score 2",
+      "pass": true,
+      "screenshot": "screenshots/10-strength-weak-9-characters.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-11",
+      "task": "Task 5",
+      "feature": "Password strength checker (account.html, Change password)",
+      "input": "\"Coffee2024\" typed into New password",
+      "expected": "Moderate, shown below the field as the user types",
+      "actual": "Shown: Moderate (3 of 6) – \"A longer password or more variety may improve it.\". checkPasswordStrength() returned Moderate, score 3",
+      "pass": true,
+      "screenshot": "screenshots/11-strength-moderate-10-characters.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-12",
+      "task": "Task 5",
+      "feature": "Password strength checker (account.html, Change password)",
+      "input": "\"Brew-House-58-Lantern!\" typed into New password",
+      "expected": "Strong, shown below the field as the user types",
+      "actual": "Shown: Strong (6 of 6) – \"Good password pattern. Avoid reusing passwords.\". checkPasswordStrength() returned Strong, score 6",
+      "pass": true,
+      "screenshot": "screenshots/12-strength-strong-22-characters.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-13",
+      "task": "Task 5",
+      "feature": "Password strength checker – cleared field",
+      "input": "New password emptied",
+      "expected": "The strength box is hidden again",
+      "actual": "Hidden",
+      "pass": true,
+      "screenshot": null,
+      "result": "Pass"
+    },
+    {
+      "id": "TC-14",
+      "task": "Task 1",
+      "feature": "Change password form (account.html) – required and minimum length",
+      "input": "Current password empty, new password \"short\"",
+      "expected": "Two messages; the request is not sent",
+      "actual": "2 messages: currentPassword: Current password is required. | newPassword: New password must be at least 12 characters.",
+      "pass": true,
+      "screenshot": "screenshots/13-password-form-invalid.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-15",
+      "task": "Task 4",
+      "feature": "Browser storage while signed in",
+      "input": "Developer tools → Application: sessionStorage, localStorage and document.cookie read after signing in and using the app",
+      "expected": "No password, token, code or customer number; localStorage empty; the session cookie is invisible to scripts (HttpOnly)",
+      "actual": "sessionStorage: {\"cms_session\":\"{\\\"user\\\":\\\"activity.manager\\\",\\\"name\\\":\\\"Activity Manager\\\",\\\"role\\\":\\\"Manager\\\",\\\"loginAt\\\":\\\"2026-11-11T11:08:26.676Z\\\"}\"}; localStorage: {}; document.cookie: \"\"; sensitive words found: none",
+      "pass": true,
+      "screenshot": null,
+      "result": "Pass"
+    },
+    {
+      "id": "TC-16",
+      "task": "Task 4",
+      "feature": "Unneeded items in browser storage are removed",
+      "input": "localStorage.password and sessionStorage.authToken planted from the console, then the next page opened",
+      "expected": "Both are removed on page load; only cms_session (name, username, role, sign-in time) remains",
+      "actual": "localStorage items: 0; authToken: removed; sessionStorage keys: cms_session",
+      "pass": true,
+      "screenshot": null,
+      "result": "Pass"
+    },
+    {
+      "id": "TC-17",
+      "task": "Task 4",
+      "feature": "No secret keys or credentials in frontend JavaScript",
+      "input": "7 scripts loaded by the Manager overview page scanned for private keys, API keys, server secrets and database passwords",
+      "expected": "None found",
+      "actual": "None found in 7 scripts",
+      "pass": true,
+      "screenshot": null,
+      "result": "Pass"
+    },
+    {
+      "id": "TC-18",
+      "task": "Task 4",
+      "feature": "Sign out clears the temporary state",
+      "input": "Sign out pressed and confirmed, then the overview page opened again",
+      "expected": "cms_session removed, nothing in localStorage, the server session ends (401), and the protected page sends the user back to sign in",
+      "actual": "sessionStorage keys after sign-out: none; localStorage items: 0; /auth/me now returns 401; opening overview.html ended on /login.html; message: \"You have been signed out.\"",
+      "pass": true,
+      "screenshot": "screenshots/14-signed-out.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-19",
+      "task": "Task 2",
+      "feature": "Public menu (index.html) – item name and description entered by staff",
+      "input": "Item name <script>alert(1)</script>; description <svg onload=alert(document.cookie)> <b>bold?</b>",
+      "expected": "Both are displayed literally as text on the public menu; nothing executes",
+      "actual": "Title shown: \"<script>alert(1)</script>\"; description shown: \"<svg onload=alert(document.cookie)> <b>bold?</b>\"; <script>: 0, <svg>: 0, <b>: 0; alerts opened: 0",
+      "pass": true,
+      "screenshot": "screenshots/15-xss-public-menu-as-text.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-20",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "flat-white.png (64×64 PNG, 237 bytes)",
+      "expected": "Accepted: \"Ready to upload\" with the name and size",
+      "actual": "Status: \"Ready to upload: flat-white.png (237 bytes)\"; files kept: 1",
+      "pass": true,
+      "screenshot": "screenshots/16-file-valid.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-21",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "setup.exe (a program)",
+      "expected": "Refused: not an allowed file type; the selection is cleared",
+      "actual": "Message: \"\"setup.exe\" is not an allowed file type. Choose a PNG, JPEG or WebP file.\"; files kept in the picker: 0",
+      "pass": true,
+      "screenshot": "screenshots/17-file-exe.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-22",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "menu-card.pdf (a document)",
+      "expected": "Refused: not an allowed file type",
+      "actual": "Message: \"\"menu-card.pdf\" is not an allowed file type. Choose a PNG, JPEG or WebP file.\"; files kept in the picker: 0",
+      "pass": true,
+      "screenshot": "screenshots/18-file-pdf.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-23",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "large-photo.png (3 MB)",
+      "expected": "Refused: larger than the 2 MB limit",
+      "actual": "Message: \"\"large-photo.png\" is 3.00 MB. The largest file allowed is 2.00 MB.\"; files kept in the picker: 0",
+      "pass": true,
+      "screenshot": "screenshots/19-file-big.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-24",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "not-really.png (a PHP script renamed to .png)",
+      "expected": "Refused: contents are not a PNG image",
+      "actual": "Message: \"\"not-really.png\" is named .png but its contents are not a PNG image.\"; files kept in the picker: 0",
+      "pass": true,
+      "screenshot": "screenshots/20-file-fake.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-25",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "photo.php.png (hidden second extension)",
+      "expected": "Refused: not an allowed file type",
+      "actual": "Message: \"\"photo.php.png\" is not an allowed file type. Choose a PNG, JPEG or WebP file.\"; files kept in the picker: 0",
+      "pass": true,
+      "screenshot": "screenshots/21-file-double.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-26",
+      "task": "Task 3",
+      "feature": "Menu item photo (menu.html)",
+      "input": "logo.svg (an SVG with an onload script)",
+      "expected": "Refused: SVG is not allowed",
+      "actual": "Message: \"\"logo.svg\" is not an allowed file type. Choose a PNG, JPEG or WebP file.\"; files kept in the picker: 0",
+      "pass": true,
+      "screenshot": "screenshots/22-file-svg.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-27",
+      "task": "Task 3",
+      "feature": "Menu item photo – permitted file is uploaded",
+      "input": "flat-white.png selected and the item saved",
+      "expected": "Item is saved and its photo thumbnail appears in the menu list",
+      "actual": "Saved; thumbnail shown in the list",
+      "pass": true,
+      "screenshot": "screenshots/23-file-valid-uploaded.png",
+      "result": "Pass"
+    },
+    {
+      "id": "TC-28",
+      "task": "Task 5",
+      "feature": "Password strength checker on the invitation / reset page (setup.html)",
+      "input": "\"Coffee2024\" typed into New password",
+      "expected": "Moderate shown below the field",
+      "actual": "Shown: Moderate",
+      "pass": true,
+      "screenshot": "screenshots/24-setup-strength-moderate.png",
+      "result": "Pass"
+    }
+  ]
+}

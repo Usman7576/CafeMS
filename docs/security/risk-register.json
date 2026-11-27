@@ -1,0 +1,198 @@
+{
+  "about": "CafeMS risk register. Components are rated with the Weighted Security Exposure Score (Low 1, Medium 3, High 5; weights: accessibility 2, data sensitivity 3, past incidents 2, complexity 1). Failure modes are rated with FMEA (Severity x Occurrence x Detection, each 1-10). 'before' is the prototype as audited on 2026-11-04; 'after' is the current code. Past incidents count defects found in our own audits, since the cafe has no production history. Every 'tests' entry names a test in tests/ that proves the control. Scores are worked out by server/lib/risk.js, never typed in.",
+  "reviewed": "2026-11-07",
+  "components": [
+    {
+      "id": "auth",
+      "name": "Sign-in, MFA and sessions",
+      "before": { "accessibility": "High", "dataSensitivity": "High", "pastIncidents": "High", "complexity": "Medium" },
+      "after": { "accessibility": "High", "dataSensitivity": "High", "pastIncidents": "Medium", "complexity": "High" },
+      "why": "Reachable from the internet and holds password hashes and MFA secrets, so exposure stays high. The prototype accepted any password; the review found MFA guessing without lockout, now fixed. MFA, enrolment and recovery codes make it more complex than before.",
+      "controls": ["Argon2id passwords", "TOTP MFA for all staff", "Lockout after 3 failures", "HttpOnly __Host- cookie with server session", "CSRF token and Origin check", "Rate limits"]
+    },
+    {
+      "id": "state-api",
+      "name": "Whole-database API (/api/state)",
+      "before": { "accessibility": "High", "dataSensitivity": "High", "pastIncidents": "High", "complexity": "Low" },
+      "after": null,
+      "why": "Removed in Phase 1. Every read and write now goes through a guarded, validated route.",
+      "controls": ["Route deleted", "Default-deny routing", "Guard check on every route"]
+    },
+    {
+      "id": "billing",
+      "name": "Billing, payments and refunds",
+      "before": { "accessibility": "Medium", "dataSensitivity": "High", "pastIncidents": "High", "complexity": "High" },
+      "after": { "accessibility": "Medium", "dataSensitivity": "High", "pastIncidents": "Medium", "complexity": "High" },
+      "why": "Staff only, but it moves money and holds customer numbers. The review found a possible double payment and cashier access to old bills, both fixed.",
+      "controls": ["Server-side totals", "Idempotency keys", "Single-charge claim", "Signed, single-use gateway callbacks", "Refunds need an authenticator code; large refunds a second person"]
+    },
+    {
+      "id": "users",
+      "name": "Staff accounts and roles",
+      "before": { "accessibility": "Medium", "dataSensitivity": "High", "pastIncidents": "High", "complexity": "Medium" },
+      "after": { "accessibility": "Low", "dataSensitivity": "High", "pastIncidents": "Low", "complexity": "Medium" },
+      "why": "Only Admins reach it now, after an authenticator re-check. No defect was found in the review.",
+      "controls": ["Admin only", "Step-up code", "Second Admin for Admin changes", "Single-use invitation links"]
+    },
+    {
+      "id": "audit",
+      "name": "Audit log",
+      "before": { "accessibility": "Medium", "dataSensitivity": "High", "pastIncidents": "High", "complexity": "Medium" },
+      "after": { "accessibility": "Low", "dataSensitivity": "High", "pastIncidents": "Medium", "complexity": "Medium" },
+      "why": "Admin read-only. The review found actions that could be saved without their entry, now fixed.",
+      "controls": ["SHA-256 chain with Ed25519 signatures", "Written in the same transaction as the action", "Database account cannot change or delete entries", "Chain verified every 15 minutes"]
+    },
+    {
+      "id": "orders",
+      "name": "Orders and kitchen",
+      "before": { "accessibility": "Medium", "dataSensitivity": "Medium", "pastIncidents": "Medium", "complexity": "Medium" },
+      "after": { "accessibility": "Medium", "dataSensitivity": "Low", "pastIncidents": "Low", "complexity": "Medium" },
+      "why": "Orders hold no customer data, and the kitchen gets no prices. No defect was found in the review.",
+      "controls": ["Waiters see only their own orders", "Atomic stock checks", "Version check on edits"]
+    },
+    {
+      "id": "reservations",
+      "name": "Reservations",
+      "before": { "accessibility": "Medium", "dataSensitivity": "Medium", "pastIncidents": "Medium", "complexity": "Medium" },
+      "after": { "accessibility": "Medium", "dataSensitivity": "Medium", "pastIncidents": "Medium", "complexity": "Medium" },
+      "why": "Holds guest names and numbers, encrypted. The review found new bookings hidden behind old ones and erased bookings that could reopen, both fixed.",
+      "controls": ["AES-256-GCM for name, phone and notes", "Masked numbers for waiters", "Keyed index for search", "90-day retention"]
+    },
+    {
+      "id": "public-site",
+      "name": "Public website and online booking",
+      "before": { "accessibility": "High", "dataSensitivity": "Low", "pastIncidents": "Low", "complexity": "Low" },
+      "after": { "accessibility": "High", "dataSensitivity": "Medium", "pastIncidents": "Low", "complexity": "Medium" },
+      "why": "Anyone can reach it, and online booking now collects a name and number.",
+      "controls": ["Customer fields only", "Booking limit per address", "Hidden bot field", "Same answer whether or not a booking existed", "Strict CSP"]
+    },
+    {
+      "id": "inventory",
+      "name": "Inventory",
+      "before": { "accessibility": "Medium", "dataSensitivity": "Low", "pastIncidents": "Low", "complexity": "Low" },
+      "after": { "accessibility": "Low", "dataSensitivity": "Low", "pastIncidents": "Low", "complexity": "Low" },
+      "why": "Only Managers change stock; Admins can view it. Stock can never go below zero.",
+      "controls": ["Conditional atomic updates", "Every adjustment audited"]
+    },
+    {
+      "id": "database",
+      "name": "MongoDB database",
+      "before": { "accessibility": "Medium", "dataSensitivity": "High", "pastIncidents": "High", "complexity": "Medium" },
+      "after": { "accessibility": "Low", "dataSensitivity": "High", "pastIncidents": "Medium", "complexity": "Medium" },
+      "why": "Listens on this computer only and now requires a login; the app account is least privilege. It ran without a login until the review.",
+      "controls": ["Login required", "Least-privilege app role", "Replica set with transactions", "Encrypted backups"]
+    }
+  ],
+  "failureModes": [
+    {
+      "id": "FM-1",
+      "component": "auth",
+      "failure": "Login accepts any password",
+      "effect": "Anyone can act as any member of staff",
+      "before": { "severity": 10, "occurrence": 10, "detection": 9 },
+      "after": { "severity": 10, "occurrence": 2, "detection": 2 },
+      "action": "Argon2id check on the server, mandatory MFA, failed sign-ins recorded and alerted",
+      "tests": ["a wrong password is refused, even though it meets the rules (finding 1)", "a correct password alone gives no session (MFA is mandatory)", "failed sign-ins, denials, exports, number views and refunds each raise an alert"]
+    },
+    {
+      "id": "FM-2",
+      "component": "state-api",
+      "failure": "Database read or replaced without signing in",
+      "effect": "All customer, staff and financial data exposed or wiped",
+      "before": { "severity": 10, "occurrence": 9, "detection": 9 },
+      "after": { "severity": 10, "occurrence": 1, "detection": 3 },
+      "action": "Whole-database routes removed; every route guarded and checked by a test",
+      "tests": ["the old whole-database routes are gone (findings 2, 3)", "every route has a guard, so none can be left open by accident (complete mediation)"]
+    },
+    {
+      "id": "FM-3",
+      "component": "orders",
+      "failure": "Role or ownership check bypassed",
+      "effect": "A user sees or changes data that belongs to someone else",
+      "before": { "severity": 9, "occurrence": 8, "detection": 9 },
+      "after": { "severity": 9, "occurrence": 2, "detection": 3 },
+      "action": "Server permission matrix on every route, ownership in every query, denials audited and alerted",
+      "tests": ["every role against every route (RBAC matrix)", "one waiter cannot see or change another waiter's order", "a denied page is recorded"]
+    },
+    {
+      "id": "FM-4",
+      "component": "billing",
+      "failure": "Bill total or quantity tampered with",
+      "effect": "Revenue lost, records wrong",
+      "before": { "severity": 9, "occurrence": 8, "detection": 8 },
+      "after": { "severity": 9, "occurrence": 1, "detection": 3 },
+      "action": "Totals worked out on the server from stored prices; strict schemas refuse extra fields",
+      "tests": ["the total is calculated on the server; the browser cannot set it (Rs 2,500 to 250)", "negative, zero, fractional, huge and non-numeric quantities are refused"]
+    },
+    {
+      "id": "FM-5",
+      "component": "orders",
+      "failure": "Two screens save at once and one change is lost",
+      "effect": "Wrong orders or stock",
+      "before": { "severity": 7, "occurrence": 8, "detection": 8 },
+      "after": { "severity": 7, "occurrence": 2, "detection": 2 },
+      "action": "Transactions, version checks and atomic stock updates",
+      "tests": ["an edit from an out-of-date screen is refused rather than overwriting", "simultaneous orders cannot both take the last portion"]
+    },
+    {
+      "id": "FM-6",
+      "component": "audit",
+      "failure": "Audit log edited without anyone noticing",
+      "effect": "Fraud or misuse cannot be proved",
+      "before": { "severity": 8, "occurrence": 5, "detection": 9 },
+      "after": { "severity": 8, "occurrence": 2, "detection": 2 },
+      "action": "Signed SHA-256 chain, verified every 15 minutes with an alert; app account cannot edit entries",
+      "tests": ["detects edited details, a changed actor and a changed time", "detects a recalculated hash, because the attacker cannot sign it", "the app account can add audit entries but cannot change or delete them"]
+    },
+    {
+      "id": "FM-7",
+      "component": "billing",
+      "failure": "Payment gateway or notification lost",
+      "effect": "Bill stuck, or a customer never hears back",
+      "before": { "severity": 6, "occurrence": 6, "detection": 8 },
+      "after": { "severity": 6, "occurrence": 3, "detection": 2 },
+      "action": "3-second gateway timeout to Pending Payment with retry; notification outbox with retries and an Admin alert",
+      "tests": ["a timeout leaves the bill Pending Payment, the till responsive and revenue unchanged", "failures retry with growing gaps, then raise one Admin alert"]
+    },
+    {
+      "id": "FM-8",
+      "component": "orders",
+      "failure": "Double click creates a duplicate order",
+      "effect": "Extra food made and stock taken",
+      "before": { "severity": 4, "occurrence": 7, "detection": 4 },
+      "after": { "severity": 4, "occurrence": 1, "detection": 2 },
+      "action": "Idempotency key on every order, payment and refund",
+      "tests": ["a double click creates one order and takes stock once", "a double click produces one bill"]
+    },
+    {
+      "id": "FM-9",
+      "component": "auth",
+      "failure": "Authenticator codes guessed without a lockout",
+      "effect": "An attacker with a stolen password gets in",
+      "before": { "severity": 9, "occurrence": 4, "detection": 8 },
+      "after": { "severity": 9, "occurrence": 1, "detection": 3 },
+      "action": "Failure count clears only after the full sign-in; alert on many failures from one address",
+      "tests": ["the right password alone does not reset the count, so authenticator codes cannot be guessed forever", "one password tried against many usernames from one address raises an alert (password spraying)"]
+    },
+    {
+      "id": "FM-10",
+      "component": "billing",
+      "failure": "Customer charged twice",
+      "effect": "Customer loses money and trust",
+      "before": { "severity": 7, "occurrence": 3, "detection": 8 },
+      "after": { "severity": 7, "occurrence": 1, "detection": 2 },
+      "action": "No second payment during a charge; a late approval is recorded and alerted",
+      "tests": ["no second payment is taken while a card charge is still waiting for the gateway", "a late approval for a bill already paid another way is recorded and raises an alert"]
+    },
+    {
+      "id": "FM-11",
+      "component": "audit",
+      "failure": "An action is saved without its audit entry",
+      "effect": "A change happens that nobody can trace",
+      "before": { "severity": 8, "occurrence": 3, "detection": 9 },
+      "after": { "severity": 8, "occurrence": 1, "detection": 3 },
+      "action": "Every change commits in the same transaction as its entry",
+      "tests": ["if the audit entry fails, the action it describes does not happen", "an action that cannot be recorded does not happen (fail-secure audit)"]
+    }
+  ]
+}

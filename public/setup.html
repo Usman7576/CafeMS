@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set your password — Cafe Management System</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body class="auth-page">
+  <main class="auth-center">
+    <a href="index.html" class="brand auth-brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span>CafeMS</span></a>
+    <div class="auth-card">
+          <h1>Choose a password</h1>
+          <p class="sub">Use something only you know, and not a password from another site.</p>
+          <div id="formAlert" class="alert" role="alert" aria-live="assertive"></div>
+          <form method="post" id="setupForm" novalidate>
+            <div class="field">
+              <label for="newPassword">New password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input" type="password" id="newPassword" autocomplete="new-password" maxlength="128" required aria-describedby="pwRules">
+              </div>
+              <ul class="pw-rules" id="pwRules" aria-label="Password requirements">
+                <li data-rule="len">At least 12 characters</li>
+                <li data-rule="upper">One uppercase letter</li>
+                <li data-rule="lower">One lowercase letter</li>
+                <li data-rule="num">One number</li>
+                <li data-rule="sym">One symbol</li>
+              </ul>
+            </div>
+            <div class="field">
+              <label for="confirmPassword">Confirm password</label>
+              <div class="input-wrap">
+                <i data-icon="lock" data-size="18"></i>
+                <input class="input" type="password" id="confirmPassword" autocomplete="new-password" maxlength="128" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-dark btn-lg btn-block" id="setupBtn">Continue</button>
+          </form>
+    </div>
+    <a href="index.html" class="auth-back"><i data-icon="arrow-left" data-size="15"></i>Back to home</a>
+  </main>
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/password_strength_helper.js"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/setup.js?v=9.7"></script>
+</body>
+</html>

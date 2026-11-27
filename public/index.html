@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CafeMS — Coffee, food and a table for you</title>
+  <meta name="description" content="See our menu, check our hours, order online and reserve a table.">
+  <meta name="theme-color" content="#1e3a2f">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+  <link rel="stylesheet" href="css/site.css?v=9.7">
+</head>
+<body class="site landing">
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <p class="announce">Order online and skip the queue · <a href="order-online.html">Start an order</a></p>
+
+  <header class="site-nav" id="siteNav">
+    <nav class="container" aria-label="Main">
+      <a href="index.html" class="brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span data-cafe-name>CafeMS</span></a>
+      <button class="icon-btn nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><i data-icon="menu"></i></button>
+      <ul class="links" id="navLinks">
+        <li><a href="#menu">Menu</a></li>
+        <li><a href="#story">Our story</a></li>
+        <li><a href="#visit">Visit</a></li>
+        <li><a href="#reserve">Reserve</a></li>
+        <li class="nav-end"><a href="login.html" class="nav-text">Sign in</a></li>
+        <li><a href="register.html" class="nav-text">Register</a></li>
+        <li><a href="order-online.html" class="btn btn-pill btn-sm">Order online</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- Hero: a big welcome, two clear actions, and real photos from today's menu -->
+    <section class="hero">
+      <div class="container hero-inner">
+        <p class="hero-tag"><span class="dot"></span><span>Freshly brewed, every day</span></p>
+        <h1 id="heroTagline">Good coffee. A warm welcome.</h1>
+        <p class="lede" id="heroAbout">Sit down, slow down and let us look after you. Great coffee, simple food and a table with your name on it.</p>
+        <div class="hero-actions">
+          <a href="order-online.html" class="btn btn-pill btn-lg">Order online <i data-icon="arrow-right" data-size="18"></i></a>
+          <a href="#reserve" class="btn btn-pill-outline btn-lg">Book a table</a>
+        </div>
+      </div>
+      <div class="container">
+        <div class="hero-photos" id="heroPhotos" aria-hidden="true">
+          <div class="hero-photo p1"></div><div class="hero-photo p2"></div><div class="hero-photo p3"></div><div class="hero-photo p4"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- A slow moving strip of what we serve -->
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span>Espresso</span><span>Cappuccino</span><span>Flat white</span><span>Cold brew</span><span>Fresh pastries</span><span>All-day breakfast</span><span>Chai</span><span>Smoothies</span>
+        <span>Espresso</span><span>Cappuccino</span><span>Flat white</span><span>Cold brew</span><span>Fresh pastries</span><span>All-day breakfast</span><span>Chai</span><span>Smoothies</span>
+      </div>
+    </div>
+
+    <section class="site-section" id="story">
+      <div class="container story">
+        <div class="reveal">
+          <p class="eyebrow">Our story</p>
+          <h2>A neighbourhood café that takes coffee seriously, and itself less so.</h2>
+        </div>
+        <div class="story-points">
+          <div class="point reveal"><span class="point-icon"><i data-icon="coffee" data-size="22"></i></span><div><h3>Made to order</h3><p>Every cup and plate starts when you ask for it, never before.</p></div></div>
+          <div class="point reveal"><span class="point-icon"><i data-icon="send" data-size="22"></i></span><div><h3>Order ahead</h3><p>Order online or from your table's QR code, and follow it live.</p></div></div>
+          <div class="point reveal"><span class="point-icon"><i data-icon="calendar" data-size="22"></i></span><div><h3>Book in a minute</h3><p>Pick a free time online and we keep your table ready.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="site-section tinted" id="menu">
+      <div class="container">
+        <header class="section-head reveal">
+          <div>
+            <p class="eyebrow">The menu</p>
+            <h2>Made fresh, served with care</h2>
+          </div>
+          <a href="order-online.html" class="btn btn-pill-outline">Order from the menu <i data-icon="arrow-right" data-size="16"></i></a>
+        </header>
+        <div class="tabs menu-tabs" id="publicCats" role="tablist" aria-label="Menu categories"></div>
+        <div class="public-menu" id="publicMenu" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="site-section" id="visit">
+      <div class="container visit-layout">
+        <div class="reveal">
+          <p class="eyebrow">Visit us</p>
+          <h2>Come in and stay a while</h2>
+          <ul class="visit-list">
+            <li id="visitHoursRow"><span class="icon-tile"><i data-icon="clock" data-size="20"></i></span><div><b>Opening hours</b><span id="visitHours"></span></div></li>
+            <li id="visitAddressRow" hidden><span class="icon-tile"><i data-icon="home" data-size="20"></i></span><div><b>Find us</b><span id="visitAddress"></span></div></li>
+            <li id="visitPhoneRow" hidden><span class="icon-tile"><i data-icon="note" data-size="20"></i></span><div><b>Call us</b><a id="visitPhone"></a></div></li>
+          </ul>
+        </div>
+        <div class="visit-note reveal">
+          <p>Pull up a chair. The kettle's on, the oven's warm, and there's always a table for one more.</p>
+          <a href="#reserve" class="link-arrow">Book a table <i data-icon="arrow-right" data-size="16"></i></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="site-section tinted" id="reserve">
+      <div class="container reserve-layout">
+        <header class="section-title reveal">
+          <p class="eyebrow">Reservations</p>
+          <h2>Save yourself a table</h2>
+          <p>Choose a day and a free time, and our team will confirm your booking. For large groups, tell us in the notes.</p>
+        </header>
+        <form method="post" class="reserve-card reveal" id="reserveForm" novalidate>
+          <div class="alert alert-error" id="reserveErr" role="alert"></div>
+          <div class="alert alert-ok" id="reserveOk" role="status"></div>
+          <div class="reserve-grid">
+            <div class="field"><label for="rName">Your name</label><input class="input" id="rName" maxlength="60" autocomplete="name" required></div>
+            <div class="field"><label for="rPhone">Mobile number</label><input class="input" id="rPhone" type="tel" maxlength="13" autocomplete="tel" placeholder="03XXXXXXXXX" required></div>
+            <div class="field"><label for="rDate">Date</label><input class="input" id="rDate" type="date" required></div>
+            <div class="field"><label for="rTime">Time</label><select class="select" id="rTime" required><option value="">Choose a date first</option></select></div>
+            <div class="field"><label for="rParty">Guests</label><input class="input" id="rParty" type="number" min="1" max="20" value="2" required></div>
+            <div class="field"><label for="rNotes">Notes <span class="opt">Optional</span></label><input class="input" id="rNotes" maxlength="160" autocomplete="off"></div>
+          </div>
+          <div class="hp-field" aria-hidden="true"><label for="rWebsite">Leave this empty</label><input id="rWebsite" tabindex="-1" autocomplete="off"></div>
+          <button class="btn btn-pill btn-lg btn-block" id="reserveBtn" type="submit">Request my table</button>
+          <p class="field-hint">We use your number only to confirm this booking. See our <a href="privacy.html">privacy notice</a>.</p>
+        </form>
+      </div>
+    </section>
+
+    <section class="site-section" id="feedback">
+      <div class="container reserve-layout">
+        <header class="section-title reveal">
+          <p class="eyebrow">How did we do?</p>
+          <h2>Tell us about your visit</h2>
+          <p>A few words help us look after you better next time. Your receipt number is optional.</p>
+        </header>
+        <form method="post" class="reserve-card reveal" id="feedbackForm" novalidate>
+          <div class="alert alert-error" id="feedbackErr" role="alert"></div>
+          <div class="alert alert-ok" id="feedbackOk" role="status"></div>
+          <fieldset class="stars" id="stars"><legend class="label">Your rating</legend></fieldset>
+          <div class="field"><label for="fComment">Comments <span class="opt">Optional</span></label><textarea class="textarea" id="fComment" maxlength="300" rows="3"></textarea></div>
+          <div class="reserve-grid">
+            <div class="field"><label for="fName">Name <span class="opt">Optional</span></label><input class="input" id="fName" maxlength="40" autocomplete="name"></div>
+            <div class="field"><label for="fBill">Receipt number <span class="opt">Optional</span></label><input class="input" id="fBill" maxlength="14" placeholder="B-5001" autocomplete="off"></div>
+          </div>
+          <div class="hp-field" aria-hidden="true"><label for="fWebsite">Leave this empty</label><input id="fWebsite" tabindex="-1" autocomplete="off"></div>
+          <button class="btn btn-pill btn-lg btn-block" id="feedbackBtn" type="submit">Send feedback</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="cta-band">
+      <div class="container cta-inner reveal">
+        <h2>Your usual, without the wait.</h2>
+        <p>Order online and collect it, or scan the code on your table.</p>
+        <a href="order-online.html" class="btn btn-pill-light btn-lg">Start an order <i data-icon="arrow-right" data-size="18"></i></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a href="index.html" class="brand light"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span data-cafe-name>CafeMS</span></a>
+        <p class="footer-note">Coffee, food and a table for you.</p>
+      </div>
+      <nav aria-label="Visit"><b>Visit</b><a href="#menu">Menu</a><a href="#visit">Hours and address</a><a href="#reserve">Reservations</a></nav>
+      <nav aria-label="Order"><b>Order</b><a href="order-online.html">Order online</a><a href="track.html">Track an order</a></nav>
+      <nav aria-label="Staff"><b>Staff</b><a href="login.html">Staff sign in</a><a href="register.html">Register</a><a href="privacy.html">Privacy</a></nav>
+    </div>
+    <div class="container footer-row"><span>© <span data-year></span> <span data-cafe-name>CafeMS</span>. All rights reserved.</span></div>
+  </footer>
+
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/home.js?v=9.7"></script>
+  <script src="js/site.js?v=9.7"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order online · CafeMS</title>
+  <meta name="description" content="Order takeaway or delivery, or order from your table.">
+  <meta name="theme-color" content="#8b5e3c">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body class="site guest-order">
+  <a href="#main" class="skip-link">Skip to content</a>
+  <header class="guest-bar">
+    <div class="container guest-bar-row">
+      <a href="index.html" class="brand"><span class="brand-mark"><i data-icon="coffee" data-size="19"></i></span><span data-cafe-name>CafeMS</span></a>
+      <span class="pill no-dot" id="orderWhere">Order online</span>
+    </div>
+  </header>
+
+  <main id="main" class="container guest-main">
+    <div class="alert alert-info" id="closedNote" role="status"></div>
+    <div class="pos guest-pos">
+      <section class="pos-menu" aria-label="Menu">
+        <h1 class="guest-title" id="guestTitle">What would you like?</h1>
+        <div class="pos-cats" id="cats" role="tablist" aria-label="Categories"></div>
+        <div class="pos-grid" id="menuGrid" aria-live="polite"></div>
+      </section>
+
+      <aside class="pos-cart panel" aria-label="Your order">
+        <div class="pos-cart-head"><div><h2>Your order</h2><p class="muted small" id="cartSub">Tap an item to add it.</p></div></div>
+        <div class="pos-types seg" id="types" role="radiogroup" aria-label="Takeaway or delivery"></div>
+        <ul class="pos-lines" id="lines" aria-live="polite"></ul>
+        <form method="post" class="guest-details" id="detailsForm" novalidate>
+          <div class="field" id="nameField"><label for="gName">Your name</label><input class="input" id="gName" maxlength="40" autocomplete="name"></div>
+          <div class="field" id="phoneField"><label for="gPhone">Mobile number</label><input class="input" id="gPhone" type="tel" maxlength="13" placeholder="03XXXXXXXXX" autocomplete="tel"></div>
+          <div class="field" id="addressField" hidden><label for="gAddress">Delivery address</label><textarea class="textarea" id="gAddress" maxlength="160" rows="2" autocomplete="street-address"></textarea></div>
+          <div class="field"><label for="gNotes">Notes <span class="opt">Optional</span></label><input class="input" id="gNotes" maxlength="120" placeholder="For example: no sugar, extra spicy"></div>
+          <div class="hp-field" aria-hidden="true"><label for="gWebsite">Leave this empty</label><input id="gWebsite" tabindex="-1" autocomplete="off"></div>
+        </form>
+        <div class="ticket-totals" id="totals"></div>
+        <div class="alert alert-error" id="orderErr" role="alert"></div>
+        <div class="pos-actions single"><button type="button" class="btn btn-primary btn-lg" id="placeBtn">Place order</button></div>
+        <p class="field-hint guest-hint" id="payHint">You pay when you collect. The cafe confirms your order first.</p>
+      </aside>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="optionsModal" role="dialog" aria-modal="true" aria-labelledby="optTitle">
+    <div class="modal">
+      <div class="modal-head"><div class="icon-tile"><i data-icon="coffee" data-size="20"></i></div><div><h3 id="optTitle">Options</h3><p id="optSub"></p></div></div>
+      <div class="modal-body" id="optBody"></div>
+      <div class="alert alert-error mx-22" id="optErr" role="alert"></div>
+      <div class="modal-actions"><button class="btn btn-secondary" data-close="optionsModal">Cancel</button><button class="btn btn-primary" id="optAdd" data-autofocus>Add to order</button></div>
+    </div>
+  </div>
+
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/online.js?v=9.7"></script>
+</body>
+</html>

@@ -1,4 +1,16 @@
 .claude/
 submission/
 .env
+uploads/
+backups/
 node_modules/
+coverage/
+
+# Logins and test credentials created on this computer (never committed)
+.seed-credentials.txt
+.seed-credentials.*.old.txt
+.quiz-demo-credentials.json
+.local-mongo-logins.txt
+
+# Old copies kept from earlier activities, including the retired Docker secrets
+archive/

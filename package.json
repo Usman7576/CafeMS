@@ -2,18 +2,56 @@
   "name": "cafems",
   "version": "3.0.0",
   "private": true,
-  "description": "Cafe Management System with a MongoDB-backed state API",
-  "main": "server.js",
+  "description": "Cafe Management System with a secured Express and MongoDB server",
+  "main": "server/index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test --test-concurrency=2 \"tests/**/*.test.js\"",
+    "test:quiz": "node --test --test-reporter=spec tests/quiz.test.js",
+    "setup": "node scripts/setup.js",
+    "setup:env": "node scripts/setup-env.js",
+    "db:setup": "node scripts/db-setup.js",
+    "deps:report": "node scripts/dependency-report.js",
+    "seed:dev": "node scripts/seed-dev.js",
+    "demo": "node scripts/demo-data.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
+    "lint": "eslint .",
+    "test:coverage": "node --test --test-concurrency=2 --experimental-test-coverage --test-coverage-include=\"server/**\" --test-coverage-lines=90 --test-coverage-branches=85 --test-coverage-functions=90 \"tests/**/*.test.js\"",
+    "load-test": "node scripts/load-test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "mongodb": "^6.12.0"
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
+    "argon2": "^0.45.1",
+    "compression": "^1.8.2",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.8.0",
+    "nodemailer": "^10.3.1",
+    "otplib": "^13.6.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "qrcode": "^1.5.4",
+    "sharp": "0.35.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-security": "^4.2.1",
+    "globals": "^17.14.0",
+    "mongodb-memory-server": "^10.4.3",
+    "selfsigned": "^5.5.0",
+    "smtp-server": "^3.21.3",
+    "supertest": "^7.3.1"
   }
 }

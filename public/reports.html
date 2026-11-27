@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales reports — Cafe Management System</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body data-page="reports">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Sales report</h2><p id="reportDate"></p></div>
+      <div class="head-actions"><label class="sr-only" for="reportPick">Report date</label><input class="input report-pick" id="reportPick" type="date"><button class="btn btn-secondary" id="exportCsv"><i data-icon="file" data-size="16"></i>Export CSV</button><button class="btn btn-secondary" id="printReport"><i data-icon="receipt" data-size="16"></i>Print</button></div>
+    </div>
+    <section class="kpis six" aria-label="Sales summary">
+      <div class="kpi"><div><small>Net revenue</small><strong id="rRevenue">Rs 0</strong><div class="sub">Incl. 16% tax</div></div></div>
+      <div class="kpi"><div><small>Bills paid</small><strong id="rBills">0</strong><div class="sub">Refunds excluded</div></div></div>
+      <div class="kpi"><div><small>Average bill</small><strong id="rAvg">Rs 0</strong><div class="sub">Per paid bill</div></div></div>
+      <div class="kpi"><div><small>Items sold</small><strong id="rItems">0</strong><div class="sub">Across all orders</div></div></div>
+      <div class="kpi"><div><small>Discounts</small><strong id="rDisc">Rs 0</strong><div class="sub">Given on this day</div></div></div>
+      <div class="kpi"><div><small>Refunds</small><strong id="rRefund">Rs 0</strong><div class="sub" id="rRefundSub"></div></div></div>
+    </section>
+    <div class="report-grid">
+      <section class="panel span-2"><div class="panel-head"><div><h3>Last 7 days</h3><p>Paid revenue per day</p></div></div><div class="panel-body"><div class="chart" id="trendChart"></div></div></section>
+      <section class="panel span-2"><div class="panel-head"><div><h3>Revenue by hour</h3><p>Hover a bar for details</p></div></div><div class="panel-body"><div class="chart" id="hourChart"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Payment methods</h3><p>Share of revenue</p></div></div><div class="panel-body"><div id="methodChart"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Best sellers</h3><p>By quantity sold</p></div></div><div class="panel-body"><div id="topItems"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Sales by category</h3><p>Before tax</p></div></div><div class="panel-body"><div id="catChart"></div></div></section>
+      <section class="panel"><div class="panel-head"><div><h3>Tax summary</h3><p>For end-of-day reconciliation</p></div></div><div class="panel-body"><div class="summary" id="taxSummary"></div></div></section>
+    </div>
+    <section class="panel mt-20">
+      <div class="panel-head"><div><h3>Shifts and Z-reports</h3><p>Each cashier's drawer: what was taken, and whether the count matched</p></div></div>
+      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Shift</th><th>Cashier</th><th class="hide-sm">Opened</th><th class="hide-sm">Closed</th><th>Sales</th><th class="hide-sm">Tips</th><th>Expected cash</th><th>Counted</th><th>Result</th></tr></thead><tbody id="shiftsBody"></tbody></table></div>
+    </section>
+    <section class="panel mt-20">
+      <div class="panel-head"><div><h3 id="billsTitle">Bills today</h3><p>Refunds require a reason and are written to the audit log</p></div></div>
+      <div class="table-wrap flush"><table class="data-table"><thead><tr><th>Bill</th><th>Table</th><th class="hide-sm">Time</th><th class="hide-sm">Cashier</th><th class="hide-sm">Method</th><th>Total</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="billsBody"></tbody></table></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="refundModal" role="dialog" aria-modal="true" aria-labelledby="refundTitle">
+    <form method="post" class="modal" id="refundForm" novalidate>
+      <div class="modal-head"><div class="icon-tile danger"><i data-icon="refresh" data-size="20"></i></div><div><h3 id="refundTitle">Issue refund</h3><p id="refundSub"></p></div></div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="refundErr" role="alert"></div>
+        <div class="field mb-0"><label for="refundReason">Reason for refund</label><input class="input" id="refundReason" type="text" maxlength="80" required placeholder="e.g. Wrong item served"><div class="field-hint">Recorded in the audit log with your name and the time.</div></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-secondary" data-close="refundModal">Cancel</button><button type="submit" class="btn btn-danger">Refund bill</button></div>
+    </form>
+  </div>
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/store.js?v=9.7"></script>
+  <script src="js/app.js?v=9.7"></script>
+  <script src="js/reports.js?v=9.7"></script>
+</body>
+</html>

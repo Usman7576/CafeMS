@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insights · CafeMS</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.7">
+</head>
+<body data-page="insights">
+  <main class="content" id="main">
+    <div class="page-head">
+      <div><h2>Insights</h2><p id="rangeLabel">How the cafe is doing</p></div>
+      <div class="head-actions no-print">
+        <div class="seg" role="radiogroup" aria-label="Date range" id="presets"></div>
+        <input class="input input-sm" type="date" id="fromDate" aria-label="From">
+        <input class="input input-sm" type="date" id="toDate" aria-label="To">
+        <button type="button" class="btn btn-secondary btn-sm" id="printBtn"><i data-icon="file" data-size="15"></i>Print / PDF</button>
+      </div>
+    </div>
+    <div class="tabs scroll page-tabs no-print" role="tablist" aria-label="Insight sections" id="insightTabs"></div>
+    <div id="iSummary" class="page-tab"></div>
+    <div id="iMix" class="page-tab" hidden></div>
+    <div id="iProfit" class="page-tab" hidden></div>
+    <div id="iStaff" class="page-tab" hidden></div>
+    <div id="iClose" class="page-tab" hidden></div>
+  </main>
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/store.js?v=9.7"></script>
+  <script src="js/app.js?v=9.7"></script>
+  <script src="js/insights.js?v=9.7"></script>
+</body>
+</html>

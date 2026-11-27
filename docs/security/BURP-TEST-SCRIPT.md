@@ -1,0 +1,139 @@
+# Burp Suite manual test script
+
+**This script of 35 tests takes about 45 minutes and tests what automated scanners cannot judge: whether one person can reach another person's data or skip a business rule.** Run it only on your own local copy, never on a live site.
+
+`scripts/attack-replay.js` sends these same 35 attacks automatically, and CI runs it on every push; the latest results are in [ATTACK-REPLAY-RESULTS.md](ATTACK-REPLAY-RESULTS.md). It does not replace this test, because a person can follow up on anything unexpected. To put the automated requests into Burp's HTTP history as a starting point, export Burp's CA certificate and run the script with `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY=http://127.0.0.1:8080` and `NODE_EXTRA_CA_CERTS` pointing at that certificate.
+
+## Set up
+
+1. Start the app locally with `npm start`, after `docker compose up -d --wait`.
+2. Create test accounts with `npm run seed:dev`, and sign in once as each role to enrol an authenticator.
+3. In Burp Suite Community, open the built-in browser from the Proxy tab. Turn **Intercept** off until a step needs it.
+4. Sign in as a Waiter and click around the app, so requests appear in **Proxy > HTTP history**.
+
+**How to test:** right-click a request, choose **Send to Repeater**, edit it, then press **Send**. A state-changing request also needs the current `X-CSRF-Token` header, which you get from the original request.
+
+Record each result in the table at the end. Every test below should be **refused**.
+
+## Tests
+
+### Authentication and sessions
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 1 | Send `POST /api/v1/auth/login` with a wrong password three times, then the right one | 401 every time: the account is locked |
+| 2 | With Intruder or Repeater, send 25 wrong logins for different usernames | 429 after about 20 |
+| 3 | Change the session cookie's value by one character on `GET /api/v1/auth/me` | 401 |
+| 4 | Change the token's header to `{"alg":"none"}` and remove the signature | 401 |
+| 5 | Sign out, then replay an earlier request with the old cookie | 401 |
+| 6 | Sign in, skip `/auth/mfa/verify`, and call `/api/v1/snapshot` | 401 |
+| 7 | Replay a used authenticator code on `/auth/mfa/verify` | 401 |
+
+### Authorization
+
+Use a Waiter's cookie and CSRF token unless a step says otherwise.
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 8 | `GET /api/v1/users`, `/api/v1/audit` and `/api/v1/reports/sales` | 403, and an "Access denied" audit entry |
+| 9 | `POST /api/v1/billing/tables/1/pay` | 403 |
+| 10 | As Waiter A, `PUT /api/v1/orders/<Waiter B's order ID>` | 404: it looks as if it does not exist |
+| 11 | As a Cashier, `GET /api/v1/bills/<yesterday's bill>` | 404 |
+| 12 | As a Kitchen user, `GET /api/v1/snapshot`, and search the response for `price` and `phone` | Neither appears |
+| 13 | As a Manager, `POST /api/v1/bills/<no>/refund` with no recent code | 403 `step_up_required` |
+| 14 | As a Manager, approve your own large refund | 403 `same_person` |
+
+### Input and business rules
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 15 | On `POST /api/v1/orders`, add `"total": 1` or `"price": 1` to the body or a line | 400 |
+| 16 | Set `"qty": -5`, then `0`, `1.5`, `100` and `"1"` | 400 each time |
+| 17 | Log in with `{"username":{"$ne":null},"password":{"$ne":null}}` | 401 |
+| 18 | As a Cashier, send `"discountPct": 50` on a payment | 403 and an audit entry |
+| 19 | Resend the same `Idempotency-Key` with the same body | The first result, and no second record |
+| 20 | Resend that key with a different body | 422 |
+| 21 | Reserve a table with the name `<img src=x onerror=alert(1)>`, then open the staff list | Shown as plain text, with no alert |
+
+### CSRF and headers
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 22 | Remove `X-CSRF-Token` from a change | 403 |
+| 23 | Change `Origin` to `https://evil.example` | 403 |
+| 24 | Remove the `Origin` header | 403 |
+| 25 | Check any page's response headers | CSP with no `unsafe-inline`, `X-Frame-Options: DENY`, `nosniff` |
+
+### File upload (as an Admin)
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 26 | `PUT /api/v1/menu/1/photo` with an HTML body and `Content-Type: image/png` | 415, and recorded |
+| 27 | Upload an SVG with `Content-Type: image/svg+xml` | 415 |
+| 28 | Upload a body over 2 MB | 413 |
+
+### Personal signatures (as an Admin)
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 31 | On `POST /api/v1/users/invitations`, remove the `X-Action-Signature` header | 403 `signature_required` |
+| 32 | Send a captured signed request twice in Repeater | The first works; the copy gets 409 `signature_reused` |
+
+### Web application firewall (through the site's address)
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 33 | `GET /api/v1/public/menu?category=1' OR '1'='1' --` | 403 from the firewall |
+| 34 | `GET /assets/..%2f..%2f..%2fetc%2fpasswd` | 403 from the firewall |
+| 35 | `GET /index.html?q=<script>alert(document.cookie)</script>` | 403 from the firewall |
+
+### Payment callback
+
+| # | Do this | Expected |
+| --- | --- | --- |
+| 29 | `POST /api/v1/payments/callback` with no signature | 401, and recorded |
+| 30 | Send the correct signature twice, using a helper script | 204, then 409 |
+
+## Results
+
+Attacks 1 to 30 were sent through Burp Suite Community's proxy by `scripts/attack-replay.js`, so they appear in its HTTP history. They were not typed into Repeater by a person. Add a note below for anything tested by hand.
+
+| # | Date | Result: pass or fail | Notes |
+| --- | --- | --- | --- |
+| 1 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 2 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 3 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 4 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 5 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 6 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 7 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 8 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 9 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 10 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 11 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 12 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 13 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 14 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 15 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 16 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 17 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 18 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 19 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 20 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 21 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 22 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 23 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 24 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 25 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 26 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 27 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 28 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 29 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 30 | 2026-11-10 | Pass | Automated, through Burp Suite Community's proxy |
+| 31 | 2026-11-10 | Pass | Automated replay; added after the Burp run |
+| 32 | 2026-11-10 | Pass | Automated replay; added after the Burp run |
+| 33 | 2026-11-11 | Pass | Automated replay; added with the firewall |
+| 34 | 2026-11-11 | Pass | Automated replay; added with the firewall |
+| 35 | 2026-11-11 | Pass | Automated replay; added with the firewall |
+
+Anything that is **not** refused is a finding. Add a failing test for it, fix it, and record it in the review log in `SECURITY-REQUIREMENTS.md`.

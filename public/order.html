@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="app-loading">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS · CafeMS</title>
+  <meta name="theme-color" content="#8b5e3c">
+  <meta name="robots" content="noindex">
+  <script src="js/theme.js?v=9.7"></script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/fonts.css?v=9.7">
+  <link rel="stylesheet" href="css/style.css?v=9.8">
+</head>
+<body data-page="order">
+  <main class="content pos-content" id="main">
+    <div class="pos">
+      <section class="pos-menu" aria-label="Menu">
+        <div class="pos-toolbar">
+          <div class="input-wrap"><i data-icon="search" data-size="17"></i><input class="input" type="search" id="search" placeholder="Search the menu" autocomplete="off" aria-label="Search the menu"></div>
+        </div>
+        <div class="pos-cats" id="cats" role="tablist" aria-label="Categories"></div>
+        <div class="pos-grid" id="menuGrid" aria-live="polite"></div>
+      </section>
+
+      <aside class="pos-cart panel" aria-label="Current order">
+        <div class="pos-cart-head">
+          <div>
+            <h2 id="orderHeading">New order</h2>
+            <p class="muted small" id="orderIntro">Choose the order type, then tap items to add them.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="clearBtn">Clear</button>
+        </div>
+        <div class="pos-types seg" id="types" role="radiogroup" aria-label="Order type"></div>
+
+        <div class="pos-target" id="tableStep">
+          <label class="label" for="tablePicker">Table</label>
+          <div class="floor compact" id="tablePicker" role="radiogroup" aria-label="Table"></div>
+        </div>
+        <div class="pos-target" id="customerStep" hidden>
+          <div class="field mb-14"><label for="custName">Customer name</label><input class="input" id="custName" maxlength="40" autocomplete="off"></div>
+          <div class="field mb-14" id="phoneField"><label for="custPhone">Mobile number <span class="opt" id="phoneOpt">optional</span></label><input class="input" id="custPhone" inputmode="tel" maxlength="13" placeholder="03XXXXXXXXX" autocomplete="off"></div>
+          <div class="field mb-14" id="addressField"><label for="custAddress">Delivery address</label><textarea class="textarea" id="custAddress" maxlength="160" rows="2"></textarea></div>
+        </div>
+
+        <ul class="pos-lines" id="lines" aria-live="polite"></ul>
+
+        <div class="pos-notes">
+          <label class="label" for="notes">Notes for the kitchen <span class="opt" id="notesCounter">0 / 120</span></label>
+          <input class="input" id="notes" maxlength="120" placeholder="For example: no sugar, allergy to nuts" autocomplete="off">
+        </div>
+        <div class="ticket-totals" id="totals"></div>
+        <div class="alert alert-error" id="posErr" role="alert"></div>
+        <div class="pos-actions">
+          <button type="button" class="btn btn-secondary btn-lg" id="holdBtn"><i data-icon="clock" data-size="18"></i>Hold</button>
+          <button type="button" class="btn btn-primary btn-lg" id="sendBtn"><i data-icon="send" data-size="18"></i><span id="sendLabel">Send</span></button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Options for one item: size, milk and so on -->
+  <div class="modal-backdrop" id="optionsModal" role="dialog" aria-modal="true" aria-labelledby="optTitle">
+    <div class="modal">
+      <div class="modal-head"><div class="icon-tile"><i data-icon="coffee" data-size="20"></i></div><div><h3 id="optTitle">Options</h3><p id="optSub"></p></div></div>
+      <div class="modal-body" id="optBody"></div>
+      <div class="alert alert-error mx-22" id="optErr" role="alert"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close="optionsModal">Cancel</button>
+        <button class="btn btn-primary" id="optAdd" data-autofocus>Add to order</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/icons.js?v=9.7"></script>
+  <script src="vendor/simplewebauthn-browser.umd.min.js?v=14.0.0"></script>
+  <script src="js/common.js?v=9.7"></script>
+  <script src="js/validate.js?v=9.7"></script>
+  <script src="js/store.js?v=9.7"></script>
+  <script src="js/app.js?v=9.7"></script>
+  <script src="js/order.js?v=9.7"></script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+// Staff & roles (Admin): create accounts, change roles, enable/disable access,
+// and a read-only permission matrix. All changes are audit-logged (SR-3, SR-7).
+(function () {
+  if (!window.App) return;
+  const h = CMS.h, me = App.session.user;
+  const ROLE_ICON = { Waiter: "clipboard", Barista: "coffee", Kitchen: "chef", Cashier: "receipt", Manager: "chart", Admin: "shield" };
+  const ROLE_DESC = {
+    Waiter: "Take and update orders, view table status",
+    Barista: "Bar display: drink tickets only",
+    Kitchen: "View order queue, update order status",
+    Cashier: "Create bills, take payments, discounts up to 10%",
+    Manager: "Inventory, reports, refunds, discounts up to 25%",
+    Admin: "Users, roles, menu, prices, audit log"
+  };
+  let query = "", roleTarget = null, roleChoice = null, userRules = null, approving = false;
+
+  App.ready(function () {
+    const sel = document.getElementById("uRole");
+    Store.ROLES.forEach(function (r) { sel.appendChild(h("option", { value: r, text: r })); });
+    document.getElementById("userSearch").addEventListener("input", function (e) { query = e.target.value.trim().toLowerCase(); renderRows(); });
+    userRules = Validate.attach(document.getElementById("userForm"), {
+      uName: { label: "Full name", required: true, min: 2, max: 60, format: "personName", collapseSpaces: true },
+      uUser: { label: "Username", required: true, min: 3, max: 30, format: "username" },
+      uRole: { label: "Role", required: true, custom: function (v) { return Store.ROLES.indexOf(v) === -1 ? "Choose a role from the list." : ""; } }
+    }, { summary: document.getElementById("userErr") });
+    document.getElementById("addUser").addEventListener("click", function () {
+      CMS.clearError(document.getElementById("userErr"));
+      userRules.reset();
+      document.getElementById("uName").value = ""; document.getElementById("uUser").value = ""; sel.value = "Waiter";
+      CMS.openModal("userModal");
+      setTimeout(function () { document.getElementById("uName").focus(); }, 50);
+    });
+    document.getElementById("uName").addEventListener("input", function (e) {
+      const u = document.getElementById("uUser");
+      if (!u.dataset.touched) u.value = e.target.value.trim().toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).join(".");
+    });
+    document.getElementById("uUser").addEventListener("input", function (e) { e.target.dataset.touched = "1"; });
+    document.getElementById("userForm").addEventListener("submit", create);
+    document.getElementById("roleForm").addEventListener("submit", saveRole);
+    render();
+    renderMatrix();
+    Store.on(render);
+  });
+
+  function render() { renderStrip(); renderRows(); }
+
+  function renderStrip() {
+    const users = Store.users().filter(function (u) { return u.status === "Active"; });
+    const strip = document.getElementById("roleStrip");
+    strip.replaceChildren();
+    Store.ROLES.forEach(function (r) {
+      const n = users.filter(function (u) { return u.role === r; }).length;
+      strip.appendChild(h("div", { class: "role-card" }, [h("span", { class: "icon-tile", icon: ROLE_ICON[r], iconSize: 18 }), h("div", null, [h("b", { text: String(n) }), h("span", { text: r === "Kitchen" ? "Kitchen staff" : r + (n === 1 ? "" : "s") })])]));
+    });
+  }
+
+  function renderRows() {
+    const all = Store.users();
+    const pending = all.filter(function (u) { return u.status === "Pending"; }).length;
+    document.getElementById("userCount").textContent = all.filter(function (u) { return u.status === "Active"; }).length + " active · " + all.filter(function (u) { return u.status !== "Active" && u.status !== "Pending"; }).length + " disabled" + (pending ? " · " + pending + " waiting for approval" : "");
+    const rows = all.filter(function (u) { return !query || u.name.toLowerCase().indexOf(query) !== -1 || u.username.indexOf(query) !== -1; })
+      .sort(function (a, b) { return (b.status === "Pending") - (a.status === "Pending") || Store.ROLES.indexOf(b.role) - Store.ROLES.indexOf(a.role) || a.name.localeCompare(b.name); });
+    const body = document.getElementById("usersBody");
+    body.replaceChildren();
+    rows.forEach(function (u) {
+      const self = u.username === me;
+      const invited = u.status === "Invited";
+      const pending = u.status === "Pending";
+      const ini = u.name.split(" ").map(function (p) { return p[0]; }).join("").replace(/[^A-Z]/gi, "").slice(0, 2).toUpperCase();
+      body.appendChild(h("tr", { class: u.status !== "Active" ? "dim" : "" }, [
+        h("td", null, [h("div", { class: "person" }, [h("span", { class: "avatar sm", text: ini }), h("div", null, [h("b", { text: u.name + (self ? " (you)" : "") }), h("small", { class: "sub-line mono", text: "@" + u.username })])])]),
+        h("td", null, [pending ? h("span", { class: "muted small", text: "Chosen on approval" }) : h("span", { class: "role-tag", icon: ROLE_ICON[u.role], iconSize: 14, text: u.role })]),
+        h("td", null, [h("span", { class: "pill " + (u.status === "Active" ? "pill-ready" : invited || pending ? "pill-preparing" : "pill-cancelled"), text: u.locked ? "Locked" : pending ? "Waiting for approval" : u.status })]),
+        h("td", { class: "hide-sm time", text: u.lastLogin ? CMS.dateTime(u.lastLogin) : pending && u.createdAt ? "Registered " + CMS.dateTime(u.createdAt) : "Never" }),
+        h("td", { class: "actions" }, [h("div", { class: "row-actions" }, self ? [h("span", { class: "muted small", text: "Your account" })] : pending ? [
+          h("button", { class: "btn btn-primary btn-sm", text: "Approve", "aria-label": "Approve registration for " + u.name, onclick: function () { openApprove(u); } }),
+          h("button", { class: "btn btn-ghost btn-sm", text: "Reject", "aria-label": "Reject registration for " + u.name, onclick: function () { reject(u); } })
+        ] : [
+          h("button", { class: "btn btn-secondary btn-sm", text: "Change role", "aria-label": "Change role for " + u.name, onclick: function () { openRole(u); } }),
+          h("button", { class: "btn btn-ghost btn-sm", text: "New link", "aria-label": "Create a new sign-in link for " + u.name, onclick: function () { reset(u); } }),
+          h("button", { class: "btn btn-ghost btn-sm", text: u.status === "Active" ? "Disable" : "Enable", "aria-label": (u.status === "Active" ? "Disable " : "Enable ") + u.name, onclick: function () { toggle(u); } })
+        ])])
+      ]));
+    });
+  }
+
+  // A change that affects an Admin waits for a second Admin; anything else happens straight away
+  function report(result, done) {
+    if (result.approvalId) CMS.toast(result.message, "info");
+    else done();
+  }
+
+  async function create(e) {
+    e.preventDefault();
+    const checked = userRules.check();
+    if (!checked.ok) return;
+    const data = { name: checked.values.uName, username: checked.values.uUser, role: checked.values.uRole };
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.inviteUser(data); }); }, document.getElementById("userErr"));
+    if (!result) return;
+    delete document.getElementById("uUser").dataset.touched;
+    CMS.closeModal("userModal");
+    report(result, function () { CMS.showLink("Invitation for " + data.name.trim(), result); });
+  }
+
+  async function reset(u) {
+    const ok = await CMS.confirm({ title: "Create a new sign-in link for " + u.name + "?", message: "Their password and authenticator stop working now, and they are signed out. They set new ones using the link.", okText: "Create link", danger: true, icon: "key" });
+    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.resetUser(u.username); }); });
+    if (result) report(result, function () { CMS.showLink("New link for " + u.name, result); });
+  }
+
+  function openRole(u) {
+    roleTarget = u; roleChoice = u.role; approving = false;
+    CMS.clearError(document.getElementById("roleErr"));
+    document.getElementById("roleTitle").textContent = "Change role for " + u.name;
+    document.getElementById("roleSub").textContent = "Currently " + u.role + ". They'll be signed out and must sign in again for the new role to apply.";
+    document.getElementById("roleSave").textContent = "Save role";
+    renderRoleOptions();
+    CMS.openModal("roleModal");
+  }
+  // Approving a registration uses the same role picker, without Admin: that needs a second Admin later
+  function openApprove(u) {
+    roleTarget = u; roleChoice = "Waiter"; approving = true;
+    CMS.clearError(document.getElementById("roleErr"));
+    document.getElementById("roleTitle").textContent = "Approve " + u.name + " (@" + u.username + ")";
+    document.getElementById("roleSub").textContent = "Check who they are first. Choose their role; they can then sign in and add an authenticator app.";
+    document.getElementById("roleSave").textContent = "Approve";
+    renderRoleOptions();
+    CMS.openModal("roleModal");
+  }
+  async function reject(u) {
+    const ok = await CMS.confirm({ title: "Reject " + u.name + "?", message: "The registration request for @" + u.username + " is deleted. They can register again later.", okText: "Reject", danger: true, icon: "lock" });
+    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.rejectUser(u.username); }); });
+    if (result) CMS.toast("Registration for " + u.name + " rejected", "ok");
+  }
+  function renderRoleOptions() {
+    const wrap = document.getElementById("roleOptions");
+    wrap.replaceChildren();
+    Store.ROLES.filter(function (r) { return !approving || r !== "Admin"; }).forEach(function (r) {
+      wrap.appendChild(h("button", { type: "button", role: "radio", class: "role-opt", "aria-checked": String(r === roleChoice), onclick: function () { roleChoice = r; renderRoleOptions(); } }, [
+        h("span", { class: "icon-tile", icon: ROLE_ICON[r], iconSize: 18 }), h("div", null, [h("b", { text: r }), h("small", { text: ROLE_DESC[r] })])
+      ]));
+    });
+  }
+  async function saveRole(e) {
+    e.preventDefault();
+    if (approving) {
+      const approved = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.approveUser(roleTarget.username, roleChoice); }); }, document.getElementById("roleErr"));
+      if (!approved) return;
+      CMS.closeModal("roleModal");
+      CMS.toast(roleTarget.name + " approved as " + roleChoice, "ok");
+      return;
+    }
+    if (roleChoice === roleTarget.role) { CMS.closeModal("roleModal"); return; }
+    if (roleChoice === "Admin") {
+      const ok = await CMS.confirm({ title: "Grant full admin access?", message: roleTarget.name + " will be able to manage users, roles, prices and the audit log.", okText: "Make admin", danger: true, icon: "shield" });
+      if (!ok) return;
+    }
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.setRole(roleTarget.username, roleChoice); }); }, document.getElementById("roleErr"));
+    if (!result) return;
+    CMS.closeModal("roleModal");
+    report(result, function () { CMS.toast(roleTarget.name + " is now " + roleChoice, "ok"); });
+  }
+  async function toggle(u) {
+    const disabling = u.status === "Active";
+    const ok = await CMS.confirm({ title: (disabling ? "Disable " : "Enable ") + u.name + "?", message: disabling ? "They'll be signed out immediately and won't be able to sign in until re-enabled." : "They'll be able to sign in again with their existing role (" + u.role + ").", okText: disabling ? "Disable account" : "Enable account", danger: disabling, icon: disabling ? "lock" : "key" });
+    if (!ok) return;
+    const result = await CMS.attempt(function () { return CMS.withStepUp(function () { return Store.setStatus(u.username, disabling ? "Disabled" : "Active"); }); });
+    if (result) report(result, function () { CMS.toast(u.name + (disabling ? " disabled" : " enabled"), "ok"); });
+  }
+
+  function renderMatrix() {
+    const perms = [
+      ["Take & update orders", ["Waiter", "Cashier"]], ["View table status", ["Waiter", "Cashier", "Manager", "Admin"]], ["Kitchen order queue", ["Kitchen"]], ["Bar order queue", ["Barista"]], ["Void a started order", ["Manager"]],
+      ["Create bills & take payments", ["Cashier", "Manager"]], ["Discounts", ["Cashier", "Manager"], { Cashier: "≤10%", Manager: "≤25%" }],
+      ["Refunds", ["Manager"]], ["Inventory & restocking", ["Manager"]], ["Sales reports", ["Manager", "Admin"]],
+      ["Menu & prices", ["Admin"]], ["Users & roles", ["Admin"]], ["Audit log", ["Admin"]]
+    ];
+    const t = document.getElementById("matrix");
+    t.appendChild(h("thead", null, [h("tr", null, [h("th", { text: "Permission" })].concat(Store.ROLES.map(function (r) { return h("th", { class: "c", text: r }); })))]));
+    t.appendChild(h("tbody", null, perms.map(function (p) {
+      return h("tr", null, [h("td", { text: p[0] })].concat(Store.ROLES.map(function (r) {
+        const yes = p[1].indexOf(r) !== -1;
+        return h("td", { class: "c" }, [yes ? h("span", { class: "yes", icon: "check", iconSize: 15, text: p[2] && p[2][r] ? " " + p[2][r] : "", "aria-label": "Allowed" }) : h("span", { class: "no", text: "—", "aria-label": "Not allowed" })]);
+      })));
+    })));
+  }
+})();

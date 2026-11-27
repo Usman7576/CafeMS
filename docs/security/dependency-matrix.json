@@ -1,0 +1,41 @@
+{
+  "about": "CafeMS service dependency matrix. Rows call columns. 2 = hard sync (the caller's flow stops without it), 1 = soft sync (tried now; the caller carries on degraded), 1A = soft async (queued; the caller does not wait), 0 = none. PAY and NOTIFY are external. Run: npm run deps:report",
+  "components": ["APP", "API", "AUTH", "AUDIT", "DB", "PAY", "QUEUE", "NOTIFY"],
+  "names": {
+    "APP": "Browser: public site and staff screens",
+    "API": "Business routes",
+    "AUTH": "Sign-in, MFA and sessions",
+    "AUDIT": "Signed audit log",
+    "DB": "MongoDB replica set",
+    "PAY": "Payment gateway (external)",
+    "QUEUE": "Notification outbox and worker",
+    "NOTIFY": "SMS and email provider (external)"
+  },
+  "external": ["PAY", "NOTIFY"],
+  "matrix": [
+    ["0", "2", "2", "0", "0", "0", "0", "0"],
+    ["0", "0", "2", "2", "2", "1", "1A", "0"],
+    ["0", "0", "0", "2", "2", "0", "0", "0"],
+    ["0", "0", "0", "0", "2", "0", "0", "0"],
+    ["0", "0", "0", "0", "0", "0", "0", "0"],
+    ["0", "1A", "0", "0", "0", "0", "0", "0"],
+    ["0", "0", "0", "0", "2", "0", "0", "1"],
+    ["0", "0", "0", "0", "0", "0", "0", "0"]
+  ],
+  "why": {
+    "APP->API": "2: no screen can load or save without the API.",
+    "APP->AUTH": "2: staff cannot work without signing in.",
+    "API->AUTH": "2: every request is checked against its session before anything else.",
+    "API->AUDIT": "2: an action that cannot be recorded does not happen (fail-secure).",
+    "API->DB": "2: all business data lives in the database.",
+    "API->PAY": "1: the charge is tried for up to 3 seconds; on a timeout the bill is saved as Pending Payment and can be retried.",
+    "API->QUEUE": "1A: receipts and staff notices are saved to the outbox in the same transaction and sent later.",
+    "AUTH->AUDIT": "2: a sign-in is recorded in the same transaction that creates the session.",
+    "AUTH->DB": "2: accounts and sessions are in the database.",
+    "AUDIT->DB": "2: entries are stored in the database.",
+    "PAY->API": "1A: the gateway's signed callback confirms a payment later; the till does not wait for it.",
+    "QUEUE->DB": "2: the worker reads its messages from the database.",
+    "QUEUE->NOTIFY": "1: delivery is tried now; a failure is retried with growing gaps and then raises an Admin alert."
+  },
+  "differencesFromPlan": "The plan had AUTH->QUEUE as 1A, but sign-in sends no messages, so it is 0. NOTIFY was added as its own external component, because the outbox worker calls it."
+}

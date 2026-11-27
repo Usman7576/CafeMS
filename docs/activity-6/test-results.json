@@ -1,0 +1,785 @@
+{
+  "generatedAt": "2026-11-25T15:36:36.510Z",
+  "passed": 41,
+  "total": 41,
+  "results": [
+    {
+      "task": "Task 4.3",
+      "id": "A6-01",
+      "title": "Password is stored as an Argon2id hash, not plaintext",
+      "request": "Read users.passwordHash for demo.waiter from MongoDB",
+      "expected": "Starts with $argon2id$ and does not contain the password",
+      "actual": {
+        "passwordHash": "$argon2id$v=19$m=19456,p…siOx91bU"
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.2",
+      "id": "A6-02",
+      "title": "Wrong password is refused by the server",
+      "request": "POST /api/v1/auth/login {username: \"demo.waiter\", password: \"Wrong-Password-1\"}",
+      "expected": "401 with a generic message that does not say which part was wrong",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "sign_in_failed",
+            "message": "Incorrect username or password, or the account is temporarily locked.",
+            "requestId": "7c05d92c-2979-4f49-845d-87f4fe392619"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.1, 4.4 / Task 6.1",
+      "id": "A6-03",
+      "title": "Successful login generates a signed JWT",
+      "request": "POST /api/v1/auth/login (correct password), then POST /api/v1/auth/mfa/verify (authenticator code)",
+      "expected": "200, 200, and a signed HS256 JWT set in the HttpOnly __Host-cms_session cookie",
+      "actual": {
+        "loginStatus": 200,
+        "mfaStatus": 200,
+        "cookie": "__Host-cms_session",
+        "token": "eyJhbGciOiJIUzI1NiIsInR5…dX_aHVGk",
+        "header": {
+          "alg": "HS256",
+          "typ": "JWT",
+          "kid": "k1"
+        },
+        "claims": {
+          "sub": "demo.waiter",
+          "iss": "cafems",
+          "aud": "cafems-staff",
+          "iat": 1795620993,
+          "exp": 1795649793,
+          "jti": "(random id)"
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.5 / Task 6.2",
+      "id": "A6-04",
+      "title": "Protected endpoint accepts a valid token",
+      "request": "GET /api/v1/auth/me with the session cookie",
+      "expected": "200 with the signed-in user and role",
+      "actual": {
+        "status": 200,
+        "body": {
+          "username": "demo.waiter",
+          "name": "Test Person",
+          "role": "Waiter",
+          "loginAt": "2026-11-25T15:36:33.109Z",
+          "csrfToken": "(hidden)",
+          "idleSeconds": 300,
+          "recoveryCodesLeft": 0
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-05",
+      "title": "Rejected: No token at all",
+      "request": "GET /api/v1/reservations with no cookie",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "4e64ad59-d796-459e-9d65-2fa12dbb4c43"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-06",
+      "title": "Rejected: Random text instead of a token",
+      "request": "GET /api/v1/reservations with cookie not-a-jwt",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "fc498f13-86e0-4313-9a2b-34445604b940"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-07",
+      "title": "Rejected: Payload modified (sub changed to another user), signature kept",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…dX_aHVGk",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "29cd607a-3515-4880-b342-6445b9517a28"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-08",
+      "title": "Rejected: Signature modified",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…dX_aHVAA",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "af2a2a27-417e-4177-bd3e-74d854303f07"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-09",
+      "title": "Rejected: Algorithm changed to \"none\" with the signature removed",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJub25lIiwidHlw…0ZXIifQ.",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "5870680d-576d-4cbe-970a-04f5af8d62d7"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-10",
+      "title": "Rejected: Signed with a different secret key",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…2DG6gwo8",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "31589bd2-34f4-4bbd-944d-155479e48b26"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-11",
+      "title": "Rejected: Correct key but already expired",
+      "request": "GET /api/v1/reservations with cookie eyJhbGciOiJIUzI1NiIsInR5…g7UzD5RE",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "b49c67e0-5412-460e-b6ff-6f0394e1d563"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.6 / Task 6.3",
+      "id": "A6-12",
+      "title": "Rejected: a genuine token after sign-out (server-side revocation)",
+      "request": "POST /api/v1/auth/logout, then reuse the old cookie on GET /api/v1/reservations",
+      "expected": "401 not_signed_in",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "not_signed_in",
+            "message": "Please sign in to continue.",
+            "requestId": "143c3dbc-a2ca-417a-96f3-6eb73a6a56f1"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2.1 / Task 6.5",
+      "id": "A6-13",
+      "title": "Module 1 (Reservations): waiter submits a reservation",
+      "request": "POST /api/v1/reservations {\"name\":\"Ayesha Khan\",\"phone\":\"03211234567\",\"date\":\"2026-11-28\",\"time\":\"19:30\",\"party\":4,\"notes\":\"Window seat\"}",
+      "expected": "201 with the saved reservation, phone masked",
+      "actual": {
+        "status": 201,
+        "body": {
+          "id": "R-1001",
+          "name": "Ayesha Khan",
+          "phone": "0321-•••••67",
+          "date": "2026-11-28",
+          "time": "19:30",
+          "party": 4,
+          "notes": "Window seat",
+          "status": "Confirmed",
+          "createdAt": "2026-11-25T15:36:33.690Z",
+          "updatedAt": null,
+          "createdBy": "demo.waiter"
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 1.4",
+      "id": "A6-14",
+      "title": "Module 1: the reservation is stored in MongoDB (guest details encrypted)",
+      "request": "db.reservations.findOne({_id: \"R-1001\"})",
+      "expected": "Document exists; name and phone are not stored as plain text",
+      "actual": {
+        "found": true,
+        "fields": [
+          "_id",
+          "nameEnc",
+          "phoneEnc",
+          "phoneIndex",
+          "phoneMask",
+          "date",
+          "time",
+          "party",
+          "notesEnc",
+          "status",
+          "active",
+          "createdAt",
+          "createdBy"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2.2 / Task 1.5 / Task 6.5",
+      "id": "A6-15",
+      "title": "Module 1: stored reservations are retrieved",
+      "request": "GET /api/v1/reservations",
+      "expected": "200 and the list contains the new reservation",
+      "actual": {
+        "status": 200,
+        "count": 1,
+        "ids": [
+          "R-1001"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2.4 / Task 5.3",
+      "id": "A6-16",
+      "title": "Module 1: invalid input is refused with a clear message",
+      "request": "POST /api/v1/reservations with party: 50",
+      "expected": "400 invalid_input with a user-friendly message",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "invalid_input",
+            "message": "Party size must be a whole number from 1 to 20.",
+            "requestId": "95030011-fbe3-4209-8087-464ae78616ac"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.4",
+      "id": "A6-17",
+      "title": "Module 1: NoSQL injection operator is refused",
+      "request": "POST /api/v1/reservations/search {\"phone\": {\"$ne\": \"\"}}",
+      "expected": "400 invalid_input; no records returned",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "invalid_input",
+            "message": "Check the information you entered and try again.",
+            "requestId": "757ec7cd-814f-4e31-8805-e0442b4ab754"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.3",
+      "id": "A6-18",
+      "title": "Module 1: unknown fields (mass assignment) are refused",
+      "request": "POST /api/v1/reservations with an extra field status: \"Confirmed\"",
+      "expected": "400 invalid_input",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "invalid_input",
+            "message": "Check the information you entered and try again.",
+            "requestId": "a91acb24-f493-4289-aeb7-e2efdf983f01"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2 (update)",
+      "id": "A6-19",
+      "title": "Module 1: reservation status is updated",
+      "request": "POST /api/v1/reservations/R-1001/status {\"status\": \"Seated\"}",
+      "expected": "200 (staff bookings start as Confirmed)",
+      "actual": {
+        "status": 200,
+        "body": {
+          "id": "R-1001",
+          "name": "Ayesha Khan",
+          "phone": "0321-•••••67",
+          "date": "2026-11-28",
+          "time": "19:30",
+          "party": 4,
+          "notes": "Window seat",
+          "status": "Seated",
+          "createdAt": "2026-11-25T15:36:33.690Z",
+          "updatedAt": "2026-11-25T15:36:33.776Z",
+          "createdBy": "demo.waiter"
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2.1 / Task 6.5",
+      "id": "A6-20",
+      "title": "Module 2 (Orders): waiter places an order; prices and totals worked out on the server",
+      "request": "POST /api/v1/orders {\"table\":3,\"lines\":[{\"id\":1,\"qty\":2},{\"id\":2,\"qty\":1}],\"notes\":\"No sugar\"}",
+      "expected": "201 with order id, items priced from the database and totals",
+      "actual": {
+        "status": 201,
+        "body": {
+          "id": "ORD-1001",
+          "type": "dine-in",
+          "table": 3,
+          "label": "Table 3",
+          "customer": null,
+          "items": [
+            {
+              "id": 1,
+              "name": "Espresso",
+              "price": 350,
+              "qty": 2,
+              "cat": "Coffee",
+              "station": "Kitchen",
+              "options": [],
+              "chosen": []
+            },
+            {
+              "id": 2,
+              "name": "Cappuccino",
+              "price": 520,
+              "qty": 1,
+              "cat": "Coffee",
+              "station": "Kitchen",
+              "options": [],
+              "chosen": []
+            }
+          ],
+          "notes": "No sugar",
+          "status": "Placed",
+          "stations": {
+            "Kitchen": "Placed"
+          },
+          "waiter": "demo.waiter",
+          "createdAt": "2026-11-25T15:36:33.812Z",
+          "updatedAt": "2026-11-25T15:36:33.812Z",
+          "billed": false,
+          "billNo": null,
+          "version": 0,
+          "totals": {
+            "sub": 1220,
+            "discount": 0,
+            "tax": 195,
+            "total": 1415,
+            "count": 3
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2.2 / Task 6.5",
+      "id": "A6-21",
+      "title": "Module 2: stored orders are retrieved",
+      "request": "GET /api/v1/orders",
+      "expected": "200 and the list contains the new order",
+      "actual": {
+        "status": 200,
+        "ids": [
+          "ORD-1001"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.3",
+      "id": "A6-22",
+      "title": "Module 2: a price sent by the browser is refused",
+      "request": "POST /api/v1/orders with lines[0].price: 1",
+      "expected": "400 invalid_input",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "invalid_input",
+            "message": "Check the information you entered and try again.",
+            "requestId": "d0e6832e-de2f-44d4-8daa-027006927aee"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 2 / integration",
+      "id": "A6-23",
+      "title": "Module 2: the order reaches the kitchen from the same database",
+      "request": "GET /api/v1/kitchen/tickets as Kitchen",
+      "expected": "200 and the ticket list contains the order, with no prices",
+      "actual": {
+        "status": 200,
+        "ids": [
+          "ORD-1001"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-24",
+      "title": "Kitchen cannot read reservations",
+      "request": "GET /api/v1/reservations",
+      "expected": "403 forbidden",
+      "actual": {
+        "status": 403,
+        "body": {
+          "error": {
+            "code": "forbidden",
+            "message": "You do not have permission to do that.",
+            "requestId": "5768baca-e6dc-4ecd-9a1e-1d99c105fd56"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-25",
+      "title": "Kitchen cannot place orders",
+      "request": "POST /api/v1/orders",
+      "expected": "403 forbidden",
+      "actual": {
+        "status": 403,
+        "body": {
+          "error": {
+            "code": "forbidden",
+            "message": "You do not have permission to do that.",
+            "requestId": "4f84632e-7cb2-4621-bc91-3c98f0a10b1a"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-26",
+      "title": "Waiter cannot reveal a guest's full phone number",
+      "request": "GET /api/v1/reservations/R-1001/phone",
+      "expected": "403 forbidden",
+      "actual": {
+        "status": 403,
+        "body": {
+          "error": {
+            "code": "forbidden",
+            "message": "You do not have permission to do that.",
+            "requestId": "67d6f705-dc29-46ae-acc0-0910d1a8ec64"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-27",
+      "title": "Waiter cannot open the audit log",
+      "request": "GET /api/v1/audit",
+      "expected": "403 forbidden",
+      "actual": {
+        "status": 403,
+        "body": {
+          "error": {
+            "code": "forbidden",
+            "message": "You do not have permission to do that.",
+            "requestId": "34c900c5-f993-4f9e-a51e-03b5347cbfe7"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-28",
+      "title": "Manager cannot manage staff accounts (Admin only)",
+      "request": "GET /api/v1/users",
+      "expected": "403 forbidden",
+      "actual": {
+        "status": 403,
+        "body": {
+          "error": {
+            "code": "forbidden",
+            "message": "You do not have permission to do that.",
+            "requestId": "0c22898d-5dc0-44b5-8d54-1044b82620d4"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-29",
+      "title": "Manager can reveal the guest's phone (allowed role)",
+      "request": "GET /api/v1/reservations/R-1001/phone",
+      "expected": "200",
+      "actual": {
+        "status": 200,
+        "body": {
+          "phone": "03211234567"
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2 / Task 6.4",
+      "id": "A6-30",
+      "title": "Manager can also manage reservations (allowed role)",
+      "request": "GET /api/v1/reservations",
+      "expected": "200",
+      "actual": {
+        "status": 200,
+        "body": {
+          "reservations": [
+            {
+              "id": "R-1001",
+              "name": "Ayesha Khan",
+              "phone": "0321-•••••67",
+              "date": "2026-11-28",
+              "time": "19:30",
+              "party": 4,
+              "notes": "Window seat",
+              "status": "Seated",
+              "createdAt": "2026-11-25T15:36:33.690Z",
+              "updatedAt": "2026-11-25T15:36:33.776Z",
+              "createdBy": "demo.waiter"
+            }
+          ]
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.2",
+      "id": "A6-31",
+      "title": "Every refused attempt is written to the audit log",
+      "request": "db.audit_events.countDocuments({action: \"Access denied\"})",
+      "expected": "At least 5 entries (one per refusal above)",
+      "actual": {
+        "accessDeniedEntries": 5
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4 (register)",
+      "id": "A6-32",
+      "title": "Registration from the landing page is accepted",
+      "request": "POST /api/v1/public/register {name, username: \"ahmed.raza\", password}",
+      "expected": "202 with a 'waiting for approval' message",
+      "actual": {
+        "status": 202,
+        "body": {
+          "ok": true,
+          "message": "Thank you. An Admin will review your request. You can sign in once it is approved."
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.3 / Task 1.4",
+      "id": "A6-33",
+      "title": "The new account is stored as Pending with an Argon2id hash",
+      "request": "db.users.findOne({username: \"ahmed.raza\"})",
+      "expected": "status Pending; passwordHash starts with $argon2id$; no plaintext",
+      "actual": {
+        "status": "Pending",
+        "passwordHash": "$argon2id$v=19$m=19456,p…HpwDd7mU"
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.3",
+      "id": "A6-34",
+      "title": "A weak password is refused by the server",
+      "request": "POST /api/v1/public/register with password \"password\"",
+      "expected": "400 weak_password",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "weak_password",
+            "message": "Use at least 12 characters. Add an uppercase letter. Add a number. Add a symbol. This password is too common or too easy to guess.",
+            "requestId": "4ff8c386-5612-4f4d-956c-004fd5375ad3"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.2",
+      "id": "A6-35",
+      "title": "A Pending account cannot sign in",
+      "request": "POST /api/v1/auth/login as ahmed.raza before approval",
+      "expected": "401 sign_in_failed",
+      "actual": {
+        "status": 401,
+        "body": {
+          "error": {
+            "code": "sign_in_failed",
+            "message": "Incorrect username or password, or the account is temporarily locked.",
+            "requestId": "878b8fe6-5240-48a3-ac03-727c9d328ff2"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1, 5.2",
+      "id": "A6-36",
+      "title": "A Waiter cannot approve registrations",
+      "request": "POST /api/v1/users/ahmed.raza/approve as Waiter",
+      "expected": "403 forbidden",
+      "actual": {
+        "status": 403,
+        "body": {
+          "error": {
+            "code": "forbidden",
+            "message": "You do not have permission to do that.",
+            "requestId": "1fb3ac3b-6d0a-4fa7-b807-0f8da244dc2c"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1",
+      "id": "A6-37",
+      "title": "Admin access cannot be granted through a registration",
+      "request": "POST /api/v1/users/ahmed.raza/approve {\"role\": \"Admin\"} as Admin",
+      "expected": "400 invalid_input",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "invalid_input",
+            "message": "Check the information you entered and try again.",
+            "requestId": "2106e9eb-71c6-4e3c-9f15-12a859eba323"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.1",
+      "id": "A6-38",
+      "title": "Admin approves the registration and chooses the role",
+      "request": "POST /api/v1/users/ahmed.raza/approve {\"role\": \"Kitchen\"} as Admin (after authenticator step-up)",
+      "expected": "200; account Active as Kitchen",
+      "actual": {
+        "status": 200,
+        "body": {
+          "username": "ahmed.raza",
+          "role": "Kitchen",
+          "status": "Active"
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 4.1",
+      "id": "A6-39",
+      "title": "After approval the new account can sign in",
+      "request": "POST /api/v1/auth/login as ahmed.raza after approval",
+      "expected": "200 and signed in (a Kitchen role needs no authenticator)",
+      "actual": {
+        "status": 200,
+        "body": {
+          "next": "done",
+          "username": "ahmed.raza",
+          "name": "Ahmed Raza",
+          "role": "Kitchen"
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.5",
+      "id": "A6-40",
+      "title": "Malformed JSON gets a generic error with no stack trace or library names",
+      "request": "POST /api/v1/auth/login with body {\"username\":  (cut off)",
+      "expected": "400 with a short message; no stack, file path or library name",
+      "actual": {
+        "status": 400,
+        "body": {
+          "error": {
+            "code": "invalid_input",
+            "message": "That request could not be read.",
+            "requestId": "79565e13-d05d-4fbd-a497-68a54ee53aee"
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "task": "Task 5.5",
+      "id": "A6-41",
+      "title": "Unknown API route gets a generic not-found error",
+      "request": "GET /api/v1/no-such-route",
+      "expected": "404 with a generic message",
+      "actual": {
+        "status": 404,
+        "body": {
+          "error": {
+            "code": "not_found",
+            "message": "Not found.",
+            "requestId": "df1f01bb-428a-4a97-b3d9-6297c0f45940"
+          }
+        }
+      },
+      "pass": true
+    }
+  ]
+}
