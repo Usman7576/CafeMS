@@ -1106,7 +1106,7 @@ body[data-page="kitchen"] .avatar { background: var(--accent-50); color: var(--a
 .pos-meta small { color: var(--muted); font-size: .72rem; }
 .pos-meta small.out { color: var(--danger); }
 .pos-tile .qty-badge { position: absolute; top: 14px; right: 14px; }
-.pos-cart { position: sticky; top: 76px; display: flex; flex-direction: column; max-height: calc(100vh - 92px); overflow: hidden; }
+.pos-cart { position: sticky; top: 76px; display: flex; flex-direction: column; max-height: calc(100vh - 92px); overflow-x: hidden; overflow-y: auto; }
 .pos-cart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 16px 18px 10px; }
 .pos-cart-head h2 { font-size: 1.1rem; font-weight: 700; }
 .pos-types { padding: 0 18px 12px; }
@@ -1114,7 +1114,7 @@ body[data-page="kitchen"] .avatar { background: var(--accent-50); color: var(--a
 .pos-target { padding: 0 18px 12px; }
 .pos-target .floor.compact { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 6px; max-height: 150px; overflow-y: auto; }
 .pos-target .tbl { padding: 6px 4px; }
-.pos-lines { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); overflow-y: auto; flex: 1; min-height: 80px; }
+.pos-lines { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); flex: 0 0 auto; min-height: 80px; }
 .pos-lines li { display: grid; grid-template-columns: 1fr auto 78px; gap: 10px; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--line); }
 .pos-lines .nm { font-size: .9rem; font-weight: 500; min-width: 0; }
 .pos-lines .nm small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }

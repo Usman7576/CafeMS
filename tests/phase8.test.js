@@ -4,7 +4,7 @@ const { test, before, after, describe } = require("node:test");
 const assert = require("node:assert/strict");
 const { seedCatalog } = require("../scripts/seed-data");
 const { startDb, buildApp, createUser, signIn } = require("./helpers");
-const { localDate } = require("../server/lib/domain");
+const { localDate, dayRange } = require("../server/lib/domain");
 
 const API = "/api/v1";
 let ctx, db, app, config, admin, manager, waiter, cashier;
@@ -21,7 +21,7 @@ before(async () => {
   await seedCatalog(db);
   ({ app, config } = buildApp(db));
   [admin, manager, waiter, cashier] = await Promise.all(["Admin", "Manager", "Waiter", "Cashier"].map(as));
-  const now = new Date();
+  const now = new Date(dayRange(today).start.getTime() + 12 * HOUR);
   // Two espressos (Rs 350, 18 g coffee at Rs 6,500/kg) on a dine-in bill, and a split check for a club
   // sandwich: half by card with a tip, half in cash. One refunded bill does not count.
   await db.collection("orders").insertMany([
